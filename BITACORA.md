@@ -235,33 +235,54 @@ clonar). El total pasa de ~94 a ~98 h.
 
 ---
 
-## Estado
+**2026-09-01 — Tres niveles de decoración en vez de dos versiones de la app**
+Se planteó mantener dos versiones, una para gama alta y otra para gama baja.
+Se descartó: cada función habría que construirla, probarla y arreglarla dos
+veces, y con 6–10 h/semana eso no es el doble de trabajo, es el punto donde
+el proyecto se abandona. Y si las versiones difieren en algo que no sea
+decoración, aparece *"mi amiga tiene un botón que yo no tengo"*.
 
-**Fase 1 terminada en código. Falta publicarla.**
+En su lugar, una sola app con tres niveles. `src/lib/dispositivo.js` mira RAM
+y núcleos al arrancar y escribe `data-nivel` en el `<html>`; cada nivel
+redefine tres variables en `theme.css` (`--desenfoque`, `--entrada`,
+`--sombra`) y no hay una sola regla de estilo duplicada.
 
-Hecho el 1 de septiembre de 2026, después del cierre de la Fase 0:
+| | alto | medio | bajo |
+|---|---|---|---|
+| desenfoque | 14px | 8px | sin filtro |
+| entrada | 190ms con escala | 150ms solo fundido | 110ms |
+| sombra | completa | reducida | plana |
 
-- Proyecto Vite + React 18 funcionando. `npm run build` compila.
-- `src/styles/theme.css` — la paleta completa, claro y oscuro. Ni un color
-  literal fuera de ahí.
-- `src/styles/app.css` — todos los estilos.
-- `src/data/fechas.js` + `fechas.test.js` — **14 pruebas, todas pasan.**
-- `src/data/mock.js` — datos falsos con nombres inventados. Se borra en la
-  Fase 2.
-- Cinco secciones y la barra de navegación de abajo.
-- Verificado en el navegador a 375×812, en tema claro y oscuro, sin
-  desbordamiento horizontal.
+**La regla que no se rompe: el nivel cambia SOLO cómo se ve la app.** Nunca
+qué se puede hacer, ni el orden, ni los textos. Está como regla 11 en
+`CLAUDE.md`.
 
-**Lo que falta de la Fase 1:** el repo en GitHub y el deploy en Vercel. Eso
-dependen de cuentas propias, así que van a mano.
+Dos detalles que parecen menores y no lo son: en gama baja se apaga el filtro
+entero en vez de dejarlo en `blur(0px)`, porque un `backdrop-filter` activo
+con radio cero igual crea la capa y cuesta lo mismo; y en gama media se quita
+la escala de la transición, porque animar dos propiedades cuesta el doble que
+animar una y a 150 ms la escala no se percibe.
 
-## Siguiente paso
+Pendiente para la Fase 8: el medidor de cuadros por segundo. `deviceMemory` y
+`hardwareConcurrency` son señales crudas. Por eso `nivelDetectado()` está
+separada de `aplicarNivel()`.
 
-1. **Probar en el Android de verdad.** Con `npm run dev` corriendo, el
-   celular entra a `http://<IP-del-computador>:5173` estando en el mismo wifi.
-   La IP se mira con `ipconfig getifaddr en0` y cambia al cambiar de red.
-2. **Publicar:** git init, repo público en GitHub, conectar a Vercel.
-3. **Fase 2**, que ya está desbloqueada: el esquema está cerrado.
+**2026-09-01 — El repositorio se recreó desde cero**
+El historial original contenía datos personales del autor que no debían
+estar en un repo público. Editar los archivos no bastaba: `git push --force` saca el commit de
+la rama pero GitHub conserva el objeto, y se comprobó que seguía accesible
+por su SHA. Se borró el repositorio y se creó de nuevo con **un solo commit
+limpio**. Verificado después: la API de GitHub responde `No commit found` al
+SHA viejo.
+
+De ahí salió la regla de `CONTEXTO-LOCAL.md`: todo lo que describa a una
+persona y no al software vive fuera de git. `BITACORA.md` e `IDEAS.md` sí se
+publican, pero escritos sobre el software.
+
+Consecuencia operativa: los despliegues anteriores de Vercel quedaron
+huérfanos y **"Redeploy" sobre ellos siempre va a fallar** con "The provided
+GitHub repository can't be found" — buscan un commit que ya no existe. Un
+despliegue nuevo solo lo dispara un push.
 
 **2026-09-01 — Fase 1 cerrada: publicada**
 Repo público en `github.com/kewo1023/fitness-app`, en línea en
@@ -272,8 +293,11 @@ El repo es público, así que todo el contexto personal y de negocio vive en
 Regla: lo que no deba leer un tercero no entra al historial, porque el
 historial de git no se limpia después.
 
-**Pendiente de la Fase 1:** verla en un Android real. En iPhone se ve bien.
-No bloquea la Fase 2, pero esa verificación no se puede dar por hecha.
+**Único pendiente de la Fase 1:** verla en un Android real. En iPhone y en el
+navegador a 375×812 y 393×851 se ve bien, pero el público es Android. Hay que
+sentir si el vidrio de la barra va a tirones al cambiar de pestaña haciendo
+scroll; si va mal, se sube el umbral de `nivelDetectado()`. No bloquea la
+Fase 2.
 
 **2026-09-01 — El proyecto salió de una carpeta sincronizada por iCloud**
 iCloud sincronizando un repo ya había roto git antes (`unable to map index
@@ -321,8 +345,6 @@ Duración de entrada: 190 ms. En un Android de gama media una transición de
 **Falta medirlo en el Android real.** Si va a tirones, se cae el desenfoque y
 queda la transición sola.
 
-## Decisiones cerradas hoy
-
 **2026-09-01 — SÍ va el caché offline (aprobado)**
 La app tiene que funcionar sin internet, no solo sincronizar cuando lo haya.
 Se guarda en el celular la rutina de la semana en curso con las imágenes de
@@ -353,6 +375,58 @@ Va en la Fase 8, ~4 h. Detalle abajo.
   20.
 - **Lo que NO funciona sin señal, y la app lo dice sin drama:** ver otro
   cliente, cambiar de plan, cargar contenido nuevo.
+
+---
+
+## Estado (1 de septiembre de 2026)
+
+**Fase 1 cerrada.** La app está publicada, verificada en producción y con el
+repositorio público limpio.
+
+- Vite + React 18. `npm run build` compila; `npm run test` pasa 14 pruebas.
+- Sistema visual completo: paleta greige/oliva/cobre en tema claro y oscuro,
+  ni un color literal fuera de `theme.css`.
+- Cinco secciones con la barra de abajo, vidrio incluido, y los tres niveles
+  de decoración funcionando (verificados forzando cada uno).
+- `src/data/fechas.js` con sus 14 pruebas — todo lo de "qué día es" en hora
+  de Bogotá.
+- `src/data/mock.js` con datos de ejemplo. **Se borra en la Fase 2.**
+- Repo público en `github.com/kewo1023/fitness-app`, historial de un solo
+  commit limpio. En línea en `https://fitness-app-ivory-mu.vercel.app`, y
+  cada push a `main` republica sola.
+- `README.md`, `PASOS-FASE-1.md` y `PASOS-FASE-2.md` escritos.
+
+**Único pendiente de la Fase 1:** verla en un Android real. Verificada en
+iPhone y en el navegador a 375×812 y 393×851, pero el público es Android.
+Hay que sentir si el vidrio de la barra va a tirones al cambiar de pestaña
+haciendo scroll; si va mal, se sube el umbral de `nivelDetectado()` en
+`src/lib/dispositivo.js`. **No bloquea la Fase 2.**
+
+La base de datos no existe todavía: `supabase/01-esquema.sql` está escrito y
+cerrado con las respuestas del entrenador, pero **no se ha corrido**.
+
+## Siguiente paso — Fase 2
+
+El bloqueante es el paso 1 de `PASOS-FASE-2.md`, que depende de una cuenta:
+crear el proyecto en Supabase (región Virginia) y dejar las credenciales en
+`.env.local`.
+
+Mientras tanto se pueden escribir los tres archivos SQL que faltan, que no
+dependen de ninguna credencial:
+
+1. `supabase/02-politicas.sql` — RLS en las 16 tablas. **Sin esto la base
+   está abierta.**
+2. `supabase/03-funciones.sql` — `crear_invitacion`, `vincular_con_codigo`,
+   `clonar_plantilla(plantilla, cliente, inicio)`, `sumar_xp`.
+3. `supabase/04-ejemplo.sql` — datos de prueba con nombres inventados.
+
+Después va el código: `src/lib/supabase.js`, la pantalla de acceso, el hook
+de sesión, la autorización de la Ley 1581 con finalidades separadas, y la
+pantalla "Mis datos".
+
+**La prueba que cierra la Fase 2:** el entrenador entra como admin y ve el
+panel; un cliente de prueba entra y no ve absolutamente nada de otro cliente.
+Verificado contra la base, no supuesto.
 
 ## Preguntas abiertas
 

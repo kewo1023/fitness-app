@@ -206,6 +206,9 @@ src/lib/dispositivo.js   Decide el NIVEL de decoración (alto/medio/bajo)
                          data-nivel en el <html>.
 src/styles/theme.css     SOLO variables. Claro y oscuro, más los tres
                          niveles de decoración.
+README.md                La cara pública del repo. Cuenta el problema (un
+                         entrenador que manda PDFs y no sabe quién entrenó),
+                         no la lista de funciones.
 src/styles/app.css       Todos los estilos.
 supabase/                El borrador del esquema. Todavía no se corre.
 ```
@@ -267,12 +270,20 @@ debe recortar:
 
 ## Estado (1 de septiembre de 2026)
 
-**Fase 1 terminada en código, sin publicar.** La app corre, compila y se ve
-bien en los dos temas a 375×812. Las 14 pruebas de `fechas.js` pasan. Todo lo
-que se ve en pantalla sale de `mock.js`: no hay base de datos todavía.
+**Fase 1 cerrada.** La app corre, compila, las 14 pruebas de `fechas.js`
+pasan, y está publicada y verificada en producción. Todo lo que se ve en
+pantalla sale de `mock.js`: no hay base de datos todavía.
 
-**Fase 1 cerrada el 1/09.** Repo público en GitHub y publicada en Vercel.
-Verificada en iPhone; **falta verla en un Android real.**
+Lo que quedó hecho: el sistema visual con paleta greige/oliva/cobre en dos
+temas, las cinco secciones, la barra con vidrio y los tres niveles de
+decoración.
+
+**Único pendiente de la Fase 1: verla en un Android real.** Verificada en
+iPhone y en el navegador a 375×812 y 393×851, pero el público es Android y
+eso no se puede dar por hecho. En particular hay que sentir si el vidrio de
+la barra va a tirones al cambiar de pestaña haciendo scroll; si va mal, se
+ajusta el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`. **No
+bloquea la Fase 2.**
 
 **La Fase 2 está desbloqueada.** El entrenador contestó el cuestionario el
 1/09 y el esquema quedó cerrado. El punto de la Ley 2210 (certificación de
@@ -283,7 +294,7 @@ desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 
 ## Cómo retomar
 
-1. Leer `BITACORA.md`.
+1. Leer `BITACORA.md` y `CONTEXTO-LOCAL.md`.
 2. `npm install && npm run dev`. Verificar con `npm run test` que las 14
    pruebas siguen pasando antes de tocar nada.
 3. Leer `supabase/01-esquema.sql` antes de tocar la base: los comentarios
