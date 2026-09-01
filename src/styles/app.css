@@ -1,0 +1,445 @@
+/* =====================================================================
+   app.css — todos los estilos de la app.
+   =====================================================================
+   Ni un color literal aquí: todo sale de var(--...) de theme.css.
+
+   Tipografía: se usa la fuente del sistema (Roboto en Android, San
+   Francisco en iPhone). No se carga ninguna fuente de internet, y es
+   una decisión, no un descuido: una fuente son entre 30 y 100 KB que el
+   cliente descarga con datos móviles antes de ver la primera letra. En
+   Colombia mucha gente va a abrir esto con plan limitado. Además, la
+   fuente del sistema hace que la app se sienta parte del celular.
+   ===================================================================== */
+
+* { box-sizing: border-box; }
+
+html, body, #raiz { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Evita el rebote elástico y el resaltado azul al tocar en Android. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3 { margin: 0; line-height: 1.2; text-wrap: balance; }
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+  border-radius: var(--radio-chico);
+}
+
+/* --- Estructura general ---------------------------------------------- */
+
+.app {
+  min-height: 100%;
+  /* Espacio abajo para que la barra de navegación no tape el contenido.
+     Se suma el área segura del celular: la rayita de gestos de Android
+     mide distinto en cada modelo, por eso no puede ser un número fijo. */
+  padding-bottom: calc(var(--barra-alto) + var(--sab));
+}
+
+.pantalla {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: calc(var(--sat) + 20px) 18px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  /* La sección se remonta al cambiar de pestaña (App.jsx le pone key),
+     así que esta animación se dispara sola en cada cambio.
+     SOLO opacity y transform: son las dos únicas propiedades que el
+     celular puede animar en la tarjeta gráfica sin volver a calcular el
+     diseño de la página. Animar height, top o filter obliga a rehacer
+     todo el cuadro y es lo que hace que una app se sienta lenta. */
+  animation: entra var(--entrada) var(--curva) both;
+}
+
+@keyframes entra {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* En gama media se quita la escala y queda solo el fundido: animar dos
+   propiedades a la vez cuesta el doble que animar una, y a 150 ms la
+   escala casi no se percibe. La duración sale de --entrada, que cada
+   nivel redefine en theme.css. */
+:root[data-nivel="medio"] .pantalla,
+:root[data-nivel="bajo"] .pantalla { animation-name: entraSimple; }
+
+@keyframes entraSimple {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.pantalla-cab {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pantalla-cab h1 {
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+}
+
+.bajada { margin: 4px 0 0; color: var(--tinta-media); font-size: 14.5px; }
+
+.titulillo {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--tinta-tenue);
+  margin-bottom: -8px;
+}
+
+.titulillo .tenue { color: var(--tinta-tenue); font-weight: 400; }
+
+.meta { margin: 0; color: var(--tinta-media); font-size: 14.5px; }
+
+.etiqueta {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--acento);
+}
+
+/* --- La racha: el único naranja de la app ---------------------------- */
+
+.racha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--senal-suave);
+  border-radius: var(--radio);
+  padding: 16px 18px;
+}
+
+.racha-cifra {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--senal);
+  line-height: 1;
+  /* Los dígitos alineados: sin esto el número salta de ancho al cambiar
+     de 3 a 4 y la fila entera se mueve. */
+  font-variant-numeric: tabular-nums;
+}
+
+.racha-cifra span { font-size: 18px; font-weight: 600; opacity: .65; }
+
+.racha-pie { margin: 6px 0 0; font-size: 13.5px; color: var(--tinta-media); }
+
+.racha-puntos { display: flex; gap: 7px; }
+
+.punto {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--superficie-2);
+  border: 1.5px solid var(--linea);
+}
+
+.punto.es-lleno { background: var(--senal); border-color: var(--senal); }
+
+/* --- Tarjetas -------------------------------------------------------- */
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--linea-suave);
+  border-radius: var(--radio);
+  padding: 18px;
+  box-shadow: var(--sombra);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tarjeta h2 { font-size: 20px; font-weight: 650; letter-spacing: -.015em; }
+.tarjeta h2.chico { font-size: 16.5px; font-weight: 600; }
+
+.destacada { gap: 8px; }
+
+.boton-principal {
+  margin-top: 6px;
+  background: var(--acento);
+  color: var(--sobre-acento);
+  border-radius: var(--radio-chico);
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  width: 100%;
+}
+
+.boton-principal:active { background: var(--acento-fuerte); }
+
+.barra {
+  height: 7px;
+  border-radius: 4px;
+  background: var(--superficie-2);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.barra span { display: block; height: 100%; background: var(--acento); }
+
+.pastillas { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 0; }
+
+.pastilla {
+  font-size: 12.5px;
+  color: var(--tinta-media);
+  background: var(--superficie-2);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+/* Rejilla de dos columnas.
+   minmax(0, 1fr) y no 1fr a secas: una columna 1fr no se deja encoger
+   por debajo del ancho natural de su contenido, y un nombre largo
+   termina empujando la pantalla de lado. */
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.foto-vacia {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radio-chico);
+  background: var(--superficie-2);
+}
+
+/* --- Listas ---------------------------------------------------------- */
+
+.lista, .lista-ejercicios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fila, .ejercicio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--superficie);
+  border: 1px solid var(--linea-suave);
+  border-radius: var(--radio-chico);
+  padding: 12px 14px;
+}
+
+.fila-datos, .ejercicio-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;   /* deja que el texto largo se corte en vez de empujar */
+  flex: 1;
+}
+
+.fila-datos strong, .ejercicio-datos strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fila-datos small, .ejercicio-datos small {
+  font-size: 13px;
+  color: var(--tinta-media);
+}
+
+.ejercicio-video {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--radio-chico);
+  background: var(--superficie-2);
+  color: var(--tinta-tenue);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ejercicio-series {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tinta-media);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.estado {
+  font-size: 13px;
+  color: var(--tinta-tenue);
+  white-space: nowrap;
+}
+
+.estado.es-ok { color: var(--acento); font-weight: 600; }
+
+.fila.es-bloqueado { opacity: .55; }
+.fila.es-proxima { border-style: dashed; }
+
+/* --- Cifras del progreso --------------------------------------------- */
+
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cifra {
+  background: var(--superficie);
+  border: 1px solid var(--linea-suave);
+  border-radius: var(--radio-chico);
+  padding: 14px 10px;
+  text-align: center;
+}
+
+.cifra strong {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cifra small { font-size: 12.5px; color: var(--tinta-media); }
+
+/* --- Perfil ----------------------------------------------------------- */
+
+.perfil-cab { flex-direction: row; align-items: center; gap: 14px; }
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--acento-suave);
+  color: var(--acento);
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+  font-weight: 650;
+}
+
+.descargo {
+  font-size: 12.5px;
+  color: var(--tinta-tenue);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* --- Navegación de abajo --------------------------------------------- */
+
+/* La barra de abajo, con el efecto de vidrio.
+
+   Tres decisiones tomadas por el celular de gama media, no por gusto:
+
+   1. El desenfoque va SOLO aquí. Es una franja de 58 px de alto: el
+      navegador la convierte en una capa aparte y la reutiliza. Si el
+      mismo efecto se pusiera sobre el contenido que hace scroll, habría
+      que recalcularlo en cada cuadro y ahí sí se cae a tirones.
+   2. El radio es 14 px y no 24. El costo del desenfoque crece con el
+      radio, y por encima de ~15 px la diferencia se nota más en el
+      rendimiento que en la pantalla.
+   3. El desenfoque NUNCA se anima. Un backdrop-filter que cambia de valor
+      obliga a recalcular la capa entera en cada cuadro.
+
+   El radio sale de --desenfoque, que cambia con el nivel: 14 px en
+   gama alta, 8 px en media, y en baja no hay filtro del todo (ver
+   src/lib/dispositivo.js). Sin vidrio queda una barra sólida, que se ve
+   bien igual. */
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: var(--vidrio);
+  border-top: 1px solid var(--vidrio-linea);
+  padding-bottom: var(--sab);
+  -webkit-backdrop-filter: blur(var(--desenfoque)) saturate(150%);
+  backdrop-filter: blur(var(--desenfoque)) saturate(150%);
+}
+
+/* Navegadores que no soportan el efecto: barra sólida. Sin esto, la
+   barra quedaría semitransparente sin desenfoque y el texto de la app
+   se leería a través de ella. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .nav { background: var(--superficie); border-top-color: var(--linea); }
+}
+
+/* Gama baja: mismo diseño, sin el efecto caro. Se apaga el filtro
+   entero en vez de dejarlo en blur(0px), porque un backdrop-filter
+   activo con radio cero igual crea la capa y cuesta. */
+:root[data-nivel="bajo"] .nav {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: var(--superficie);
+  border-top-color: var(--linea);
+}
+
+.nav-boton {
+  flex: 1;
+  height: var(--barra-alto);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--tinta-tenue);
+  font-size: 11px;
+  font-weight: 500;
+  position: relative;
+}
+
+/* La píldora del estado activo, como en silBe. Es un elemento aparte y
+   no un fondo del botón para poder animarla con transform, que es
+   gratis, en vez de con width, que no lo es. */
+.nav-boton::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  width: 46px;
+  height: 27px;
+  border-radius: 999px;
+  background: var(--acento-suave);
+  opacity: 0;
+  transform: scale(.7);
+  transition: opacity var(--entrada) var(--curva),
+              transform var(--entrada) var(--curva);
+}
+
+.nav-boton.es-activa::before { opacity: 1; transform: none; }
+
+.nav-boton > * { position: relative; }
+
+.nav-boton.es-activa { color: var(--acento); font-weight: 600; }
+
+/* Quien pidió menos movimiento, no ve movimiento. El vidrio se queda:
+   es un efecto estático, no una animación. */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+  .pantalla { opacity: 1; transform: none; }
+}

@@ -1,0 +1,15 @@
+# Credenciales. Va PRIMERO y existe desde antes del primer commit:
+# el repo es público y el historial de git no se puede limpiar de verdad.
+.env
+.env.local
+.env.*.local
+
+node_modules/
+dist/
+.DS_Store
+*.log
+.vite/
+preguntas-para-el-entrenador.pdf
+
+# Contexto personal y de negocio. El repo es público.
+CONTEXTO-LOCAL.md

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es-CO">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- viewport-fit=cover: deja que la app pinte debajo de la barra de
+         estado y de la barra de gestos. A cambio, TODA pantalla tiene que
+         respetar var(--sat) arriba y var(--sab) abajo, o el contenido
+         queda tapado. Ver la regla 7 de CLAUDE.md. -->
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <!-- Pinta la barra de estado de Android del color de la app.
+         Dos valores: uno por tema. -->
+    <meta name="theme-color" content="#FBFAF8"
+          media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101413"
+          media="(prefers-color-scheme: dark)" />
+
+    <title>Entrena</title>
+  </head>
+  <body>
+    <div id="raiz"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

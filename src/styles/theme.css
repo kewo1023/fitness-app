@@ -1,0 +1,141 @@
+/* =====================================================================
+   theme.css — SOLO variables de color y medida.
+   =====================================================================
+
+   Regla 1 de CLAUDE.md: ni un color literal fuera de este archivo.
+   Si en app.css escribes "#fff" o "red", está mal: se agrega la
+   variable aquí y allá se usa var(--...).
+
+   Analogía de Excel: esto es la hoja de "Parámetros" del libro. Todas
+   las demás hojas la referencian con una fórmula. Cambias un valor
+   aquí y cambia toda la app de una, sin buscar y reemplazar.
+
+   Dos temas: claro y oscuro. El oscuro entra solo por la preferencia
+   del sistema operativo — no hay botón para cambiarlo, y es a
+   propósito: un botón más es una decisión más para el usuario.
+
+   La paleta sigue la lógica de silBe: fondo greige cálido en vez de
+   blanco, tinta cacao en vez de negro, y un acento desaturado. Cambia
+   la familia de color: oliva de acento, cobre para la racha.
+   ===================================================================== */
+
+:root {
+  /* --- Superficies -------------------------------------------------- */
+  --fondo:        #F1EEE8;   /* greige cálido. No blanco: cansa menos y es
+                                lo que le da a la app el aire de silBe */
+  --superficie:   #FAF8F4;   /* las tarjetas, apenas por encima del fondo */
+  --superficie-2: #E7E2D9;   /* lo hundido: campos, barras vacías */
+  --linea:        #DAD4C8;
+  --linea-suave:  #E6E1D7;
+
+  /* --- Texto -------------------------------------------------------- */
+  --tinta:        #2E2721;   /* cacao oscuro, no negro */
+  --tinta-media:  #6B6258;
+  --tinta-tenue:  #948B7E;
+
+  /* --- Acento: oliva profundo --------------------------------------- */
+  --acento:       #5A6B45;
+  --acento-fuerte:#4A5A38;   /* al presionar */
+  --acento-suave: #E3E7D8;   /* relleno de la píldora activa */
+  --sobre-acento: #FAF8F4;
+
+  /* --- Señal: SOLO la racha ----------------------------------------
+     Cobre tostado. Un solo lugar donde la app grita; si aparece en tres
+     sitios deja de significar algo. */
+  --senal:        #B26234;
+  --senal-suave:  #F3E5DA;
+
+  /* --- Vidrio de la barra de abajo ---------------------------------
+     El color es translúcido a propósito: lo que se ve detrás es el
+     contenido de la app desenfocado. */
+  --vidrio:       rgba(250, 248, 244, .72);
+  --vidrio-linea: rgba(46, 39, 33, .10);
+
+  /* --- Estados ------------------------------------------------------ */
+  --exito:        #5A6B45;
+  --aviso:        #8A6108;
+  --error:        #A3341B;
+  --error-suave:  #F7E7E1;
+
+  --sombra:       0 1px 2px rgba(46,39,33,.04), 0 6px 20px -14px rgba(46,39,33,.30);
+
+  /* --- Área segura del celular -------------------------------------
+     No son colores, pero viven aquí por la misma razón: se usan en toda
+     la app y no se pueden escribir a mano. La isla de arriba y la
+     rayita de abajo cambian de tamaño según el modelo. */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+
+  /* --- Medidas ------------------------------------------------------ */
+  --radio:        16px;
+  --radio-chico:  11px;
+  --barra-alto:   58px;
+
+  /* --- Decoración: los valores del nivel ALTO -----------------------
+     Los otros dos niveles solo redefinen estas tres variables, más
+     abajo. Ni una regla de estilo duplicada: quien decide el nivel es
+     src/lib/dispositivo.js, que escribe data-nivel en el <html>.
+
+     La transición es corta a propósito. En un Android de gama media una
+     de 400 ms no se lee como elegante, se lee como que la app va
+     lenta. */
+  --desenfoque:   14px;
+  --entrada:      190ms;
+  --curva:        cubic-bezier(.32, .72, 0, 1);
+}
+
+/* ---------------------------------------------------------------------
+   NIVELES DE DECORACIÓN
+   ---------------------------------------------------------------------
+   Solo cambian cómo se ve la app. NUNCA qué se puede hacer, ni el orden
+   de las cosas, ni los textos. Ver el comentario de dispositivo.js.
+   --------------------------------------------------------------------- */
+
+:root[data-nivel="medio"] {
+  --desenfoque: 8px;    /* el costo del desenfoque crece con el radio */
+  --entrada:    150ms;
+  --sombra:     0 1px 2px rgba(46,39,33,.05);
+}
+
+:root[data-nivel="bajo"] {
+  --desenfoque: 0px;    /* app.css apaga el filtro entero en este nivel */
+  --entrada:    110ms;
+  --sombra:     none;   /* superficies planas: se separan por el borde */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-nivel="medio"] { --sombra: 0 1px 2px rgba(0,0,0,.5); }
+  :root[data-nivel="bajo"]  { --sombra: none; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo:        #14120F;
+    --superficie:   #1D1A16;
+    --superficie-2: #26221D;
+    --linea:        #332E27;
+    --linea-suave:  #2A2620;
+
+    --tinta:        #EFEAE2;
+    --tinta-media:  #A9A196;
+    --tinta-tenue:  #837B70;
+
+    --acento:       #9DB47C;
+    --acento-fuerte:#B0C692;
+    --acento-suave: #262D1C;
+    --sobre-acento: #14180E;
+
+    --senal:        #D9915C;
+    --senal-suave:  #2C1D13;
+
+    --vidrio:       rgba(29, 26, 22, .74);
+    --vidrio-linea: rgba(239, 234, 226, .10);
+
+    --exito:        #9DB47C;
+    --aviso:        #D8AB4A;
+    --error:        #E08A6B;
+    --error-suave:  #2C1A14;
+
+    --sombra:       0 1px 2px rgba(0,0,0,.4), 0 6px 20px -14px rgba(0,0,0,.8);
+  }
+}
