@@ -5,7 +5,7 @@ import { formatearFecha, nombreDia, diaSemanaBogota } from '../data/fechas.js'
 /* Lo que ya hizo. En la Fase 5 los números salen de la base con SQL;
  * hoy vienen de mock.js.
  */
-export default function Progreso () {
+export default function Progreso ({ perfil }) {
   const hechas = HISTORIAL.filter(s => s.completada)
   const minutos = hechas.reduce((suma, s) => suma + s.duracion, 0)
 

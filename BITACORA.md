@@ -577,6 +577,69 @@ El greige original quedó anotado en un comentario de `theme.css`:
 volver es cambiar dos valores. **El tema oscuro no se tocó**, a propósito:
 cambiar dos cosas a la vez impide saber cuál mejoró.
 
+---
+
+**2026-09-02 — Fase 2 cerrada: la app tiene acceso real**
+La base quedó creada, con los cuatro archivos corridos y las cuatro
+cuentas hechas. Del lado del código entraron `src/lib/supabase.js`, el
+hook `useSesion`, las pantallas de acceso y activación, los
+consentimientos y "Mis datos".
+
+**La distinción que organiza todo el código de acceso:** estar
+autenticado y tener perfil son cosas distintas. `sesion` es que Supabase
+sabe que existes; `perfil` es que la app sabe quién eres. Se puede tener
+lo primero sin lo segundo, y ese estado no es un error — es alguien
+registrado que aún no ha canjeado código ni dicho su nombre. Sin perfil,
+todas las políticas le dejan ver exactamente nada. `App.jsx` decide entre
+cuatro pantallas mirando solo esos dos datos.
+
+**Consentimientos: cuatro finalidades separadas, no una casilla.** Una
+autorización general no es autorización válida bajo la Ley 1581: hay que
+poder aceptar unas cosas y rechazar otras. Las dos obligatorias
+(tratamiento y descargo de ejercicio) y la de avisos se piden al activar;
+la de datos de salud se pide en "Mis datos", **en el momento en que se
+van a dar los datos**, no antes y en bloque.
+
+Detalle que parece menor: cuando alguien dice que NO a los avisos,
+también se guarda la fila, con `aceptado = false`. Un "no" registrado
+vale tanto como un "sí" — es la diferencia entre "dijo que no" y "nunca
+se le preguntó".
+
+**Verificado contra la base de producción, no supuesto.** Se creó un
+visitante desde la app y se comprobó que ve exactamente lo que dice el
+paso 8.6: 1 perfil, 0 planes, 0 plantillas, 0 invitaciones, 0 retos, 30
+ejercicios, 1 rutina y 2 recetas. Después se autorizaron y guardaron sus
+datos de salud, se descargaron con `mis_datos()` (devolvió las 8
+secciones) y se eliminó la cuenta con `eliminar_mi_cuenta()`. Se
+comprobó luego que el correo ya no puede iniciar sesión: el borrado en
+cascada funciona. No quedó ninguna cuenta de prueba en la base.
+
+**CORRECCIÓN — el comentario de `numeric` en el esquema estaba mal.**
+Decía que un `numeric` vuelve de la base como texto ("35.00") y que hay
+que convertirlo o las sumas concatenan. Se comprobó el 2/09: por la API
+de Supabase (PostgREST) llega como NÚMERO de verdad, 74.5. Lo que sí
+devuelve texto es el driver de Node conectado directo a Postgres, que no
+es el caso de esta app. Corregido en `01-esquema.sql`. Una advertencia
+equivocada en un repo público es peor que ninguna.
+
+**Pruebas: de 14 a 32.** Las nuevas cubren el cálculo de nivel (que
+nunca devuelva "Nivel NaN" ni "Nivel 0") y, sobre todo, el cumplimiento
+de la Ley 1581: que los datos de salud sigan marcados como opcionales,
+que las finalidades sigan separadas y que ningún texto de la interfaz use
+palabras reservadas al nutricionista. Esas pruebas no cuidan el código:
+cuidan que nadie vuelva ilegal el formulario "simplificándolo".
+
+**`mock.js` no se borró entero, se está encogiendo.** La idea original
+era borrarlo en la Fase 2, pero conectar las cinco secciones a datos
+reales es trabajo de las Fases 4 y 5. La regla se cumple de otra forma:
+cada vez que una pantalla se conecta, su parte se borra el mismo día. Ya
+se fue `RECETAS`; `Perfil` y el saludo de `Hoy` ya usan el perfil real.
+
+**Costo del paquete: de 50 a 112 KB comprimidos.** Es lo que pesa
+`supabase-js`. Se acepta porque trae el manejo de cuentas completo, pero
+queda anotado: el público abre esto con datos móviles en Colombia, y si
+en la Fase 8 hace falta recortar, este es el primer sitio donde mirar.
+
 ## Estado (1 de septiembre de 2026)
 
 **Fase 1 cerrada.** La app está publicada, verificada en producción y con el

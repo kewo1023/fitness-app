@@ -498,3 +498,242 @@ button {
      cambio de opacidad, que sigue diciendo "se registró el toque". */
   .boton-tema:active { transform: none; }
 }
+
+/* =====================================================================
+   ACCESO, ACTIVACIÓN Y FORMULARIOS
+   =====================================================================
+   Las pantallas de antes de entrar. No llevan la barra de abajo, así
+   que se centran solas en la altura de la ventana.
+   ===================================================================== */
+
+.cargando { min-height: 100dvh; background: var(--fondo); }
+
+.acceso {
+  /* dvh y no vh: en el celular la barra del navegador aparece y
+     desaparece al hacer scroll, y vh se queda con la altura grande. El
+     resultado con vh es que el botón de entrar queda tapado justo
+     cuando el teclado está abierto. */
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--sat) + 24px) 18px calc(var(--sab) + 24px);
+}
+
+.acceso-caja {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: entra var(--entrada) var(--curva) both;
+}
+
+.acceso-cab h1 {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+
+.formulario { display: flex; flex-direction: column; gap: 16px; }
+
+.campo { display: flex; flex-direction: column; gap: 6px; }
+
+.campo > span {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--tinta-media);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.campo input {
+  /* 16px EXACTOS COMO MÍNIMO, y esto no es una preferencia estética.
+     Safari del iPhone hace zoom solo al tocar un campo con letra más
+     pequeña, y al salir NO lo deshace: la app se queda ampliada y
+     torcida. Costó un bug real en otro proyecto. Ver la regla 4 de
+     CLAUDE.md. */
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--tinta);
+  background: var(--superficie-2);
+  border: 1.5px solid var(--linea);
+  border-radius: var(--radio-chico);
+  padding: 13px 14px;
+  width: 100%;
+  /* Sin esto, el padding se suma al 100% y el campo se sale de la caja
+     por la derecha en pantallas angostas. */
+  box-sizing: border-box;
+}
+
+.campo input:focus {
+  outline: none;
+  border-color: var(--acento);
+}
+
+.campo input.mono {
+  /* Para el código de invitación: ancho igual por carácter, así los 10
+     quedan parejos y se revisan de un vistazo contra el papel o el
+     WhatsApp de donde vienen. */
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .12em;
+}
+
+.pista { font-size: 13px; color: var(--tinta-tenue); line-height: 1.45; }
+
+.opcional {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tinta-tenue);
+}
+
+/* --- Las autorizaciones de la Ley 1581 -------------------------------
+   Van con casillas separadas y no con una sola que diga "acepto todo".
+   La ley pide finalidades separadas: si no se pueden aceptar unas y
+   rechazar otras, no es autorización. */
+
+.permisos {
+  border: 1px solid var(--linea-suave);
+  border-radius: var(--radio);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--superficie);
+}
+
+.permisos legend {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--tinta-tenue);
+  padding: 0 6px;
+}
+
+.permiso {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  cursor: pointer;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--tinta-media);
+}
+
+.permiso input {
+  /* 20px: es un blanco que se toca con el pulgar sin apuntar. Y como
+     toda la etiqueta es <label>, tocar el texto también marca la
+     casilla — el área real es mucho mayor. */
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  accent-color: var(--acento);
+  flex-shrink: 0;
+}
+
+.permiso strong {
+  display: block;
+  color: var(--tinta);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* --- Avisos ---------------------------------------------------------- */
+
+.aviso {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  border-radius: var(--radio-chico);
+  padding: 11px 13px;
+}
+
+.aviso.es-error {
+  background: var(--error-suave);
+  color: var(--error);
+}
+
+.aviso.es-ok {
+  background: var(--acento-suave);
+  color: var(--acento-fuerte);
+}
+
+/* --- Botón secundario, con pinta de enlace ---------------------------- */
+
+.enlace {
+  background: none;
+  border: 0;
+  color: var(--tinta-media);
+  font-size: 14.5px;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  /* Alto de 44px para que sea tocable de verdad, aunque el texto sea
+     chico. El espacio en blanco alrededor también se toca. */
+  padding: 12px;
+  align-self: center;
+}
+
+.boton-principal:disabled { opacity: .5; }
+
+/* --- Dos campos en una fila (peso y estatura) -------------------------
+   minmax(0, 1fr) y NUNCA 1fr a secas. Con 1fr, una columna cuyo
+   contenido no quepa se niega a encogerse por debajo de su tamaño
+   mínimo y empuja la rejilla entera hacia la derecha: la pantalla
+   termina con scroll horizontal. Ver la regla 6 de CLAUDE.md. */
+.rejilla-campos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.campo textarea {
+  font-size: 16px;          /* la regla 4, también aquí */
+  font-family: inherit;
+  color: var(--tinta);
+  background: var(--superficie-2);
+  border: 1.5px solid var(--linea);
+  border-radius: var(--radio-chico);
+  padding: 13px 14px;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.campo textarea:focus { outline: none; border-color: var(--acento); }
+
+/* Los campos de salud arrancan apagados hasta que se autorice guardarlos.
+   No es decoración: es la Ley 1581 hecha interfaz. Que se vean apagados
+   comunica "esto es opcional y todavía no has dicho que sí" mejor que
+   cualquier párrafo. */
+.campo input:disabled,
+.campo textarea:disabled { opacity: .45; cursor: not-allowed; }
+
+/* --- La zona de eliminar cuenta --------------------------------------
+   Se marca aparte para que nadie llegue aquí por accidente mientras
+   navega. El borde rojo es la única señal de peligro de toda la app. */
+.peligro { border-color: var(--error); }
+
+.boton-peligro {
+  margin-top: 6px;
+  background: var(--error);
+  color: var(--sobre-acento);
+  border: 0;
+  border-radius: var(--radio-chico);
+  padding: 14px;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+}
+
+.boton-peligro:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Un "enlace" dentro de una fila de lista: sin el relleno vertical que
+   lleva el de las pantallas de acceso, que ahí desalinearía la fila. */
+.enlace-fila { padding: 6px 0; align-self: center; color: var(--acento); }

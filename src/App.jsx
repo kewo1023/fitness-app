@@ -5,17 +5,28 @@ import Programas from './sections/Programas.jsx'
 import Progreso from './sections/Progreso.jsx'
 import Recetas from './sections/Recetas.jsx'
 import Perfil from './sections/Perfil.jsx'
+import Acceso from './sections/Acceso.jsx'
+import Activar from './sections/Activar.jsx'
+import { useSesion } from './hooks/useSesion.js'
 
 /* El cerebro de la app.
  *
- * Hoy hace una sola cosa: recordar qué pestaña está abierta y pintar la
- * sección que toca. En la Fase 2 aquí entra el estado de quién está
- * usando la app (cargando -> acceso -> app), igual que en nosotros-app.
+ * Decide una sola cosa, pero es la más importante: QUÉ PANTALLA VE
+ * QUIEN ABRIÓ LA APP. Hay cuatro respuestas, y salen de los dos datos
+ * que devuelve useSesion.
  *
- * Analogía de Excel: useState es una celda que guarda un valor. Cuando
- * el valor cambia, todo lo que la referenciaba se vuelve a calcular
- * solo. La diferencia con Excel es que aquí, en vez de recalcular
- * fórmulas, se vuelve a dibujar la pantalla.
+ *   cargando               -> nada todavía, un instante en blanco
+ *   sin sesión             -> Acceso: entrar o crear cuenta
+ *   con sesión, sin perfil -> Activar: nombre y código
+ *   con sesión y perfil    -> la app
+ *
+ * El tercer caso es el que no es obvio y el que sostiene la seguridad:
+ * estar autenticado NO es tener acceso. Alguien puede registrarse y
+ * quedarse ahí para siempre — y desde la base no ve ni una fila,
+ * porque todas las políticas se apoyan en tener perfil.
+ *
+ * Analogía de Excel: useSesion es la fórmula que mira dos celdas, y
+ * esto es el SI() anidado que decide qué hoja mostrar.
  */
 
 const SECCIONES = {
@@ -28,6 +39,20 @@ const SECCIONES = {
 
 export default function App () {
   const [pestana, setPestana] = useState('hoy')
+  const { sesion, perfil, cargando, recargarPerfil, salir } = useSesion()
+
+  // Un instante, mientras se le pregunta a Supabase si hay sesión
+  // guardada. Va en blanco a propósito: un mensaje de "cargando" que
+  // aparece y desaparece en 200 ms se lee como un parpadeo, no como
+  // información.
+  if (cargando) return <div className="cargando" aria-busy="true" />
+
+  if (!sesion) return <Acceso />
+
+  if (!perfil) {
+    return <Activar alActivar={recargarPerfil} alSalir={salir} />
+  }
+
   const Seccion = SECCIONES[pestana]
 
   return (
@@ -35,7 +60,8 @@ export default function App () {
       {/* key hace que React desmonte y vuelva a montar la sección al
           cambiar de pestaña. Sin eso, el scroll de una sección se queda
           pegado al entrar a la siguiente. */}
-      <Seccion key={pestana} />
+      <Seccion key={pestana} perfil={perfil} alSalir={salir}
+               recargarPerfil={recargarPerfil} />
       <Navegacion activa={pestana} alCambiar={setPestana} />
     </div>
   )

@@ -268,9 +268,19 @@ create table if not exists series_registradas (
   serie         integer not null,
   reps          integer,
 
-  -- OJO: numeric vuelve de la base como TEXTO ("35.00"). Hay que
-  -- convertirlo a número en JavaScript o las sumas concatenan en vez de
-  -- sumar. Ya pasó en nosotros-app.
+  -- Sobre numeric y JavaScript, porque la advertencia que había aquí
+  -- estaba mal y se comprobó el 2/09 contra la base real:
+  --
+  -- Por la API de Supabase (PostgREST) un numeric llega como NÚMERO de
+  -- verdad: 74.5, no "74.50". Se puede sumar directo. Lo que sí devuelve
+  -- texto es conectarse a Postgres con el driver de Node, que no es el
+  -- caso de esta app.
+  --
+  -- Lo que sigue siendo cierto: numeric guarda decimales exactos y los
+  -- números de JavaScript no. Para pesos y repeticiones da igual; el día
+  -- que se sumen cientos de valores para una estadística, la suma se
+  -- hace en SQL (que es donde va la analítica de este proyecto) y no
+  -- arrastrando decimales en el navegador.
   peso_kg       numeric(6,2),
 
   unique (sesion_id, ejercicio_id, serie)

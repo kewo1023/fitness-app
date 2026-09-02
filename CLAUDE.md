@@ -205,16 +205,31 @@ index.html               viewport-fit=cover, el theme-color de la barra
                          propósito: si fuera un módulo se vería un
                          fogonazo blanco al abrir en oscuro.
 src/main.jsx             El arranque. theme.css va ANTES que app.css.
-src/App.jsx              El cerebro. Hoy solo recuerda qué pestaña está
-                         abierta. En la Fase 2 entra aquí el estado de
-                         quién está usando la app.
+src/App.jsx              El cerebro. Decide QUÉ PANTALLA se ve, que
+                         sale de dos datos: hay sesión, y hay perfil.
+                         Son cuatro estados y el tercero es el que
+                         sostiene la seguridad — ver el comentario.
 src/data/
   fechas.js              TODO lo de "qué día es" pasa por aquí. hoyBogota(),
                          diaEnBogota(), inicioSemanaBogota(). Ver regla 5.
   fechas.test.js         14 pruebas. Se corren con npm run test.
-  mock.js                Datos FALSOS, nombres inventados. SE BORRA en la
-                         Fase 2 — no dejarlo dando vueltas como pasó en
-                         nosotros-app.
+  mock.js                Datos FALSOS, nombres inventados. SE VA
+                         ENCOGIENDO: cada vez que una pantalla se
+                         conecta a la base, su parte se borra el mismo
+                         día. Ya no tiene RECETAS.
+src/lib/supabase.js      La conexión. Falla temprano y en claro si
+                         faltan las credenciales.
+src/lib/consentimientos.js
+                         Los textos de la Ley 1581, su versión, y la
+                         traducción de los errores de Supabase.
+src/lib/gamificacion.js  XP y niveles. Solo LEE el número: el XP lo suma
+                         un trigger en la base.
+src/hooks/useSesion.js   Quién está usando la app. Devuelve sesion y
+                         perfil, que NO son lo mismo.
+src/sections/Acceso.jsx  Entrar o crear cuenta. Solo correo y clave.
+src/sections/Activar.jsx Nombre, código opcional y consentimientos.
+src/sections/MisDatos.jsx
+                         Habeas data: conocer, actualizar, suprimir.
 src/sections/            Una por pestaña: Hoy, Programas, Progreso,
                          Recetas, Perfil.
 src/components/
@@ -340,14 +355,16 @@ la barra va a tirones al cambiar de pestaña haciendo scroll; si va mal, se
 ajusta el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`. **No
 bloquea la Fase 2.**
 
-**Fase 2 en curso.** Los cuatro archivos SQL están escritos y verificados
-con el parser de Postgres (162 sentencias y 7 cuerpos PL/pgSQL), pero
-**todavía no se han corrido**: falta crear el proyecto en Supabase, que es
-el paso 1 de `PASOS-FASE-2.md` y depende de la cuenta.
+**Fase 2 cerrada.** La base existe, corre y está protegida. La app tiene
+acceso real, consentimientos y habeas data, verificado de punta a punta
+contra la base de producción: se creó un visitante desde la app, se
+comprobó que ve 1 rutina y 2 recetas (el cliente ve 4 y 6), se guardaron
+sus datos de salud tras autorizarlos, se descargaron con `mis_datos()` y
+se eliminó la cuenta con `eliminar_mi_cuenta()`. 32 pruebas pasan.
 
-Después de correrlos va el código: `src/lib/supabase.js`, la pantalla de
-acceso, el hook de sesión, la autorización de la Ley 1581 y la pantalla
-"Mis datos". En esa misma tanda se borra `src/data/mock.js`.
+Lo que NO está conectado todavía, a propósito: `Hoy`, `Programas` y
+`Progreso` siguen leyendo `mock.js`, porque dependen del plan del cliente
+y de sus sesiones — Fases 4 y 5.
 
 El entrenador contestó el cuestionario el 1/09 y el esquema quedó cerrado.
 El punto de la Ley 2210 (certificación de entrenador deportivo) también

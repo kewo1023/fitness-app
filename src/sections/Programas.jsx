@@ -5,7 +5,7 @@ import { PROGRAMAS } from '../data/mock.js'
  * suelta: el cliente se inscribe a uno y la app le dice qué toca cada
  * día. Menos decisiones para él, más adherencia.
  */
-export default function Programas () {
+export default function Programas ({ perfil }) {
   const inscrito = PROGRAMAS.find(p => p.inscrito)
   const resto = PROGRAMAS.filter(p => !p.inscrito)
 

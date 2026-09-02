@@ -9,9 +9,19 @@
       PARAR en CLAUDE.md): aquí no entra ni un dato real de un cliente,
       nunca, ni siquiera "para probar un momento".
 
-   2. Este archivo se BORRA en la Fase 2, cuando entre Supabase. En
-      nosotros-app quedó dando vueltas más de la cuenta y confundía:
-      uno no sabía si lo que veía en pantalla era real o de mentiras.
+   2. Este archivo SE VA ENCOGIENDO hasta desaparecer. La idea original
+      era borrarlo entero en la Fase 2, pero conectar las cinco
+      secciones a datos reales es trabajo de las fases 4 y 5 (el plan
+      del cliente, sus sesiones, su progreso).
+
+      Así que la regla se cumple de otra forma: **cada vez que una
+      pantalla se conecta a la base, su parte se borra de aquí el mismo
+      día.** Lo que queda en este archivo es exactamente lo que todavía
+      no existe de verdad, ni un dato más.
+
+      Ya se fueron: RECETAS (Fase 2, ahora sale de la tabla `recetas`).
+      Faltan: RUTINA_DE_HOY y PROGRAMAS (Fase 4), HISTORIAL y LOGROS
+      (Fase 5), USUARIO y META_SEMANAL (Fase 4, salen del plan).
    ===================================================================== */
 
 export const USUARIO = {
@@ -75,11 +85,3 @@ export const LOGROS = [
   { clave: 'programa',  nombre: 'Programa terminado',desc: 'Terminaste un programa completo.',     obtenido: false }
 ]
 
-export const RECETAS = [
-  { id: 1, nombre: 'Arepa de huevo al horno', momento: 'Desayuno', minutos: 20 },
-  { id: 2, nombre: 'Bowl de pollo y aguacate', momento: 'Almuerzo', minutos: 25 },
-  { id: 3, nombre: 'Crema de ahuyama',        momento: 'Comida',   minutos: 30 },
-  { id: 4, nombre: 'Batido de banano y avena', momento: 'Snack',   minutos: 5 },
-  { id: 5, nombre: 'Salmón con verduras',      momento: 'Comida',  minutos: 25 },
-  { id: 6, nombre: 'Huevos pericos con arepa', momento: 'Desayuno', minutos: 12 }
-]
