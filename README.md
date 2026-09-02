@@ -76,8 +76,42 @@ La app guarda datos de salud de terceros y opera bajo la Ley 1581 de 2012
 
 Este repositorio es público y no contiene datos reales de ningún cliente.
 
+## Tres roles, y el registro abierto que no da acceso a nada
+
+Cualquiera puede crear una cuenta, y eso por sí solo no abre ninguna puerta.
+Estar autenticado y tener perfil son cosas distintas: lo primero significa
+que existe un correo y una contraseña; lo segundo, que la app sabe quién
+eres. Sin perfil, las políticas de la base no devuelven ni una fila.
+
+Lo que crea el perfil es canjear el código del entrenador — o entrar como
+visitante, que ve el catálogo de ejercicios y el contenido marcado como
+público.
+
+| | visitante | cliente | admin |
+|---|---|---|---|
+| Catálogo de ejercicios | sí | sí | sí |
+| Rutinas y recetas | solo las públicas | todas | todas |
+| Plan, progreso, rachas | — | sí | — |
+| Plantillas | — | — | sí |
+
+El criterio del corte: **se regala la biblioteca, se cobra la programación.**
+La lista de ejercicios está en YouTube gratis; lo que vale es qué haces tú,
+en qué orden y por cuánto tiempo según cómo estás.
+
+Ese reparto no lo decide el navegador. Las consultas piden "las recetas" a
+secas y Postgres entrega dos o seis según quién pregunte: el filtro vive en
+las políticas de RLS. Si estuviera en el código de la app, cualquiera lo
+quitaría desde la consola del navegador.
+
 ## Estado
 
-Fase 1 de 9 terminada: esqueleto, sistema visual y navegación, con datos de
-ejemplo. La base de datos es lo siguiente. El registro completo de decisiones
-está en `BITACORA.md`.
+**Fases 1 y 2 de 9 terminadas.** La app está publicada, con base de datos
+real, acceso por cuenta y los tres roles funcionando. La Ley 1581 está
+implementada como código: cuatro autorizaciones con finalidades separadas y
+versionadas, y los tres derechos —conocer, actualizar, suprimir— como
+botones que funcionan.
+
+En curso: la biblioteca de ejercicios, con carga masiva desde hoja de
+cálculo e imágenes.
+
+El registro completo de decisiones, con su porqué, está en `BITACORA.md`.

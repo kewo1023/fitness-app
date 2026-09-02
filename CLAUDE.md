@@ -338,50 +338,62 @@ debe recortar:
 - **La pantalla "Mis datos" es gobernanza implementada**, no un PDF.
 - **El README cuenta el problema, no las funciones.**
 
-## Estado (1 de septiembre de 2026)
+## Estado (2 de septiembre de 2026)
 
-**Fase 1 cerrada.** La app corre, compila, las 14 pruebas de `fechas.js`
-pasan, y está publicada y verificada en producción. Todo lo que se ve en
-pantalla sale de `mock.js`: no hay base de datos todavía.
+**Fases 1 y 2 cerradas.** La base de datos existe y está protegida; la app
+tiene acceso por cuenta, tres roles y la Ley 1581 implementada. Todo
+verificado contra producción: se creó un visitante desde la app, se
+comprobó qué ve, se guardaron y descargaron sus datos, y se eliminó la
+cuenta. 32 pruebas pasan.
 
-Lo que quedó hecho: el sistema visual con paleta greige/oliva/cobre en dos
-temas, las cinco secciones, la barra con vidrio y los tres niveles de
-decoración.
+**En curso: Fase 3 — la biblioteca de ejercicios.** Panel del entrenador,
+carga masiva desde hoja de cálculo e imágenes en Supabase Storage. El
+detalle está en `BITACORA.md` y lo que depende de la cuenta, en
+`PASOS-FASE-3.md`.
 
-**Único pendiente de la Fase 1: verla en un Android real.** Verificada en
-iPhone y en el navegador a 375×812 y 393×851, pero el público es Android y
-eso no se puede dar por hecho. En particular hay que sentir si el vidrio de
-la barra va a tirones al cambiar de pestaña haciendo scroll; si va mal, se
-ajusta el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`. **No
-bloquea la Fase 2.**
+**Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
+Perfil y Recetas son reales. `Hoy` tiene el saludo real y el resto de
+mock; `Programas` y `Progreso` siguen en mock. Se conectan en las Fases 4
+y 5. `mock.js` no se borra de golpe: **cada pantalla que se conecta borra
+su parte el mismo día.**
 
-**Fase 2 cerrada.** La base existe, corre y está protegida. La app tiene
-acceso real, consentimientos y habeas data, verificado de punta a punta
-contra la base de producción: se creó un visitante desde la app, se
-comprobó que ve 1 rutina y 2 recetas (el cliente ve 4 y 6), se guardaron
-sus datos de salud tras autorizarlos, se descargaron con `mis_datos()` y
-se eliminó la cuenta con `eliminar_mi_cuenta()`. 32 pruebas pasan.
+**Dos pendientes que no bloquean la Fase 3 pero sí la difusión:**
 
-Lo que NO está conectado todavía, a propósito: `Hoy`, `Programas` y
-`Progreso` siguen leyendo `mock.js`, porque dependen del plan del cliente
-y de sus sesiones — Fases 4 y 5.
+1. **Nadie ha visto la app en un Android real.** El público es 83%
+   Android. Hay que sentir los formularios, el teclado tapando el botón de
+   entrar, y si el vidrio de la barra va a tirones; si va mal, se sube el
+   umbral de `nivelDetectado()` en `src/lib/dispositivo.js`.
+2. **Falta la puerta de edad.** Con registro abierto entran menores, y el
+   artículo 7 de la Ley 1581 prohíbe tratar sus datos salvo excepciones.
+   El artículo 12 del Decreto 1377 sigue sin verificar. **Antes de darle
+   la URL a desconocidos, esto se resuelve.**
 
-El entrenador contestó el cuestionario el 1/09 y el esquema quedó cerrado.
-El punto de la Ley 2210 (certificación de entrenador deportivo) también
-quedó resuelto.
-
-**No se publica en tiendas por ahora** (decisión del 1/09): la instalación es
-desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
+**No se publica en tiendas por ahora** (decisión del 1/09): la instalación
+es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 
 ## Cómo retomar
 
-1. Leer `BITACORA.md` y `CONTEXTO-LOCAL.md`.
-2. `npm install && npm run dev`. Verificar con `npm run test` que las 14
-   pruebas siguen pasando antes de tocar nada.
-3. Leer `supabase/01-esquema.sql` antes de tocar la base: los comentarios
-   explican por qué cada tabla está como está.
-4. Revisar las decisiones abiertas al final de `BITACORA.md` antes de
+1. Leer `BITACORA.md` (el estado y el siguiente paso están al final) y
+   `CONTEXTO-LOCAL.md`.
+2. `npm install && npm run dev`. Verificar con `npm run test` que las **32
+   pruebas** siguen pasando antes de tocar nada.
+3. **Comprobar que `.env.local` existe.** No está en git y sin él la app
+   no arranca: lanza un error explícito en la consola. Las dos variables
+   y de dónde salen están en `PASOS-FASE-2.md`, pasos 4 y 5.
+4. Leer `supabase/01-esquema.sql` y `02-politicas.sql` antes de tocar la
+   base: los comentarios explican por qué cada tabla y cada política están
+   como están. **La base YA ESTÁ CORRIDA** — los archivos son
+   repetibles, pero cualquier cambio nuevo va en un archivo nuevo, no
+   editando los que ya se corrieron.
+5. Revisar las preguntas abiertas al final de `BITACORA.md` antes de
    construir algo que dependa de ellas.
+
+**Cómo se prueba que los permisos siguen bien.** Es el ritual de este
+proyecto y se repite cada vez que se agrega una tabla o una pantalla:
+suplantar a un cliente y a un visitante en el SQL Editor y contar qué ve
+cada uno. Está escrito paso a paso al final de `PASOS-FASE-2.md` (paso 8)
+y al final de `02-politicas.sql`. **Si el visitante ve lo mismo que el
+cliente, la app quedó gratis sin querer.**
 
 ## Cosas ya decididas — no volver a proponerlas
 

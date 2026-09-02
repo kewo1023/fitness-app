@@ -640,74 +640,137 @@ se fue `RECETAS`; `Perfil` y el saludo de `Hoy` ya usan el perfil real.
 queda anotado: el público abre esto con datos móviles en Colombia, y si
 en la Fase 8 hace falta recortar, este es el primer sitio donde mirar.
 
-## Estado (1 de septiembre de 2026)
+## Estado (2 de septiembre de 2026)
 
-**Fase 1 cerrada.** La app está publicada, verificada en producción y con el
-repositorio público limpio.
+**Fases 1 y 2 cerradas.** La app está publicada, con base de datos real,
+acceso por cuenta y tres roles funcionando. Todo verificado contra
+producción, no en local con datos falsos.
 
-- Vite + React 18. `npm run build` compila; `npm run test` pasa 14 pruebas.
-- Sistema visual completo: paleta greige/oliva/cobre en tema claro y oscuro,
-  ni un color literal fuera de `theme.css`.
-- Cinco secciones con la barra de abajo, vidrio incluido, y los tres niveles
-  de decoración funcionando (verificados forzando cada uno).
-- `src/data/fechas.js` con sus 14 pruebas — todo lo de "qué día es" en hora
-  de Bogotá.
-- `src/data/mock.js` con datos de ejemplo. **Se borra en la Fase 2.**
-- Repo público en `github.com/kewo1023/fitness-app`, historial de un solo
-  commit limpio. En línea en `https://fitness-app-ivory-mu.vercel.app`, y
-  cada push a `main` republica sola.
-- `README.md`, `PASOS-FASE-1.md` y `PASOS-FASE-2.md` escritos.
+### Lo que existe y funciona
 
-**Único pendiente de la Fase 1:** verla en un Android real. Verificada en
-iPhone y en el navegador a 375×812 y 393×851, pero el público es Android.
-Hay que sentir si el vidrio de la barra va a tirones al cambiar de pestaña
-haciendo scroll; si va mal, se sube el umbral de `nivelDetectado()` en
-`src/lib/dispositivo.js`. **No bloquea la Fase 2.**
+- **Base de datos viva** en Supabase (`us-east-1`, Virginia). Los cuatro
+  archivos SQL corridos, RLS activo en las 19 tablas, y comprobado desde
+  fuera que un anónimo con la llave pública no ve ni una fila ni puede
+  ejecutar ninguna función.
+- **Tres roles con contenido distinto.** Verificado consultando desde la
+  app con una cuenta real: el visitante ve 30 ejercicios, 1 rutina y 2
+  recetas; el cliente ve 4 rutinas y 6 recetas más su plan.
+- **Acceso completo:** registro abierto (que no da acceso a nada), canje
+  de código que asciende visitante → cliente, sesión persistente.
+- **Ley 1581 implementada:** cuatro finalidades separadas y versionadas,
+  el "no" se guarda igual que el "sí", y los tres derechos —conocer,
+  actualizar, suprimir— son botones que funcionan. El borrado en cascada
+  se probó de verdad.
+- **32 pruebas** (`npm run test`). Seis existen para que nadie vuelva
+  ilegal el formulario "simplificándolo".
+- **Botón de tema** claro/oscuro, con la elección guardada en el celular.
+- En línea en `https://fitness-app-ivory-mu.vercel.app`. Cada push a
+  `main` republica sola.
 
-**Fase 2, primera mitad hecha.** Los cuatro archivos SQL están escritos y
-verificados con el parser de Postgres, pero **no se han corrido**: falta
-crear el proyecto en Supabase.
+### Qué está conectado a la base y qué no
 
-- `supabase/01-esquema.sql` — 19 tablas. Se le agregó `perfiles.entrenador_id`,
-  el rol `visitante`, las banderas `publica` y los índices únicos por nombre.
-- `supabase/02-politicas.sql` — RLS en las 19 tablas, permisos por columna
-  para el XP, y los índices que sostienen las políticas.
-- `supabase/03-funciones.sql` — `codigo_aleatorio`, `crear_invitacion`,
-  `crear_perfil_visitante`, `vincular_con_codigo`, `clonar_plantilla`, el
-  trigger de XP, `mis_datos` y `eliminar_mi_cuenta`.
-- `supabase/04-ejemplo.sql` — 30 ejercicios, 4 rutinas, 1 plantilla de 4
-  semanas, 6 recetas. Nombres inventados. No siembra clientes: un perfil
-  necesita una cuenta de acceso y esas se crean desde el panel.
+| Pantalla | Estado |
+|---|---|
+| Acceso, Activar, Mis datos | reales |
+| Perfil | real (nombre, rol, XP) — los logros siguen de mock |
+| Recetas | real |
+| Hoy | medio: el saludo es real, la rutina y la racha son mock |
+| Programas, Progreso | mock |
 
-## Siguiente paso — Fase 2
+`src/data/mock.js` **no se borra de golpe: se encoge.** La regla es que
+cada vez que una pantalla se conecta, su parte se borra el mismo día. Ya
+se fue `RECETAS`. Faltan `RUTINA_DE_HOY` y `PROGRAMAS` (Fase 4),
+`HISTORIAL` y `LOGROS` (Fase 5), `USUARIO` y `META_SEMANAL` (Fase 4).
 
-**El bloqueante es `PASOS-FASE-2.md`**, que depende de la cuenta: crear el
-proyecto en Supabase (región Virginia), ajustar el acceso (confirmación de
-correo APAGADA, registro ENCENDIDO), correr los cuatro archivos, dejar las
-credenciales en `.env.local` y en Vercel, y crear las tres cuentas (dos
-admin y un cliente de prueba).
+### Pendientes que vienen de atrás
 
-Después va el código: `src/lib/supabase.js`, la pantalla de acceso con
-canje de código, el hook de sesión, la autorización de la Ley 1581 con
-finalidades separadas, y la pantalla "Mis datos" — que es la primera que
-habla directo con `mis_datos()` y `eliminar_mi_cuenta()`. En esa misma
-tanda se borra `src/data/mock.js`.
+1. **Nadie ha visto la app en un Android real.** El público es 83%
+   Android y todo se ha verificado en navegador y en un iPhone. Ahora hay
+   más que mirar que antes: los formularios, el teclado tapando el botón
+   de entrar, y si el vidrio de la barra va a tirones. Si va mal, se sube
+   el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`.
+   **No bloquea la Fase 3.**
 
-**La prueba que cierra la Fase 2:** son TRES roles, así que va tres
-veces. El cliente ve 1 perfil, 0 plantillas, 0 invitaciones y su plan; el
-visitante ve lo mismo pero con 0 planes, 1 rutina y 2 recetas en vez de 4
-y 6; y a los dos les tiene que fallar `crear_invitacion`.
-Está escrita paso a paso al final de `PASOS-FASE-2.md` y al final de
-`02-politicas.sql`. Verificado contra la base, no supuesto.
+2. **La puerta de edad.** El artículo 7 de la Ley 1581 prohíbe tratar
+   datos de niños, niñas y adolescentes salvo los de naturaleza pública.
+   Con registro abierto van a entrar menores. Falta puerta de edad en el
+   registro y decidir qué pasa con un menor. **El artículo 12 del Decreto
+   1377, que regula el cómo, sigue SIN VERIFICAR** — la fuente oficial no
+   abrió el 1/09. Confirmarlo antes de abrir el registro al público.
+   **Bloquea la difusión, no la Fase 3.**
+
+3. **El plan gratis de Vercel es para uso no comercial.** Una app
+   gratuita que funciona como embudo hacia un servicio pago es zona gris.
+   Sin verificar.
+
+---
+
+## Siguiente paso — Fase 3: la biblioteca de ejercicios
+
+**Objetivo: que el entrenador cargue sus 80 a 150 ejercicios sin
+depender del desarrollo.** Hoy la biblioteca tiene 30 ejercicios de
+ejemplo, inventados; él tiene los suyos y nadie más los puede meter.
+
+Estimado: **~10 h.** Bajó de 12 porque Bunny está aplazado y se arranca
+con imágenes.
+
+### Lo que hay que construir
+
+1. **Panel de administración** (visible solo con `rol = 'admin'`). Es la
+   primera pantalla que existe solo para el entrenador. Crear, editar y
+   archivar ejercicios: nombre, grupo, movimiento, equipo, nivel e
+   indicaciones.
+
+   Recordar la regla de los DOS ejes: `grupo` (músculo) y `movimiento`
+   (patrón) son columnas distintas porque así los piensa él. No
+   colapsarlas.
+
+2. **Carga masiva desde hoja de cálculo.** A 80–150 ejercicios, meterlos
+   de a uno en un formulario es media tarde perdida. Se pega un CSV o se
+   sube el archivo, se muestra una vista previa, y solo entonces se
+   guarda.
+
+   El índice único `ux_ejercicios_nombre` ya existe justo para esto: si
+   la carga se cae a la mitad, se vuelve a correr entera y las filas que
+   ya estaban se ignoran.
+
+3. **Imágenes en Supabase Storage.** Bucket público, con sus políticas.
+   `ejercicios.imagen_url` guarda la ruta.
+
+   **`video_id` se queda vacío y así está bien.** El entrenador arranca
+   con imágenes y va reemplazando. Toda pantalla que muestre un ejercicio
+   tiene que verse bien sin video Y sin imagen — hoy hay 30 ejercicios sin
+   ninguna de las dos cosas, y es el caso real del primer día.
+
+4. **Comprimir antes de subir.** El público abre esto con datos móviles
+   en Colombia. Una foto de celular son 3–5 MB; hay que bajarla a ~150 KB
+   en el navegador antes de mandarla, no después.
+
+### Lo que necesita la cuenta de Kev
+
+Va en `PASOS-FASE-3.md`: crear el bucket de Storage y sus políticas, y
+conseguir del entrenador la hoja de cálculo con sus ejercicios.
+
+### La prueba que cierra la Fase 3
+
+El entrenador entra con su cuenta, pega su hoja de cálculo, y sus
+ejercicios quedan en la app con sus imágenes. Un cliente los ve; un
+visitante también (el catálogo es el gancho); ninguno de los dos puede
+editarlos. Verificado suplantando los tres roles, como en la Fase 2.
 
 ## Preguntas abiertas
 
 - **Nombre de la app.** Provisional: "Entrena". El repo va como `fitness-app`
   y renombrarlo después en GitHub no rompe nada.
+- **El artículo 12 del Decreto 1377** (datos de menores). Sin verificar.
+- **Vercel y el uso no comercial.** Sin verificar.
 - ¿El PDF del cuestionario entra al repo público o no? Recomendación: no.
-  Está en `PASOS-FASE-1.md`.
 - Cobertura de los nodos de Bunny en Colombia — se mide cuando llegue el
   video, no antes (Bunny está aplazado).
+- **Latencia real desde Colombia.** Se midió 85 ms, pero desde New Jersey
+  a Virginia, que es el tramo equivocado. El que importa es Bogotá →
+  Virginia y solo lo puede medir alguien que esté allá. Sigue abierta.
 
-Resueltas el 1/09: clientes (6 a 15, el plan gratis sobra), videos (arranca
-con imágenes), certificación de entrenador (en regla).
+Resueltas: clientes (6 a 15 para arrancar, sin techo), videos (arranca con
+imágenes), certificación de entrenador (en regla), alojar en EE. UU.
+(legal, Circular 005 de 2017).
