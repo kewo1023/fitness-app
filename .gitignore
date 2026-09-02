@@ -13,3 +13,7 @@ preguntas-para-el-entrenador.pdf
 
 # Contexto personal y de negocio. El repo es público.
 CONTEXTO-LOCAL.md
+
+# Configuración de herramientas locales, no del proyecto. Misma
+# categoría que .vscode/: le sirve a esta máquina, no a quien clone.
+.claude/

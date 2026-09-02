@@ -378,6 +378,205 @@ Va en la Fase 8, ~4 h. Detalle abajo.
 
 ---
 
+---
+
+**2026-09-01 — El techo deja de ser 15 clientes**
+Hasta ahora todo se dimensionó para 6–15 personas. El objetivo real es que
+la herramienta le permita al entrenador llegar a más, así que las decisiones
+que cuestan lo mismo hoy y son caras después se toman pensando en el número
+grande. Concretamente:
+
+- Toda política de RLS se escribe `(select auth.uid())` y `(select
+  es_admin())`, envueltas. Envueltas, Postgres las resuelve una vez por
+  consulta; sueltas, una vez por fila. Con 15 clientes da igual; con
+  300.000 series registradas es la diferencia entre 40 ms y veinte segundos.
+- Cada columna que aparece en una política lleva índice, porque una política
+  es un `WHERE` invisible pegado a todas las consultas de esa tabla.
+- Las invitaciones se crean por lote (`crear_invitacion(20)`), no de a una.
+- Los códigos pasan a 10 caracteres de un alfabeto de 32 sin caracteres
+  ambiguos, generados con `gen_random_uuid()` y no con `random()`. Con 15
+  clientes nadie los adivina; con la app pública, alguien lo intenta.
+
+**Lo que NO se construyó: multi-entrenador.** Es otro producto —cada
+entrenador con su biblioteca y sus clientes— y arrancarlo ahora frena el
+proyecto por un caso que no existe. Lo que sí se hizo es la parte barata:
+`perfiles.entrenador_id`, que se llena al canjear la invitación y que
+ninguna política usa todavía. Sin esa columna, el día que entre un segundo
+entrenador tocaría adivinar por fechas qué cliente era de quién.
+
+**2026-09-01 — El perfil lo crea la invitación, no un trigger**
+Lo normal en Supabase es un trigger sobre `auth.users` que crea el perfil al
+registrarse. Se descartó: con eso, cualquiera que se registre entra a la
+base y el código de invitación queda de adorno.
+
+Va al revés. **Estar autenticado y tener perfil son cosas distintas.**
+Registrarse te da lo primero; solo `vincular_con_codigo` te da lo segundo,
+después de validar el código. Sin fila en `perfiles`, todas las políticas te
+dejan ver exactamente nada.
+
+Consecuencias operativas:
+- El registro en Supabase queda ABIERTO y la confirmación de correo APAGADA
+  (el correo integrado manda 2 mensajes por hora, así que pedir confirmación
+  es pedirle al cliente que espere media hora). Lo que valida al cliente es
+  el código, no el correo.
+- Los dos admin no tienen quien les cree el perfil, así que se les inserta a
+  mano una sola vez. El paso 6 del documento de pasos decía `update perfiles
+  set rol='admin'` y habría respondido `UPDATE 0`: ese perfil no existe
+  todavía. Corregido a un `insert`.
+
+**2026-09-01 — El XP lo da la base, con dos cerraduras**
+Un trigger sobre `sesiones` suma el XP al pasar a completada, y solo en el
+cambio. Además, un permiso por columna (`grant update (nombre, alias)`)
+impide escribir `perfiles.xp` desde el navegador: RLS decide qué FILAS se
+tocan, no qué COLUMNAS, y sin eso el cliente podía ponerse el XP que
+quisiera desde la consola.
+
+Efecto lateral que hay que tener presente: eso aplica también al entrenador,
+porque desde la app él también entra como `authenticated`. Cambiar el rol de
+alguien se hace desde el SQL Editor, a conciencia. Es deliberado.
+
+**2026-09-01 — Habeas data implementado como dos funciones**
+`mis_datos()` devuelve todo lo que la app sabe de quien pregunta, en un solo
+objeto. `eliminar_mi_cuenta()` borra la cuenta de acceso y todo cae en
+cascada. El plazo legal de 10 días hábiles para responder una consulta pasa
+a ser un segundo, y no depende de que alguien revise un buzón. Las dos son
+`security definer` con comprobación de quién llama, y `mis_datos()` no
+recibe parámetros a propósito: no se puede pedir "los datos de otro".
+
+**2026-09-01 — Eran 19 tablas, no 16**
+El número estaba mal en `CLAUDE.md`, en `BITACORA.md` y en
+`PASOS-FASE-2.md`. Corregido en los tres.
+
+**2026-09-01 — Nombres únicos en la biblioteca**
+`ejercicios`, `rutinas`, `plantillas` y `recetas` llevan índice único por
+nombre. Dos ejercicios llamados igual no son un caso raro que haya que
+permitir: son un error de captura, y con 80–150 ejercicios cargados desde
+una hoja de cálculo (Fase 3) va a pasar. Además es lo que permite volver a
+correr una carga que se cayó a la mitad sin duplicar nada.
+
+**2026-09-01 — El SQL se verifica antes de pegarlo en Supabase**
+Los cuatro archivos se parsean con el parser real de Postgres (`pglast`,
+que usa `libpg_query`) antes de darlos por buenos: 162 sentencias y 7
+cuerpos PL/pgSQL. Se comprobó además con una prueba negativa que el
+validador sí detecta errores. **No sustituye correrlo**: parsear dice que la
+sintaxis está bien, no que las tablas existan ni que las políticas hagan lo
+que uno cree. Eso lo dice la prueba de suplantación del paso 8.
+
+---
+
+**2026-09-01 — LA APP SE ABRE AL PÚBLICO: entra el rol `visitante`**
+Cambia lo que es la app. Hasta ahora solo servía para gente que el
+entrenador YA había conseguido; el código de invitación era la única
+puerta y detrás no había nada. Ahora hay tres roles:
+
+| | visitante | cliente | admin |
+|---|---|---|---|
+| Catálogo de ejercicios | sí | sí | sí |
+| Rutinas | solo las públicas | todas | todas |
+| Recetas | solo las públicas | todas | todas |
+| Plan, progreso, rachas | no | sí | — |
+| Retos | no | sí | sí |
+| Plantillas | no | no | sí |
+
+**El criterio del corte: se regala la BIBLIOTECA, se cobra la
+PROGRAMACIÓN.** El catálogo de ejercicios con sus indicaciones está en
+YouTube gratis, así que esconderlo no protege nada y sí espanta al que
+llega. Lo que vale es qué haces tú, en qué orden y por cuánto tiempo
+según cómo estás. Por eso el plan nunca es público.
+
+Se hizo AHORA y no después por la misma razón que `entrenador_id`:
+cambiar el modelo de acceso con clientes reales ya dentro obliga a migrar
+perfiles en vivo. Con la base vacía son cuatro archivos.
+
+Resultó más barato de lo previsto porque las políticas del archivo 02 ya
+separaban contenido de dato personal. Lo que se agregó: el valor
+`visitante` en `perfiles.rol` (que además pasa a ser el default, por
+menor privilegio), las banderas `rutinas.publica` y `recetas.publica`, la
+función `es_cliente()` y `crear_perfil_visitante()`.
+
+`vincular_con_codigo` cambió de trabajo: antes CREABA el perfil, ahora
+ASCIENDE al visitante a cliente (y lo crea si no existía, para quien
+recibe el código sin haber entrado nunca).
+
+**Trampa que se evitó:** `rutina_ejercicios` también tuvo que cerrarse. Si
+se quedaba abierta, el visitante no vería la rutina pero sí su contenido
+consultando esa tabla directo — que es todo lo que hay que ver. Proteger
+la tabla de arriba y olvidar la de abajo es el error clásico.
+
+**Lo que NO se construyó, y por qué:**
+- **Chat con el entrenador dentro de la app.** Se reemplaza por un enlace
+  `wa.me` visible solo para clientes. Él ya entrega las rutinas por
+  WhatsApp; un chat propio le daría DOS bandejas y va a olvidar una, y un
+  cliente que escribe y no recibe respuesta queda peor que sin botón.
+  20 minutos contra ~15 horas, y de paso su número queda protegido de los
+  desconocidos. Va en la Fase 4.
+- **Nutrición individual** (% del objetivo diario, proteína por kg, armar
+  platos, foto → calorías). Es exactamente lo que prohíbe la Ley 73 de
+  1979: cualquier número que cambie según el peso o la meta de UNA
+  persona es plan alimentario individual. Lo que sí entra en la Fase 6
+  son cinco columnas de macros en `recetas`, iguales para todos, con los
+  valores puestos por el entrenador o el nutricionista — **nunca
+  inventados por nosotros**. El resto sigue esperando a que el
+  nutricionista con tarjeta firme.
+
+**PENDIENTE BLOQUEANTE antes de abrir el registro al público (no antes de
+construirlo):** el artículo 7 de la Ley 1581 **prohíbe** tratar datos de
+niños, niñas y adolescentes salvo los de naturaleza pública. Hoy no es
+problema porque el entrenador conoce a cada cliente; con registro abierto
+van a entrar menores, garantizado. Hace falta puerta de edad y decidir
+qué pasa con un menor. El artículo 12 del Decreto 1377, que es el que
+regula el cómo, **no se pudo verificar** — la fuente oficial no abrió.
+Confirmarlo antes de abrir. Va en la Fase 8, junto con la política de
+tratamiento publicada.
+
+También queda por verificar si el plan gratis de Vercel (uso no
+comercial) cubre una app gratuita que funciona como embudo hacia un
+servicio pago.
+
+**2026-09-01 — CAMBIO DE RUMBO: sí va el botón de tema claro/oscuro**
+Contradice a propósito la decisión de este mismo día de "sin botón de
+tema": *un botón más es una decisión más para el usuario, y nadie cambia
+de tema dentro de una app de entrenamiento*. El argumento sigue siendo
+razonable, pero el fondo cacao del tema oscuro no convence y hace falta
+poder alternar para comparar.
+
+Va discreto: 17 px de dibujo, área tocable de 40, en el color más tenue
+de la paleta, arriba a la derecha de las cinco pantallas. Es un ajuste,
+no una función: si tuviera peso visual competiría con el título.
+
+Consecuencia técnica que sí importa: **desapareció toda `@media
+(prefers-color-scheme)` de `theme.css`.** Con un botón, la preferencia
+del sistema pasa a ser solo el valor inicial; si además quedara una media
+query, alguien con el sistema en oscuro que elija claro tendría media app
+de cada color. Ahora manda `data-tema` en el `<html>`, y el
+`theme-color` de la barra de estado se lee de la variable `--fondo` en
+vez de escribirse a mano — así sigue habiendo un solo sitio con colores.
+
+Detalle que parece menor: el tema se aplica con un script suelto dentro
+del `<head>`, no desde un módulo. Un módulo carga después de los estilos,
+así que la pantalla ya se pintó clara y se ve un fogonazo blanco antes de
+la app oscura — justo a quien eligió el tema oscuro. Es la única lógica
+duplicada del proyecto y está comentada en los dos sitios.
+
+La elección se guarda en `localStorage`, no en la base: es preferencia
+del aparato, no de la persona, y sobre todo tiene que aplicarse **antes**
+de saber quién entró.
+
+**2026-09-01 — El fondo del tema claro pasa de greige a blanco**
+Contradice la decisión del 1/09 de *"fondo hueso cálido, no blanco"*.
+Fondo y tarjetas comparten el blanco; lo que separa una tarjeta del fondo
+es su borde y su sombra, no un tono distinto. Se lee más limpio y más
+plano.
+
+Para que siga funcionando en gama baja —donde `--sombra` es `none` y el
+borde es lo ÚNICO que dibuja la tarjeta— se subió `--linea-suave` de
+`#E6E1D7` a `#EAE6DE`. Verificado forzando `data-nivel="bajo"`: las
+tarjetas se siguen leyendo.
+
+El greige original quedó anotado en un comentario de `theme.css`:
+volver es cambiar dos valores. **El tema oscuro no se tocó**, a propósito:
+cambiar dos cosas a la vez impide saber cuál mejoró.
+
 ## Estado (1 de septiembre de 2026)
 
 **Fase 1 cerrada.** La app está publicada, verificada en producción y con el
@@ -402,31 +601,41 @@ Hay que sentir si el vidrio de la barra va a tirones al cambiar de pestaña
 haciendo scroll; si va mal, se sube el umbral de `nivelDetectado()` en
 `src/lib/dispositivo.js`. **No bloquea la Fase 2.**
 
-La base de datos no existe todavía: `supabase/01-esquema.sql` está escrito y
-cerrado con las respuestas del entrenador, pero **no se ha corrido**.
+**Fase 2, primera mitad hecha.** Los cuatro archivos SQL están escritos y
+verificados con el parser de Postgres, pero **no se han corrido**: falta
+crear el proyecto en Supabase.
+
+- `supabase/01-esquema.sql` — 19 tablas. Se le agregó `perfiles.entrenador_id`,
+  el rol `visitante`, las banderas `publica` y los índices únicos por nombre.
+- `supabase/02-politicas.sql` — RLS en las 19 tablas, permisos por columna
+  para el XP, y los índices que sostienen las políticas.
+- `supabase/03-funciones.sql` — `codigo_aleatorio`, `crear_invitacion`,
+  `crear_perfil_visitante`, `vincular_con_codigo`, `clonar_plantilla`, el
+  trigger de XP, `mis_datos` y `eliminar_mi_cuenta`.
+- `supabase/04-ejemplo.sql` — 30 ejercicios, 4 rutinas, 1 plantilla de 4
+  semanas, 6 recetas. Nombres inventados. No siembra clientes: un perfil
+  necesita una cuenta de acceso y esas se crean desde el panel.
 
 ## Siguiente paso — Fase 2
 
-El bloqueante es el paso 1 de `PASOS-FASE-2.md`, que depende de una cuenta:
-crear el proyecto en Supabase (región Virginia) y dejar las credenciales en
-`.env.local`.
+**El bloqueante es `PASOS-FASE-2.md`**, que depende de la cuenta: crear el
+proyecto en Supabase (región Virginia), ajustar el acceso (confirmación de
+correo APAGADA, registro ENCENDIDO), correr los cuatro archivos, dejar las
+credenciales en `.env.local` y en Vercel, y crear las tres cuentas (dos
+admin y un cliente de prueba).
 
-Mientras tanto se pueden escribir los tres archivos SQL que faltan, que no
-dependen de ninguna credencial:
+Después va el código: `src/lib/supabase.js`, la pantalla de acceso con
+canje de código, el hook de sesión, la autorización de la Ley 1581 con
+finalidades separadas, y la pantalla "Mis datos" — que es la primera que
+habla directo con `mis_datos()` y `eliminar_mi_cuenta()`. En esa misma
+tanda se borra `src/data/mock.js`.
 
-1. `supabase/02-politicas.sql` — RLS en las 16 tablas. **Sin esto la base
-   está abierta.**
-2. `supabase/03-funciones.sql` — `crear_invitacion`, `vincular_con_codigo`,
-   `clonar_plantilla(plantilla, cliente, inicio)`, `sumar_xp`.
-3. `supabase/04-ejemplo.sql` — datos de prueba con nombres inventados.
-
-Después va el código: `src/lib/supabase.js`, la pantalla de acceso, el hook
-de sesión, la autorización de la Ley 1581 con finalidades separadas, y la
-pantalla "Mis datos".
-
-**La prueba que cierra la Fase 2:** el entrenador entra como admin y ve el
-panel; un cliente de prueba entra y no ve absolutamente nada de otro cliente.
-Verificado contra la base, no supuesto.
+**La prueba que cierra la Fase 2:** son TRES roles, así que va tres
+veces. El cliente ve 1 perfil, 0 plantillas, 0 invitaciones y su plan; el
+visitante ve lo mismo pero con 0 planes, 1 rutina y 2 recetas en vez de 4
+y 6; y a los dos les tiene que fallar `crear_invitacion`.
+Está escrita paso a paso al final de `PASOS-FASE-2.md` y al final de
+`02-politicas.sql`. Verificado contra la base, no supuesto.
 
 ## Preguntas abiertas
 

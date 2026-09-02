@@ -100,6 +100,58 @@ button {
   letter-spacing: -.02em;
 }
 
+/* La ranura de la derecha del encabezado. Si una sección trae su propia
+   acción, queda a la izquierda del botón de tema: lo suyo primero, el
+   ajuste después. */
+.pantalla-acciones {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  /* Sube el grupo 2px para que el icono quede ópticamente alineado con
+     la primera línea del título y no con el bloque entero, que incluye
+     la bajada. */
+  margin-top: 2px;
+}
+
+/* --- Botón de tema ---------------------------------------------------
+   Casi invisible a propósito: es un ajuste, no una función. Va en el
+   color más tenue de la paleta y sin fondo. El área tocable son 40px
+   aunque el dibujo mida 17 — el espacio en blanco alrededor también se
+   toca, y es lo que hace que no haya que apuntar. */
+.boton-tema {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--tinta-tenue);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  /* Solo opacity y transform: son las dos que el celular resuelve en la
+     tarjeta gráfica sin rehacer el diseño de la página. Ver la regla 12
+     de CLAUDE.md. Animar 'color' aquí obligaría a repintar. */
+  transition: opacity var(--entrada) var(--curva),
+              transform var(--entrada) var(--curva);
+}
+
+.boton-tema:active {
+  /* La única señal de que se presionó. Encoge un pelo y se apaga: no
+     hace falta nada más en un control secundario. */
+  transform: scale(.88);
+  opacity: .6;
+}
+
+/* En un celular no hay puntero, así que :hover ahí se queda pegado
+   después de tocar. Esta consulta lo limita a los aparatos que sí
+   tienen mouse. */
+@media (hover: hover) {
+  .boton-tema:hover { opacity: .65; }
+}
+
 .bajada { margin: 4px 0 0; color: var(--tinta-media); font-size: 14.5px; }
 
 .titulillo {
@@ -442,4 +494,7 @@ button {
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
   .pantalla { opacity: 1; transform: none; }
+  /* El encogido al presionar también es movimiento. Se queda solo el
+     cambio de opacidad, que sigue diciendo "se registró el toque". */
+  .boton-tema:active { transform: none; }
 }

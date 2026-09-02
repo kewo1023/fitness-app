@@ -10,6 +10,14 @@ Rutinas guiadas con videos cortos, programas por objetivo, recetas y
 gamificación. La referencia es silBe (`id1631277320` en la App Store), a
 menor escala.
 
+**Arranca con 6 a 15 clientes, pero el objetivo es que el entrenador llegue
+a más.** Eso no es un detalle de marketing: es un requisito técnico. Las
+decisiones que cuestan lo mismo hoy y son caras después —cómo se escriben
+las políticas de RLS, qué columnas llevan índice, si existe
+`perfiles.entrenador_id`— se toman ya pensando en el número grande. Lo que
+NO se construye por adelantado es la app multi-entrenador: ese es otro
+producto y se decide cuando exista el segundo entrenador.
+
 **El nombre todavía no existe.** Se decide con el entrenador. Hasta
 entonces la carpeta se llama `fitness-app` y así se queda.
 
@@ -141,6 +149,10 @@ Un repo dentro de iCloud ya rompió git antes (`unable to map index file`).
 No son preferencias. Son las que sostienen el proyecto:
 
 1. **Ni un color literal fuera de `theme.css`.** Todo sale de `var(--...)`.
+   Una sola excepción, comentada en su sitio: el `theme-color` de
+   arranque en `index.html`. Es el valor que usa la barra de estado
+   antes de que la hoja de estilos exista, así que no hay variable de
+   dónde sacarlo. Dura milisegundos y `tema.js` lo reemplaza.
 2. **Comentarios que explican el PORQUÉ, no el qué.** El código está
    comentado para que se pueda aprender leyéndolo. Si escribes algo no obvio,
    explica la razón y usa una analogía de Excel si ayuda.
@@ -171,7 +183,14 @@ No son preferencias. Son las que sostienen el proyecto:
     `theme.css` (`--desenfoque`, `--entrada`, `--sombra`). Si alguna vez un
     nivel esconde un botón, se rompió la regla: el entrenador terminaría
     explicándole a un cliente por qué su app es distinta a la de otro.
-12. **Animar solo `opacity` y `transform`.** Son las dos propiedades que el
+12. **El tema sale de `data-tema` en el `<html>`, nunca de una
+    `@media (prefers-color-scheme)`.** Desde que existe el botón, la
+    preferencia del sistema es solo el valor INICIAL. Si además quedara
+    una media query, alguien con el sistema en oscuro que elija claro
+    tendría media app de cada color. Por eso en `theme.css` no hay ni
+    una sola media query de color, y por eso el `theme-color` de la
+    barra de estado se lee de `--fondo` en vez de escribirse a mano.
+13. **Animar solo `opacity` y `transform`.** Son las dos propiedades que el
     celular resuelve en la tarjeta gráfica sin rehacer el diseño de la
     página. `height`, `top` o `filter` obligan a recalcular el cuadro
     entero, y es la causa número uno de que una web se sienta lenta en un
@@ -180,8 +199,11 @@ No son preferencias. Son las que sostienen el proyecto:
 ## Mapa del código
 
 ```
-index.html               viewport-fit=cover y el theme-color de la barra
-                         de estado de Android (uno por tema).
+index.html               viewport-fit=cover, el theme-color de la barra
+                         de estado, y el script suelto que aplica el
+                         tema ANTES de pintar. Ese script está ahí a
+                         propósito: si fuera un módulo se vería un
+                         fogonazo blanco al abrir en oscuro.
 src/main.jsx             El arranque. theme.css va ANTES que app.css.
 src/App.jsx              El cerebro. Hoy solo recuerda qué pestaña está
                          abierta. En la Fase 2 entra aquí el estado de
@@ -204,13 +226,25 @@ src/components/
 src/lib/dispositivo.js   Decide el NIVEL de decoración (alto/medio/bajo)
                          mirando RAM y núcleos, y lo escribe como
                          data-nivel en el <html>.
-src/styles/theme.css     SOLO variables. Claro y oscuro, más los tres
-                         niveles de decoración.
+src/lib/tema.js          Claro u oscuro. Guarda la elección en el
+                         celular (localStorage), no en la base: el tema
+                         se aplica antes de saber quién entró.
+src/components/BotonTema.jsx
+                         El botón discreto del encabezado.
+src/styles/theme.css     SOLO variables. Claro y oscuro (por data-tema,
+                         sin @media), más los tres niveles.
 README.md                La cara pública del repo. Cuenta el problema (un
                          entrenador que manda PDFs y no sabe quién entrenó),
                          no la lista de funciones.
 src/styles/app.css       Todos los estilos.
-supabase/                El borrador del esquema. Todavía no se corre.
+supabase/01-esquema.sql  Las 19 tablas.
+supabase/02-politicas.sql RLS + los índices que la sostienen. Sin esto
+                         la base está abierta.
+supabase/03-funciones.sql Invitaciones, clonar plantilla, XP y habeas
+                         data. Todo lo que el cliente necesita HACER
+                         pero no puede tener permiso para hacer.
+supabase/04-ejemplo.sql  La biblioteca de prueba, con contenido
+                         inventado. No siembra clientes.
 ```
 
 Dónde va a entrar lo que sigue: la Fase 2 mete `src/lib/supabase.js`,
@@ -220,7 +254,7 @@ de `.ejercicio-video` por el video real de Bunny.
 ## La base de datos
 
 Esquema cerrado en `supabase/01-esquema.sql`, con las respuestas del
-entrenador del 1/09. 16 tablas.
+entrenador del 1/09. 19 tablas.
 
 **La decisión que manda sobre todo el modelo: cada cliente tiene su propia
 rutina.** No hay catálogo de programas al que la gente se inscribe. El plan
@@ -247,6 +281,27 @@ Otros puntos que ya se decidieron y hay que respetar:
 
 - **RLS activo en todas las tablas, desde el primer día.** Un cliente jamás
   ve datos de otro. Toda política se apoya en el rol del perfil.
+- **Toda política se escribe `(select auth.uid())`, nunca `auth.uid()` a
+  secas.** Envuelta en un `select`, Postgres la resuelve una vez por
+  consulta; suelta, una vez por fila. No es un detalle de estilo: es la
+  diferencia entre que la app aguante crecer o no.
+- **Las columnas que aparecen en una política necesitan índice.** Una
+  política es un `WHERE` invisible pegado a todas las consultas de esa
+  tabla. Cada política nueva viene con su índice o no está terminada.
+- **Estar autenticado y tener perfil son cosas distintas.** El registro
+  queda abierto y la confirmación de correo apagada; lo que da acceso es el
+  código de invitación, que canjea `vincular_con_codigo` y es lo único que
+  crea la fila en `perfiles`. Sin perfil no se ve absolutamente nada.
+  **No poner un trigger que cree el perfil al registrarse:** eso convierte
+  el código de invitación en adorno.
+- **El XP nunca lo escribe la app.** Lo suma un trigger al completar una
+  sesión, y un permiso por columna impide escribir `perfiles.xp` desde el
+  navegador. Todo lo que corre en el navegador lo puede reescribir quien
+  tenga el navegador.
+- **`perfiles.entrenador_id` existe y todavía no la usa ninguna política.**
+  Se llena al canjear la invitación. Es la semilla para el día que haya un
+  segundo entrenador: sin ella, ese día tocaría adivinar qué cliente era de
+  quién.
 - **Dos roles: `admin` y `cliente`.** Hay dos administradores.
 - **Nada de registro abierto.** Se entra por código de invitación, con
   funciones RPC. El correo integrado de Supabase manda 2 por hora.
@@ -285,9 +340,18 @@ la barra va a tirones al cambiar de pestaña haciendo scroll; si va mal, se
 ajusta el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`. **No
 bloquea la Fase 2.**
 
-**La Fase 2 está desbloqueada.** El entrenador contestó el cuestionario el
-1/09 y el esquema quedó cerrado. El punto de la Ley 2210 (certificación de
-entrenador deportivo) también quedó resuelto.
+**Fase 2 en curso.** Los cuatro archivos SQL están escritos y verificados
+con el parser de Postgres (162 sentencias y 7 cuerpos PL/pgSQL), pero
+**todavía no se han corrido**: falta crear el proyecto en Supabase, que es
+el paso 1 de `PASOS-FASE-2.md` y depende de la cuenta.
+
+Después de correrlos va el código: `src/lib/supabase.js`, la pantalla de
+acceso, el hook de sesión, la autorización de la Ley 1581 y la pantalla
+"Mis datos". En esa misma tanda se borra `src/data/mock.js`.
+
+El entrenador contestó el cuestionario el 1/09 y el esquema quedó cerrado.
+El punto de la Ley 2210 (certificación de entrenador deportivo) también
+quedó resuelto.
 
 **No se publica en tiendas por ahora** (decisión del 1/09): la instalación es
 desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
@@ -323,4 +387,10 @@ Están en `BITACORA.md` con su razón. Las que más se tienden a reproponer:
   entrenador quiere; va semanal).
 - Tabla de posiciones obligatoria con nombres reales.
 - Fotos de progreso en la v1.
-- Registro abierto con correo.
+- Registro abierto con correo. (El registro en Supabase sí queda abierto,
+  pero no da acceso a nada: el acceso lo da el código de invitación.)
+- Un trigger que cree el perfil al registrarse. Deja el código de
+  invitación sin función.
+- Multi-entrenador (cada entrenador con su propia biblioteca y sus
+  clientes). Es otro producto. La columna `entrenador_id` ya está puesta
+  para que ese día no cueste una arqueología.

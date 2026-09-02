@@ -10,23 +10,39 @@
    las demás hojas la referencian con una fórmula. Cambias un valor
    aquí y cambia toda la app de una, sin buscar y reemplazar.
 
-   Dos temas: claro y oscuro. El oscuro entra solo por la preferencia
-   del sistema operativo — no hay botón para cambiarlo, y es a
-   propósito: un botón más es una decisión más para el usuario.
+   QUIÉN DECIDE EL TEMA (cambió el 1/09):
+   antes entraba solo por la preferencia del sistema operativo, con una
+   @media query. Ahora hay un botón, así que manda el atributo
+   data-tema del <html> — que escribe el script del <head> de
+   index.html antes de pintar, y cambia src/lib/tema.js al tocarlo.
 
-   La paleta sigue la lógica de silBe: fondo greige cálido en vez de
-   blanco, tinta cacao en vez de negro, y un acento desaturado. Cambia
-   la familia de color: oliva de acento, cobre para la racha.
+   Ya no hay ninguna @media (prefers-color-scheme) aquí, y es a
+   propósito: con el botón, la preferencia del sistema es solo el valor
+   INICIAL. Si además quedara una media query, un usuario con el sistema
+   en oscuro que eligiera claro tendría media app de cada color.
+
+   PALETA. El acento oliva y el cobre de la racha vienen de la revisión
+   de silBe. Lo que cambió el 1/09: el fondo claro pasó de greige cálido
+   (#F1EEE8) a blanco. La versión greige está una línea más abajo, por
+   si hay que volver.
    ===================================================================== */
 
 :root {
-  /* --- Superficies -------------------------------------------------- */
-  --fondo:        #F1EEE8;   /* greige cálido. No blanco: cansa menos y es
-                                lo que le da a la app el aire de silBe */
-  --superficie:   #FAF8F4;   /* las tarjetas, apenas por encima del fondo */
-  --superficie-2: #E7E2D9;   /* lo hundido: campos, barras vacías */
-  --linea:        #DAD4C8;
-  --linea-suave:  #E6E1D7;
+  /* --- Superficies: TEMA CLARO -------------------------------------
+     Fondo y tarjetas comparten el blanco a propósito. Lo que separa una
+     tarjeta del fondo es su borde y su sombra, no un tono distinto.
+     Se lee como papel sobre papel; es más limpio, pero también más
+     plano: si un día se quiere volumen otra vez, la línea de abajo es
+     el greige original.
+       greige original: --fondo #F1EEE8 / --superficie #FAF8F4 */
+  --fondo:        #FFFFFF;
+  --superficie:   #FFFFFF;   /* tarjetas: se separan por borde y sombra */
+  --superficie-2: #F3F1EC;   /* lo hundido: campos, barras vacías */
+  --linea:        #E3DFD6;
+  --linea-suave:  #EAE6DE;   /* un punto más marcado que antes: sobre
+                                blanco, y en gama baja donde no hay
+                                sombra, es lo ÚNICO que dibuja la
+                                tarjeta */
 
   /* --- Texto -------------------------------------------------------- */
   --tinta:        #2E2721;   /* cacao oscuro, no negro */
@@ -48,7 +64,7 @@
   /* --- Vidrio de la barra de abajo ---------------------------------
      El color es translúcido a propósito: lo que se ve detrás es el
      contenido de la app desenfocado. */
-  --vidrio:       rgba(250, 248, 244, .72);
+  --vidrio:       rgba(255, 255, 255, .72);
   --vidrio-linea: rgba(46, 39, 33, .10);
 
   /* --- Estados ------------------------------------------------------ */
@@ -57,7 +73,7 @@
   --error:        #A3341B;
   --error-suave:  #F7E7E1;
 
-  --sombra:       0 1px 2px rgba(46,39,33,.04), 0 6px 20px -14px rgba(46,39,33,.30);
+  --sombra:       0 1px 2px rgba(46,39,33,.05), 0 6px 20px -14px rgba(46,39,33,.28);
 
   /* --- Área segura del celular -------------------------------------
      No son colores, pero viven aquí por la misma razón: se usan en toda
@@ -72,8 +88,8 @@
   --barra-alto:   58px;
 
   /* --- Decoración: los valores del nivel ALTO -----------------------
-     Los otros dos niveles solo redefinen estas tres variables, más
-     abajo. Ni una regla de estilo duplicada: quien decide el nivel es
+     Los otros dos niveles solo redefinen estas variables, más abajo.
+     Ni una regla de estilo duplicada: quien decide el nivel es
      src/lib/dispositivo.js, que escribe data-nivel en el <html>.
 
      La transición es corta a propósito. En un Android de gama media una
@@ -84,58 +100,78 @@
   --curva:        cubic-bezier(.32, .72, 0, 1);
 }
 
+
+/* ---------------------------------------------------------------------
+   TEMA OSCURO
+   ---------------------------------------------------------------------
+   Sin tocar respecto a la versión anterior. El fondo cacao muy oscuro
+   está pendiente de revisión — se decidió no moverlo todavía para no
+   cambiar dos cosas a la vez y no saber cuál mejoró.
+   --------------------------------------------------------------------- */
+
+:root[data-tema="oscuro"] {
+  --fondo:        #14120F;
+  --superficie:   #1D1A16;
+  --superficie-2: #26221D;
+  --linea:        #332E27;
+  --linea-suave:  #2A2620;
+
+  --tinta:        #EFEAE2;
+  --tinta-media:  #A9A196;
+  --tinta-tenue:  #837B70;
+
+  --acento:       #9DB47C;
+  --acento-fuerte:#B0C692;
+  --acento-suave: #262D1C;
+  --sobre-acento: #14180E;
+
+  --senal:        #D9915C;
+  --senal-suave:  #2C1D13;
+
+  --vidrio:       rgba(29, 26, 22, .74);
+  --vidrio-linea: rgba(239, 234, 226, .10);
+
+  --exito:        #9DB47C;
+  --aviso:        #D8AB4A;
+  --error:        #E08A6B;
+  --error-suave:  #2C1A14;
+
+  --sombra:       0 1px 2px rgba(0,0,0,.4), 0 6px 20px -14px rgba(0,0,0,.8);
+}
+
+
 /* ---------------------------------------------------------------------
    NIVELES DE DECORACIÓN
    ---------------------------------------------------------------------
    Solo cambian cómo se ve la app. NUNCA qué se puede hacer, ni el orden
    de las cosas, ni los textos. Ver el comentario de dispositivo.js.
+
+   Van partidos en dos grupos por una razón que no es de estilo:
+   el desenfoque y la duración son iguales en los dos temas, pero la
+   SOMBRA no puede serlo — una sombra negra sobre fondo oscuro no se ve,
+   y una sombra clara sobre fondo blanco tampoco. Por eso la sombra
+   lleva las dos condiciones, tema Y nivel.
+
+   Si se escribieran juntos, `:root[data-nivel="medio"]` tiene la misma
+   especificidad que `:root[data-tema="oscuro"]` y, al ir después,
+   le pisaría la sombra al tema oscuro. Es un error silencioso: no
+   rompe nada, solo hace que la app oscura se vea mal y nadie sabe por
+   qué.
    --------------------------------------------------------------------- */
 
+/* Lo que NO depende del tema */
 :root[data-nivel="medio"] {
   --desenfoque: 8px;    /* el costo del desenfoque crece con el radio */
   --entrada:    150ms;
-  --sombra:     0 1px 2px rgba(46,39,33,.05);
 }
 
 :root[data-nivel="bajo"] {
   --desenfoque: 0px;    /* app.css apaga el filtro entero en este nivel */
   --entrada:    110ms;
-  --sombra:     none;   /* superficies planas: se separan por el borde */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root[data-nivel="medio"] { --sombra: 0 1px 2px rgba(0,0,0,.5); }
-  :root[data-nivel="bajo"]  { --sombra: none; }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fondo:        #14120F;
-    --superficie:   #1D1A16;
-    --superficie-2: #26221D;
-    --linea:        #332E27;
-    --linea-suave:  #2A2620;
-
-    --tinta:        #EFEAE2;
-    --tinta-media:  #A9A196;
-    --tinta-tenue:  #837B70;
-
-    --acento:       #9DB47C;
-    --acento-fuerte:#B0C692;
-    --acento-suave: #262D1C;
-    --sobre-acento: #14180E;
-
-    --senal:        #D9915C;
-    --senal-suave:  #2C1D13;
-
-    --vidrio:       rgba(29, 26, 22, .74);
-    --vidrio-linea: rgba(239, 234, 226, .10);
-
-    --exito:        #9DB47C;
-    --aviso:        #D8AB4A;
-    --error:        #E08A6B;
-    --error-suave:  #2C1A14;
-
-    --sombra:       0 1px 2px rgba(0,0,0,.4), 0 6px 20px -14px rgba(0,0,0,.8);
-  }
-}
+/* Lo que sí depende del tema */
+:root[data-tema="claro"][data-nivel="medio"]  { --sombra: 0 1px 2px rgba(46,39,33,.06); }
+:root[data-tema="claro"][data-nivel="bajo"]   { --sombra: none; }
+:root[data-tema="oscuro"][data-nivel="medio"] { --sombra: 0 1px 2px rgba(0,0,0,.5); }
+:root[data-tema="oscuro"][data-nivel="bajo"]  { --sombra: none; }

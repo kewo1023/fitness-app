@@ -11,11 +11,46 @@
           content="width=device-width, initial-scale=1, viewport-fit=cover" />
 
     <!-- Pinta la barra de estado de Android del color de la app.
-         Dos valores: uno por tema. -->
-    <meta name="theme-color" content="#FBFAF8"
-          media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#101413"
-          media="(prefers-color-scheme: dark)" />
+         Un solo valor: lo actualiza src/lib/tema.js leyendo la variable
+         --fondo de theme.css. Antes eran dos etiquetas con media query,
+         y eso dejó de servir cuando apareció el botón: si el sistema
+         está en oscuro y el usuario elige claro, la media query seguiría
+         pintando la barra oscura sobre una app clara.
+
+         ESTE ES EL ÚNICO COLOR LITERAL FUERA DE theme.css EN TODO EL
+         PROYECTO, y no se puede evitar: es el valor de arranque, y en
+         ese instante la hoja de estilos todavía no se ha leído, así que
+         no hay ninguna variable de la cual sacarlo. Dura milisegundos:
+         apenas carga theme.css, tema.js lo reemplaza por --fondo. Si
+         algún día cambia el fondo del tema claro, hay que cambiarlo
+         aquí también. -->
+    <meta name="theme-color" content="#FFFFFF" />
+
+    <!-- ===============================================================
+         POR QUÉ ESTE SCRIPT ESTÁ AQUÍ SUELTO Y NO EN UN ARCHIVO.
+
+         Tiene que correr ANTES de que el navegador pinte el primer
+         pixel. Un módulo de /src carga después de los estilos, así que
+         para cuando pudiera actuar la pantalla ya se pintó clara: el
+         usuario vería un fogonazo blanco y medio segundo después la app
+         oscura. Eso es el "flash" que se ve en tantas webs al abrirlas
+         de noche, y molesta justo a quien eligió el tema oscuro.
+
+         Es la única lógica duplicada del proyecto, y es a propósito. La
+         versión completa, comentada, está en src/lib/tema.js.
+         =============================================================== -->
+    <script>
+      (function () {
+        var t = null
+        try { t = localStorage.getItem('tema') } catch (e) { /* incógnito */ }
+        if (t !== 'claro' && t !== 'oscuro') {
+          t = (window.matchMedia &&
+               window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ? 'oscuro' : 'claro'
+        }
+        document.documentElement.dataset.tema = t
+      })()
+    </script>
 
     <title>Entrena</title>
   </head>

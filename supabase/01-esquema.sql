@@ -32,11 +32,32 @@
 
 create table if not exists perfiles (
   id            uuid primary key references auth.users(id) on delete cascade,
-  rol           text not null default 'cliente'
-                  check (rol in ('admin', 'cliente')),
+  -- TRES ROLES, no dos.
+  --   visitante  se registró sin código. Ve el catálogo de ejercicios y
+  --              el contenido marcado como público. No tiene plan.
+  --   cliente    canjeó un código de invitación. Tiene plan, progreso,
+  --              rachas y el botón de hablar con el entrenador.
+  --   admin      el entrenador y el desarrollo. Ven todo.
+  --
+  -- El valor por defecto es el de MENOS permiso, a propósito: si algún
+  -- día una fila se crea por un camino que no previmos, que entre por
+  -- la puerta chiquita y no por la grande.
+  rol           text not null default 'visitante'
+                  check (rol in ('admin', 'cliente', 'visitante')),
   nombre        text not null,
   alias         text,          -- lo único que ven los demás en un reto
   xp            integer not null default 0,
+
+  -- SEMILLA PARA CRECER. Hoy hay UN entrenador y dos admin que comparten
+  -- todo, así que ninguna política de RLS mira esta columna todavía.
+  -- Existe porque el día que entre un segundo entrenador, "admin ve
+  -- todo" deja de servir y hay que pasar a "cada entrenador ve lo suyo".
+  -- Si esa columna no existe desde el principio, ese día toca ADIVINAR
+  -- qué cliente era de quién mirando fechas. Se llena desde ya en
+  -- vincular_con_codigo (queda el admin que emitió el código) y no
+  -- estorba mientras no se use.
+  entrenador_id uuid references perfiles(id) on delete set null,
+
   creado_en     timestamptz not null default now()
 );
 
@@ -119,6 +140,16 @@ create table if not exists rutinas (
   nivel         text check (nivel in ('principiante','intermedio','avanzado')),
   duracion_min  integer,
   notas         text,
+
+  -- LA MUESTRA GRATIS. Una rutina pública la ve cualquiera que abra la
+  -- app, sea cliente o no. El resto es solo para clientes.
+  --
+  -- Lo que se regala es la BIBLIOTECA; lo que se cobra es la
+  -- PROGRAMACIÓN. El catálogo de ejercicios está en YouTube gratis: el
+  -- valor del entrenador es qué haces tú, en qué orden y por cuánto
+  -- tiempo, según cómo estás. Por eso el plan nunca es público.
+  publica       boolean not null default false,
+
   creada_por    uuid references perfiles(id),
   creada_en     timestamptz not null default now()
 );
@@ -266,7 +297,8 @@ create table if not exists recetas (
   porciones     integer,
   ingredientes  jsonb not null default '[]'::jsonb,
   pasos         text,
-  foto_url      text
+  foto_url      text,
+  publica       boolean not null default false   -- visible sin ser cliente
 );
 
 create table if not exists planes_comida (
@@ -340,10 +372,27 @@ create index if not exists ix_plan_dias_plan
 create index if not exists ix_rutina_ejercicios
   on rutina_ejercicios (rutina_id, orden);
 
+-- NOMBRES ÚNICOS EN LA BIBLIOTECA.
+-- Dos ejercicios llamados igual no son un caso raro que haya que
+-- permitir: son un error de captura. Y con 80 a 150 ejercicios cargados
+-- desde una hoja de cálculo (Fase 3), el error va a pasar seguro.
+--
+-- Además es lo que hace que la carga masiva se pueda REPETIR sin
+-- duplicar: si se cae a la mitad, se vuelve a correr el archivo entero
+-- y las filas que ya estaban simplemente se ignoran. Sin esto, correr
+-- dos veces deja la biblioteca duplicada y toca limpiarla a mano.
+create index if not exists ix_rutinas_publicas on rutinas (id) where publica;
+create index if not exists ix_recetas_publicas on recetas (id) where publica;
+
+create unique index if not exists ux_ejercicios_nombre on ejercicios (nombre);
+create unique index if not exists ux_rutinas_nombre    on rutinas (nombre);
+create unique index if not exists ux_plantillas_nombre on plantillas (nombre);
+create unique index if not exists ux_recetas_nombre    on recetas (nombre);
+
 
 -- =====================================================================
 -- LO QUE FALTA, en su propio archivo:
---   02-politicas.sql  RLS en las 16 tablas. Sin esto la base está
+--   02-politicas.sql  RLS en las 19 tablas. Sin esto la base está
 --                     abierta: NO usar con datos reales hasta correrlo.
 --   03-funciones.sql  crear_invitacion, vincular_con_codigo,
 --                     clonar_plantilla(plantilla, cliente, inicio),
