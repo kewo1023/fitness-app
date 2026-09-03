@@ -803,6 +803,30 @@ De 53 a 59 pruebas.
 
 ---
 
+**2026-09-02 — El bucket de imágenes queda protegido y verificado**
+
+`05-storage.sql` corrido contra producción. Comprobado suplantando los
+dos roles en el SQL Editor, no supuesto:
+
+- Con el uuid de un cliente, el `insert` en `storage.objects` falla con
+  `42501: new row violates row-level security policy`. Ese error es la
+  política funcionando.
+- Con el uuid del admin, ni el `select` ni el `insert` dan error. El
+  `count` devolvió 0 porque el bucket está vacío, no porque no vea.
+
+Los dos lados: el entrenador sube, un cliente no.
+
+Detalle que conviene recordar cuando se agregue otra política de
+Storage: `public.es_admin()` va con el esquema por delante. Estas
+políticas corren en el esquema `storage`, que no lleva `public` en su
+ruta de búsqueda, y sin el prefijo la política ni siquiera se crea.
+
+Y una trampa que no da error y por eso es peor: si el bucket no se llama
+exactamente `ejercicios`, las políticas se crean sin problema y
+simplemente no aplican a nada. Parece que funcionó.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas.** La app está publicada, con base de datos real,
@@ -911,8 +935,12 @@ con imágenes.
 
 ### Lo que necesita la cuenta de Kev
 
-Va en `PASOS-FASE-3.md`: crear el bucket de Storage y sus políticas, y
-conseguir del entrenador la hoja de cálculo con sus ejercicios.
+El bucket de Storage y sus políticas **ya están hechos** (2/09). Queda
+conseguir del entrenador la hoja de cálculo con sus ejercicios, y
+decirle antes de que empiece a tomar fotos que no pueden ser de
+clientes: el bucket es público y la imagen de una persona identificable
+es un dato personal bajo la Ley 1581. Está redactado en
+`PASOS-FASE-3.md` para copiárselo tal cual.
 
 ### La prueba que cierra la Fase 3
 
