@@ -1012,6 +1012,81 @@ renderizando el CSS real con el markup real, en claro y en oscuro, pero
 **no entrando a la app con una cuenta**. Falta el ritual del 2/09 —
 entrar con cada rol — y sigue faltando el Android real.
 
+---
+
+**2026-09-02 — Un dato personal ya no depende de que alguien se acuerde**
+
+Existía la regla de no meter datos personales del desarrollador en el
+repo, pero vivía en un archivo que git ignora, así que solo la cumplía
+quien lo hubiera leído. Y un archivo de texto no detiene un `git commit`.
+
+Se partió en tres piezas, y la partición es la decisión:
+
+| Pieza | Dónde vive | Por qué ahí |
+|---|---|---|
+| La regla (regla 16) | `CLAUDE.md`, público | No filtra nada: describe una política, no a una persona |
+| La lista de términos | `CONTEXTO-LOCAL.md`, ignorado | Es el catálogo de lo que no debe saberse |
+| El guardia | `.git/hooks/pre-commit` | Git nunca lo versiona ni lo empuja |
+
+**Por qué la regla SÍ puede ser pública.** Decir "en este repositorio no
+entran datos personales de quien lo escribe" no revela dónde vive nadie
+ni a qué se dedica. Y una regla que nadie puede leer es una regla que
+nadie cumple: escondiéndola se pierde todo su valor sin ganar nada.
+
+**Por qué la lista NO.** Un archivo titulado "términos que no pueden
+hacerse públicos" dentro de un repositorio público es el peor sitio
+imaginable para guardarlo. Vive en `CONTEXTO-LOCAL.md`, entre marcadores,
+y para agregar un término basta con escribirlo: el hook lo toma solo.
+
+**Por qué el hook tampoco.** Un guardia versionado que apunta a una lista
+secreta delata qué se está protegiendo. Además protege a UNA persona en
+UNA máquina, no al software — la misma frontera que separa `CLAUDE.md` de
+`CONTEXTO-LOCAL.md`. Consecuencia que hay que recordar: `.git/hooks/` no
+viaja con el repo, así que **un clon nuevo no lo trae** y hay que ponerlo
+a mano.
+
+**Qué revisa el hook:** solo lo que se está a punto de commitear — las
+líneas AGREGADAS del diff en cache y los nombres de los archivos. No el
+historial ni el árbol de trabajo.
+
+Que mire solo las líneas agregadas no es pereza, es necesario: si mirara
+el diff entero, sería imposible ARREGLAR una filtración vieja, porque el
+commit que la borra contiene el término en la línea que borra. Se
+verificó en vivo con el caso de abajo.
+
+**Dos decisiones sobre cómo se comporta:**
+
+- **Falla cerrado.** Si `CONTEXTO-LOCAL.md` no aparece, bloquea el commit
+  en vez de dejarlo pasar. Un guardia que se rinde cuando no puede
+  comprobar es exactamente cómo se filtra un dato.
+- **Tiene escape** (`git commit --no-verify`), a propósito. Un guardia
+  que no se puede desactivar termina desactivado del todo, y entonces no
+  protege nada.
+
+**Probado con cinco casos, no supuesto:** término en el contenido
+(bloquea), término en minúsculas y término con barras —la comparación es
+literal, sin comodines, para que un punto o una barra no se conviertan en
+uno— (bloquea), término en el nombre del archivo (bloquea), `--no-verify`
+(pasa), y línea BORRADA que contiene el término (pasa).
+
+**Y se probó solo, sin buscarlo:** el commit que escribió esta misma
+entrada quedó bloqueado, porque el texto traía un término de la lista
+como EJEMPLO. El hook tenía razón —un ejemplo literal en un archivo
+público es exactamente lo que la regla prohíbe— así que se reescribió el
+ejemplo en vez de usar `--no-verify`. Vale la pena recordarlo: cuando el
+guardia frene, la primera pregunta es si tiene razón, no cómo saltárselo.
+
+**Se corrigió el único caso conocido que ya estaba dentro.** La pregunta
+abierta sobre latencia nombraba la ciudad desde donde se midió; ahora
+dice "desde fuera de Colombia", que aporta lo mismo —el tramo medido fue
+el equivocado— sin decir nada de nadie.
+
+**Y hay que decirlo completo: el commit viejo conserva la versión
+anterior, y eso no tiene arreglo.** Reescribir el historial de un repo ya
+público no lo despublica; solo lo rompe para quien lo haya clonado. La
+regla existe para que no vuelva a pasar, no para deshacer lo que pasó.
+Es la regla 3 de PARAR aplicada a quien escribe en vez de a los clientes.
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
