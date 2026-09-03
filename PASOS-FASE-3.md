@@ -100,6 +100,24 @@ todas.
 - Puede mandarlas como salgan del celular. La app las comprime antes de
   subirlas.
 
+**Y lo más importante de decirle, que no es técnico:**
+
+> Las fotos tienen que ser **de él mismo, de alguien que le haya dado
+> permiso, o ilustraciones. Nunca la foto de un cliente.**
+
+El bucket es público: cualquiera con la dirección ve la imagen, sin
+cuenta, y la dirección se arma con el nombre del archivo, así que se
+adivina. La imagen de una persona identificable es un dato personal bajo
+la Ley 1581, y publicarla sin autorización escrita lo pone a él en un
+problema que no se arregla borrando el archivo después.
+
+No basta con que salga de espaldas o cortada: la ley no pide que no se
+le vea la cara, pide que no sea identificable. Si tiene dudas con alguna
+foto, esa foto no va.
+
+Esto conviene decírselo **antes** de que empiece a recopilar, no cuando
+ya tenga 150 fotos tomadas en sus sesiones.
+
 ---
 
 ## Lo que hago yo mientras tanto

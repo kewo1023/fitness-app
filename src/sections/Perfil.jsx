@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Pantalla from '../components/Pantalla.jsx'
 import MisDatos from './MisDatos.jsx'
+import PanelEntrenador from './PanelEntrenador.jsx'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
 import { LOGROS } from '../data/mock.js'
 
@@ -23,6 +24,7 @@ const NOMBRE_DEL_ROL = {
 
 export default function Perfil ({ perfil, alSalir }) {
   const [viendoDatos, setViendoDatos] = useState(false)
+  const [viendoPanel, setViendoPanel] = useState(false)
 
   if (viendoDatos) {
     return <MisDatos perfil={perfil}
@@ -30,8 +32,13 @@ export default function Perfil ({ perfil, alSalir }) {
                      alSalir={alSalir} />
   }
 
+  if (viendoPanel) {
+    return <PanelEntrenador alVolver={() => setViendoPanel(false)} />
+  }
+
   const nivel = nivelDesdeXp(perfil.xp)
   const esVisitante = perfil.rol === 'visitante'
+  const esAdmin = perfil.rol === 'admin'
   const obtenidos = LOGROS.filter(l => l.obtenido).length
 
   return (
@@ -84,6 +91,32 @@ export default function Perfil ({ perfil, alSalir }) {
                 </span>
               </li>
             ))}
+          </ul>
+        </>
+      )}
+
+      {/* La entrada al panel del entrenador. Va aquí y no en una sexta
+          pestaña para que la barra de abajo quede idéntica para todo el
+          mundo: si el entrenador viera una pestaña que sus clientes no
+          ven, la primera pregunta de un cliente sería por qué su app es
+          distinta.
+
+          Esconderlo no es lo que protege nada — quien tenga el navegador
+          puede cambiar esta condición. Lo que impide que un cliente
+          edite un ejercicio es la política `ejercicios_admin` de la
+          base, que exige es_admin() en el servidor. */}
+      {esAdmin && (
+        <>
+          <h3 className="titulillo">Tu contenido</h3>
+          <ul className="lista">
+            <li className="fila">
+              <span className="fila-datos">
+                <strong>Tu biblioteca</strong>
+                <small>Agregar, editar y archivar ejercicios</small>
+              </span>
+              <button type="button" className="enlace enlace-fila"
+                      onClick={() => setViendoPanel(true)}>Abrir</button>
+            </li>
           </ul>
         </>
       )}

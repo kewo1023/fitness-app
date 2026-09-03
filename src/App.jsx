@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Navegacion from './components/Navegacion.jsx'
 import Hoy from './sections/Hoy.jsx'
-import Programas from './sections/Programas.jsx'
+import Ejercicios from './sections/Ejercicios.jsx'
 import Progreso from './sections/Progreso.jsx'
 import Recetas from './sections/Recetas.jsx'
 import Perfil from './sections/Perfil.jsx'
@@ -29,9 +29,19 @@ import { useSesion } from './hooks/useSesion.js'
  * esto es el SI() anidado que decide qué hoja mostrar.
  */
 
+/* La pestaña que antes era "Programas" ahora es "Ejercicios".
+ *
+ * No es un cambio de nombre: es que la pantalla vieja mostraba un
+ * catálogo de programas a los que el cliente se inscribía, y ese modelo
+ * está descartado desde el 1/09 — aquí cada cliente tiene SU rutina,
+ * armada por el entrenador. Era una pestaña que la base de datos no
+ * podía llenar nunca.
+ *
+ * El plan de la semana del cliente entra en la Fase 4, y su sitio
+ * natural es "Hoy", que ya es la pantalla del día. */
 const SECCIONES = {
   hoy: Hoy,
-  programas: Programas,
+  ejercicios: Ejercicios,
   progreso: Progreso,
   recetas: Recetas,
   perfil: Perfil

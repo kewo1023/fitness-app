@@ -19,14 +19,23 @@
       día.** Lo que queda en este archivo es exactamente lo que todavía
       no existe de verdad, ni un dato más.
 
-      Ya se fueron: RECETAS (Fase 2, ahora sale de la tabla `recetas`).
-      Faltan: RUTINA_DE_HOY y PROGRAMAS (Fase 4), HISTORIAL y LOGROS
-      (Fase 5), USUARIO y META_SEMANAL (Fase 4, salen del plan).
+      Ya se fueron:
+        - RECETAS   (Fase 2, ahora sale de la tabla `recetas`)
+        - PROGRAMAS (Fase 3). Este no se conectó: se BORRÓ. Describía un
+          catálogo de programas a los que el cliente se inscribía, y ese
+          modelo está descartado desde el 1/09 — aquí cada cliente tiene
+          su propia rutina. Era mock de algo que la base no puede
+          representar, que es la peor clase de mock: enseña una app que
+          no va a existir. La pestaña ahora muestra el catálogo real de
+          ejercicios.
+
+      Faltan: RUTINA_DE_HOY (Fase 4), HISTORIAL y LOGROS (Fase 5),
+      USUARIO y META_SEMANAL (Fase 4, salen del plan).
    ===================================================================== */
 
 export const USUARIO = {
   nombre: 'Camilo',
-  rol: 'cliente',          // cambia a 'admin' para ver el panel del entrenador
+  rol: 'cliente',
   xp: 340,
   nivel: 4,
   racha: 3                 // entrenamientos hechos esta semana
@@ -53,19 +62,6 @@ export const RUTINA_DE_HOY = {
       grupo: 'Core', equipo: 'Ninguno' }
   ]
 }
-
-export const PROGRAMAS = [
-  { id: 1, nombre: 'Fuerza en casa', semanas: 8, nivel: 'Intermedio',
-    dias: 4, descripcion: 'Sin gimnasio. Mancuernas y peso corporal.',
-    inscrito: true, semanaActual: 2 },
-  { id: 2, nombre: 'Primeros pasos', semanas: 4, nivel: 'Principiante',
-    dias: 3, descripcion: 'Para arrancar desde cero, sin equipo.',
-    inscrito: false },
-  { id: 3, nombre: 'Full body express', semanas: 6, nivel: 'Intermedio',
-    dias: 3, descripcion: 'Sesiones de 30 minutos.', inscrito: false },
-  { id: 4, nombre: 'Pierna y glúteo', semanas: 8, nivel: 'Avanzado',
-    dias: 4, descripcion: 'Requiere barra y discos.', inscrito: false }
-]
 
 export const HISTORIAL = [
   { fecha: '2026-09-01', rutina: 'Tren inferior', duracion: 52, completada: true },

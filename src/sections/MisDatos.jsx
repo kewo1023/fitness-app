@@ -50,10 +50,33 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
   useEffect(() => {
     let vivo = true
     ;(async () => {
-      const { data } = await supabase.from('perfil_salud').select('*').maybeSingle()
+      /* LOS DOS .eq('perfil_id', ...) SON OBLIGATORIOS. Es el mismo bug
+       * del 2/09 que dejaba al entrenador fuera de la app (ver el
+       * comentario largo en useSesion.js), pero aquí las consecuencias
+       * son peores.
+       *
+       * Las políticas de `perfil_salud` y de `consentimientos` dicen
+       * "tu fila O eres admin". Sin filtrar, el entrenador pedía "los
+       * datos de salud" y la base le devolvía los de TODOS sus
+       * clientes; maybeSingle() reventaba, o peor, con un solo cliente
+       * con datos le habría mostrado el peso y las lesiones de esa
+       * persona dentro de su propia pantalla de "Mis datos".
+       *
+       * Eso no es un fallo de presentación: es un dato sensible de un
+       * tercero apareciendo donde no debe. Que la política PERMITA al
+       * entrenador leerlo (lo necesitará en la Fase 5 para programar)
+       * no significa que quepa en esta pantalla, que es la del titular
+       * sobre sí mismo. */
+      const { data } = await supabase
+        .from('perfil_salud')
+        .select('*')
+        .eq('perfil_id', perfil.id)
+        .maybeSingle()
+
       const { data: cons } = await supabase
         .from('consentimientos')
         .select('aceptado')
+        .eq('perfil_id', perfil.id)
         .eq('tipo', 'datos_sensibles')
         .order('fecha', { ascending: false })
         .limit(1)
@@ -63,11 +86,15 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
       if (data) {
         setSalud({
           fecha_nac:  data.fecha_nac || '',
-          // OJO: peso_kg es `numeric` y Postgres lo devuelve como TEXTO
-          // ("72.50"), no como número. Si se usara directo en una suma,
-          // JavaScript concatenaría en vez de sumar. Aquí solo se
-          // muestra, pero se deja el String() explícito para que quede
-          // claro que es texto y no se olvide al hacer cuentas.
+          // El String() es para el <input>, no por el tipo: un campo de
+          // texto quiere una cadena, y pasarle un número hace que React
+          // avise en la consola.
+          //
+          // CORREGIDO EL 2/09: aquí decía que un `numeric` vuelve como
+          // TEXTO desde Postgres. Es falso por la API de Supabase, que
+          // lo entrega como número de verdad (74.5). Lo que sí devuelve
+          // texto es el driver de Node conectado directo a la base, que
+          // no es el caso de esta app.
           peso_kg:    data.peso_kg    != null ? String(data.peso_kg)    : '',
           altura_cm:  data.altura_cm  != null ? String(data.altura_cm)  : '',
           objetivo:   data.objetivo   || '',
@@ -80,7 +107,7 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
       setCargando(false)
     })()
     return () => { vivo = false }
-  }, [])
+  }, [perfil.id])
 
   const cambiar = (campo, valor) => setSalud(s => ({ ...s, [campo]: valor }))
 

@@ -640,6 +640,119 @@ se fue `RECETAS`; `Perfil` y el saludo de `Hoy` ya usan el perfil real.
 queda anotado: el público abre esto con datos móviles en Colombia, y si
 en la Fase 8 hace falta recortar, este es el primer sitio donde mirar.
 
+**2026-09-02 — BUG: el admin no podía entrar a su propia app**
+
+Encontrado al arrancar la Fase 3, entrando con una cuenta de admin. La
+app mandaba al entrenador a la pantalla de activación, y al enviarla la
+función SQL respondía "Esta cuenta ya está activada": un callejón sin
+salida. Estaba en producción desde que se cerró la Fase 2.
+
+**La causa.** `useSesion` pedía el perfil sin filtrar por nadie —
+`.from('perfiles').select('*').maybeSingle()`— confiando en que RLS
+recortara hasta dejar una sola fila. Y la política dice
+`using (id = auth.uid() or es_admin())`, que **para un admin es
+verdadera en TODAS las filas**. Le llegaban los cuatro perfiles,
+`maybeSingle()` fallaba con `PGRST116 - Results contain 4 rows`, el
+error se traducía a `perfil = null`, y la app leía eso como "no se ha
+activado".
+
+**Por qué la verificación de la Fase 2 no lo cazó.** Se hizo creando un
+VISITANTE, y con un visitante la política sí devuelve una sola fila.
+El error solo aparece con la cuenta que más permisos tiene, que es
+justo la última que se prueba. No fue un descuido del ritual: fue que
+el ritual se corrió con el rol equivocado. **Desde ahora la prueba de
+los tres roles incluye entrar a la app con cada uno, no solo contar
+filas en el SQL Editor.**
+
+**No era una consulta, eran tres.** `perfil_salud` y `consentimientos`
+tienen la misma cláusula `or es_admin()`, y `MisDatos.jsx` las leía sin
+filtrar. Las consecuencias ahí eran peores que un bloqueo: con un solo
+cliente que hubiera llenado sus datos de salud, el entrenador habría
+visto el peso y las lesiones de esa persona dentro de su propia pantalla
+de "Mis datos", y el "ya autorizaste" se habría calculado con el sí de
+otro. Un dato sensible de un tercero en la pantalla del titular sobre sí
+mismo. **No llegó a pasar: ningún cliente real ha usado la app todavía.**
+
+**Las políticas NO se tocaron, y es la decisión.** Que el admin pueda
+leer a sus clientes es correcto y necesario para las Fases 4 y 5, donde
+él programa mirando su progreso. Lo que estaba mal era el código.
+
+**La regla que queda escrita** (en `useSesion.js`, en `MisDatos.jsx` y
+en la cabecera de PERFILES de `02-politicas.sql`):
+
+> RLS decide qué se PUEDE ver, no qué se QUIERE ver. Si el código
+> necesita una fila concreta, la pide por su id. Nunca se confía en que
+> la política recorte hasta dejar una sola.
+
+En Excel: es la diferencia entre filtrar la tabla y confiar en que quedó
+una sola fila visible, contra usar BUSCARV con la clave. Lo segundo
+devuelve lo que pediste aunque el filtro cambie.
+
+**Reproducido a propósito antes de darlo por resuelto.** Se revirtió
+solo el filtro, se recargó con la sesión abierta y volvió a salir la
+pantalla de activación con el mismo `PGRST116`; se restauró y volvió a
+entrar. La primera lectura fue que había sido un error de proceso
+—probar contra Vercel sin haber hecho push— y no lo era: en Vercel corre
+el código sin el arreglo, así que ahí el bug es real. Vale la pena
+anotarlo: la explicación cómoda de un fallo raro casi siempre es que uno
+se equivocó de pestaña, y a veces no.
+
+---
+
+**2026-09-02 — La pestaña "Programas" pasa a ser "Ejercicios"**
+
+No es un cambio de nombre. Esa pantalla mostraba un catálogo de
+programas a los que el cliente se inscribía, y ese modelo está
+descartado desde el 1/09: aquí cada cliente tiene SU rutina, armada por
+el entrenador. Era mock de algo que la base de datos no puede
+representar, que es la peor clase de mock — enseña una app que no va a
+existir y se descubre tarde.
+
+En su lugar va el catálogo real de ejercicios, que además es lo que
+faltaba para poder cerrar la Fase 3: la prueba de la fase dice "un
+cliente los ve, un visitante también" y hasta hoy ninguna pantalla leía
+la tabla `ejercicios`. `PROGRAMAS` se borró de `mock.js` el mismo día,
+como manda la regla.
+
+El plan de la semana del cliente entra en la Fase 4 y su sitio natural
+es "Hoy", que ya es la pantalla del día.
+
+---
+
+**2026-09-02 — El panel del entrenador entra desde Perfil, no es una pestaña**
+
+Dos razones. La de pantalla: seis pestañas en un Android de 360 px dejan
+cada una en 60 px y los textos se parten. La que pesa más: la barra de
+abajo queda IDÉNTICA para todo el mundo. Si el entrenador viera una
+pestaña que sus clientes no ven, la primera pregunta de un cliente sería
+por qué su app es distinta a la de otro — que es exactamente lo que la
+regla 11 de `CLAUDE.md` protege para los niveles de decoración.
+
+Esconder el panel no protege nada: quien tenga el navegador puede
+cambiar esa condición. Lo que impide que un cliente edite un ejercicio
+es la política `ejercicios_admin`, que exige `es_admin()` en el
+servidor.
+
+---
+
+**2026-09-02 — El bucket de imágenes es público, y eso obliga a una regla de contenido**
+
+Las políticas quedaron en `supabase/05-storage.sql`: todo el mundo lee,
+solo el admin escribe. Público es lo correcto —son fotos de alguien
+haciendo una sentadilla, y el catálogo es el gancho de la app— pero
+"público" significa que cualquiera con la dirección ve la imagen, y la
+dirección se arma con el nombre del archivo, así que es adivinable.
+
+De ahí una regla que no es técnica y que hay que trasladarle al
+entrenador: **la imagen de una persona identificable es un dato personal
+bajo la Ley 1581.** Las fotos tienen que ser de él mismo, de modelos que
+hayan autorizado, o ilustraciones. Nunca la foto de un cliente sin
+autorización escrita, ni siquiera de espaldas — la ley no pide que se le
+vea la cara, pide que no sea identificable. Quedó agregado a
+`PASOS-FASE-3.md`.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas.** La app está publicada, con base de datos real,

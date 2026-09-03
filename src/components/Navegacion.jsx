@@ -9,7 +9,7 @@ import Icono from './Iconos.jsx'
 
 const PESTANAS = [
   { id: 'hoy',       titulo: 'Hoy' },
-  { id: 'programas', titulo: 'Programas' },
+  { id: 'ejercicios', titulo: 'Ejercicios' },
   { id: 'progreso',  titulo: 'Progreso' },
   { id: 'recetas',   titulo: 'Recetas' },
   { id: 'perfil',    titulo: 'Perfil' }

@@ -190,7 +190,21 @@ No son preferencias. Son las que sostienen el proyecto:
     tendría media app de cada color. Por eso en `theme.css` no hay ni
     una sola media query de color, y por eso el `theme-color` de la
     barra de estado se lee de `--fondo` en vez de escribirse a mano.
-13. **Animar solo `opacity` y `transform`.** Son las dos propiedades que el
+13. **Toda consulta contra una tabla cuya política diga `or es_admin()`
+    lleva su filtro explícito.** `perfiles`, `perfil_salud`,
+    `consentimientos` y `ejercicios` tienen políticas que terminan así,
+    y para un admin esa condición es verdadera en TODAS las filas. Una
+    consulta que confíe en que RLS recorte funciona para el 100% de los
+    clientes y falla solo para el entrenador — que es el peor sitio
+    donde puede fallar y el último donde se prueba.
+
+    **RLS decide qué se PUEDE ver, no qué se QUIERE ver.** Si el código
+    necesita una fila concreta, la pide por su id; si necesita solo los
+    activos, lo dice. Costó cuatro bugs el 2/09, uno de ellos con un
+    dato de salud de un tercero apareciendo en la pantalla del titular.
+    Está contado en `BITACORA.md`.
+
+14. **Animar solo `opacity` y `transform`.** Son las dos propiedades que el
     celular resuelve en la tarjeta gráfica sin rehacer el diseño de la
     página. `height`, `top` o `filter` obligan a recalcular el cuadro
     entero, y es la causa número uno de que una web se sienta lenta en un
@@ -230,8 +244,23 @@ src/sections/Acceso.jsx  Entrar o crear cuenta. Solo correo y clave.
 src/sections/Activar.jsx Nombre, código opcional y consentimientos.
 src/sections/MisDatos.jsx
                          Habeas data: conocer, actualizar, suprimir.
-src/sections/            Una por pestaña: Hoy, Programas, Progreso,
+src/sections/            Una por pestaña: Hoy, Ejercicios, Progreso,
                          Recetas, Perfil.
+src/sections/Ejercicios.jsx
+                         El catálogo. IDÉNTICO para los tres roles a
+                         propósito: el entrenador ve aquí lo mismo que
+                         sus clientes, que es lo que la hace útil para
+                         revisar su propio trabajo.
+src/sections/PanelEntrenador.jsx
+                         Solo con rol admin, y se entra desde Perfil, no
+                         desde una sexta pestaña: la barra de abajo
+                         queda igual para todos.
+src/lib/ejercicios.js    El vocabulario (grupos, movimientos, equipos,
+                         niveles) y la validación de una fila. NO toca
+                         la base, para que se pueda probar sin
+                         credenciales.
+src/lib/imagenes.js      La dirección pública de una foto. La base
+                         guarda la RUTA, no la dirección completa.
 src/components/
   Navegacion.jsx         La barra de abajo. Respeta var(--sab).
   Pantalla.jsx           El envoltorio con el encabezado. Lo usan las cinco
@@ -260,11 +289,14 @@ supabase/03-funciones.sql Invitaciones, clonar plantilla, XP y habeas
                          pero no puede tener permiso para hacer.
 supabase/04-ejemplo.sql  La biblioteca de prueba, con contenido
                          inventado. No siembra clientes.
+supabase/05-storage.sql  Quién sube y borra las imágenes: todos leen,
+                         solo el admin escribe. NO crea el bucket, eso
+                         va a mano desde el panel.
 ```
 
-Dónde va a entrar lo que sigue: la Fase 2 mete `src/lib/supabase.js`,
-`src/hooks/` y las pantallas de acceso; la Fase 3 reemplaza el cuadro gris
-de `.ejercicio-video` por el video real de Bunny.
+Dónde va a entrar lo que sigue: la Fase 4 conecta `Hoy` y el plan del
+cliente; el cuadro gris de `.ejercicio-video` se reemplaza por el video
+real de Bunny cuando Bunny deje de estar aplazado.
 
 ## La base de datos
 
@@ -344,18 +376,21 @@ debe recortar:
 tiene acceso por cuenta, tres roles y la Ley 1581 implementada. Todo
 verificado contra producción: se creó un visitante desde la app, se
 comprobó qué ve, se guardaron y descargaron sus datos, y se eliminó la
-cuenta. 32 pruebas pasan.
+cuenta. 53 pruebas pasan.
 
-**En curso: Fase 3 — la biblioteca de ejercicios.** Panel del entrenador,
-carga masiva desde hoja de cálculo e imágenes en Supabase Storage. El
-detalle está en `BITACORA.md` y lo que depende de la cuenta, en
-`PASOS-FASE-3.md`.
+**En curso: Fase 3 — la biblioteca de ejercicios.** Ya existen el
+catálogo (pestaña Ejercicios, que reemplazó a Programas), el panel del
+entrenador para crear/editar/archivar, y las políticas del bucket en
+`05-storage.sql`. **Faltan la carga masiva desde hoja de cálculo y las
+imágenes**, y para eso hace falta crear el bucket a mano y conseguir la
+hoja del entrenador: los dos pasos están en `PASOS-FASE-3.md`.
 
 **Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
-Perfil y Recetas son reales. `Hoy` tiene el saludo real y el resto de
-mock; `Programas` y `Progreso` siguen en mock. Se conectan en las Fases 4
-y 5. `mock.js` no se borra de golpe: **cada pantalla que se conecta borra
-su parte el mismo día.**
+Perfil, Recetas y Ejercicios son reales. `Hoy` tiene el saludo real y el
+resto de mock; `Progreso` sigue en mock. Se conectan en las Fases 4 y 5.
+`mock.js` no se borra de golpe: **cada pantalla que se conecta borra su
+parte el mismo día.** `PROGRAMAS` no se conectó: se borró, porque
+describía un modelo descartado.
 
 **Dos pendientes que no bloquean la Fase 3 pero sí la difusión:**
 
@@ -375,7 +410,7 @@ es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 
 1. Leer `BITACORA.md` (el estado y el siguiente paso están al final) y
    `CONTEXTO-LOCAL.md`.
-2. `npm install && npm run dev`. Verificar con `npm run test` que las **32
+2. `npm install && npm run dev`. Verificar con `npm run test` que las **53
    pruebas** siguen pasando antes de tocar nada.
 3. **Comprobar que `.env.local` existe.** No está en git y sin él la app
    no arranca: lanza un error explícito en la consola. Las dos variables
@@ -394,6 +429,13 @@ suplantar a un cliente y a un visitante en el SQL Editor y contar qué ve
 cada uno. Está escrito paso a paso al final de `PASOS-FASE-2.md` (paso 8)
 y al final de `02-politicas.sql`. **Si el visitante ve lo mismo que el
 cliente, la app quedó gratis sin querer.**
+
+**Y desde el 2/09 el ritual incluye ENTRAR A LA APP con cada rol, no
+solo contar filas en el SQL Editor.** Contar filas dice que las
+políticas están bien; no dice que el código sepa usarlas. El día que se
+cerró la Fase 2 las políticas estaban perfectas y la app llevaba cuatro
+bugs que solo se veían entrando con la cuenta de admin — la única que no
+se probó.
 
 ## Cosas ya decididas — no volver a proponerlas
 

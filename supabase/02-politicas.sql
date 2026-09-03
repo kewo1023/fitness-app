@@ -129,6 +129,27 @@ alter table reto_participantes   enable row level security;
 -- ---------------------------------------------------------------------
 
 -- PERFILES ------------------------------------------------------------
+--
+-- AVISO PARA QUIEN ESCRIBA CONSULTAS CONTRA ESTAS TABLAS (2/09).
+-- Las tres políticas de abajo, y las de perfil_salud y consentimientos,
+-- terminan en "... or es_admin()". Eso significa que PARA UN ADMIN la
+-- condición es verdadera en TODAS las filas: el entrenador recibe los
+-- perfiles de todos sus clientes, no el suyo.
+--
+-- Es lo correcto y tiene que quedarse así — en las Fases 4 y 5 él
+-- necesita ver a sus clientes para programarles. Pero obliga a una
+-- regla del lado del navegador:
+--
+--   SI EL CÓDIGO NECESITA UNA FILA CONCRETA, LA PIDE POR SU ID.
+--   Nunca se confía en que la política recorte hasta dejar una sola.
+--
+-- Costó un bug real: useSesion pedía "las filas de perfiles" con
+-- maybeSingle() y funcionaba para todo el mundo menos para el
+-- entrenador, a quien le llegaban cuatro filas, el maybeSingle fallaba
+-- y la app lo mandaba a la pantalla de activación. Un error así solo
+-- aparece con la cuenta que MÁS permisos tiene, que es la última que
+-- se prueba.
+--
 drop policy if exists perfiles_select on perfiles;
 create policy perfiles_select on perfiles for select to authenticated
   using (id = (select auth.uid()) or (select es_admin()));
@@ -228,9 +249,18 @@ create policy invitaciones_admin on invitaciones for all to authenticated
 -- ejercicios bien explicados vuelve; uno que encuentra una pantalla
 -- pidiéndole un código, no. Y no se regala nada: la lista de ejercicios
 -- con sus indicaciones está en YouTube gratis.
+--
+-- El `or es_admin()` deja al entrenador LEER los archivados, que es lo
+-- que necesita el panel de "Tu biblioteca" para poder restaurarlos.
+--
+-- OJO: eso NO significa que los archivados deban salir en el catálogo
+-- del entrenador. La pantalla de Ejercicios los filtra a mano con
+-- `.eq('activo', true)` para que él vea exactamente lo mismo que sus
+-- clientes. Es la misma regla del aviso de PERFILES: la política dice
+-- qué se PUEDE leer, la consulta dice qué se QUIERE leer.
 drop policy if exists ejercicios_select on ejercicios;
 create policy ejercicios_select on ejercicios for select to authenticated
-  using (activo or (select es_admin()));   -- el archivado solo lo ve él
+  using (activo or (select es_admin()));
 
 drop policy if exists ejercicios_admin on ejercicios;
 create policy ejercicios_admin on ejercicios for all to authenticated

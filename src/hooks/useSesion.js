@@ -38,11 +38,44 @@ export function useSesion () {
    * maybeSingle() y no single(): single() considera un ERROR que no
    * haya fila, y aquí "no hay fila" es un estado normal y esperado —
    * es justamente el visitante que aún no se ha activado. Con single()
-   * la app mostraría un error rojo a alguien que no ha hecho nada mal. */
-  const traerPerfil = useCallback(async () => {
+   * la app mostraría un error rojo a alguien que no ha hecho nada mal.
+   *
+   * EL .eq('id', ...) NO SOBRA, y quitarlo rompe la app ENTERA para el
+   * entrenador. Es el bug del 2/09 y vale la pena entenderlo, porque el
+   * mismo error se puede repetir en cualquier consulta futura.
+   *
+   * Antes esta consulta no filtraba por nadie: pedía "las filas de
+   * perfiles" y confiaba en que RLS devolviera solo la del usuario. Y
+   * para un cliente eso es cierto. Pero la política dice
+   *
+   *     using (id = auth.uid() OR es_admin())
+   *
+   * o sea que PARA UN ADMIN es verdadera en TODAS las filas: el
+   * entrenador recibe los perfiles de todos sus clientes. Entonces
+   * maybeSingle() —que falla si llega más de una fila— devolvía error,
+   * el error se traducía a `perfil = null`, y la app leía eso como
+   * "esta persona no se ha activado" y le mostraba la pantalla de
+   * activación al dueño de la app. Al enviarla, la función SQL
+   * respondía "Esta cuenta ya está activada" y ahí quedaba, en un
+   * callejón sin salida.
+   *
+   * LA LECCIÓN, que aplica a toda consulta nueva: RLS decide qué se
+   * PUEDE ver, no qué se QUIERE ver. Si el código necesita una fila
+   * concreta, la pide por su id. Confiar en que la política recorte
+   * hasta dejar una sola funciona para el 90% de los usuarios y falla
+   * justo para el que más permisos tiene — que es el peor sitio donde
+   * puede fallar y el último donde se prueba.
+   *
+   * En Excel: es la diferencia entre filtrar la tabla y confiar en que
+   * solo quedó una fila visible, contra usar BUSCARV con la clave. Lo
+   * segundo devuelve lo que pediste aunque el filtro cambie. */
+  const traerPerfil = useCallback(async (idUsuario) => {
+    if (!idUsuario) return null
+
     const { data, error } = await supabase
       .from('perfiles')
       .select('*')
+      .eq('id', idUsuario)
       .maybeSingle()
 
     if (error) {
@@ -66,7 +99,7 @@ export function useSesion () {
       async (_evento, nuevaSesion) => {
         if (!vivo) return
         setSesion(nuevaSesion)
-        setPerfil(nuevaSesion ? await traerPerfil() : null)
+        setPerfil(nuevaSesion ? await traerPerfil(nuevaSesion.user.id) : null)
         if (vivo) setCargando(false)
       }
     )
@@ -81,8 +114,13 @@ export function useSesion () {
    * el perfil cambió en la base, pero la app todavía tiene el de
    * antes. */
   const recargarPerfil = useCallback(async () => {
-    if (!supabase.auth.getSession) return
-    setPerfil(await traerPerfil())
+    // El id sale de la sesión que ya está en memoria. Se lee de dentro
+    // de setPerfil para no tener que meter `sesion` en las dependencias
+    // del useCallback: si estuviera, esta función se volvería a crear en
+    // cada cambio de sesión y quien la reciba por props se re-renderiza
+    // sin motivo.
+    const { data: { session } } = await supabase.auth.getSession()
+    setPerfil(session ? await traerPerfil(session.user.id) : null)
   }, [traerPerfil])
 
   const salir = useCallback(async () => {
