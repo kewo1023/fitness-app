@@ -1140,9 +1140,10 @@ filas dice que las políticas están bien, no que el código sepa usarlas.
 - ¿El PDF del cuestionario entra al repo público o no? Recomendación: no.
 - Cobertura de los nodos de Bunny en Colombia — se mide cuando llegue el
   video, no antes (Bunny está aplazado).
-- **Latencia real desde Colombia.** Se midió 85 ms, pero desde New Jersey
-  a Virginia, que es el tramo equivocado. El que importa es Bogotá →
-  Virginia y solo lo puede medir alguien que esté allá. Sigue abierta.
+- **Latencia real desde Colombia.** Se midió 85 ms, pero desde fuera de
+  Colombia hacia Virginia, que es el tramo equivocado. El que importa es
+  Bogotá → Virginia y solo lo puede medir alguien que esté allá. Sigue
+  abierta.
 
 Resueltas: clientes (6 a 15 para arrancar, sin techo), videos (arranca con
 imágenes), certificación de entrenador (en regla), alojar en EE. UU.

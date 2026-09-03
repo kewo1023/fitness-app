@@ -224,6 +224,41 @@ No son preferencias. Son las que sostienen el proyecto:
     biblioteca, no un reemplazo. Si algún día el dibujo le gana a la
     foto, se rompió el acuerdo: el contenido es dominio de él.
 
+16. **Ni un dato personal del desarrollador entra a este repositorio.**
+    Ni en el código, ni en un comentario, ni en un documento, ni en el
+    mensaje de un commit, ni en el nombre de un archivo. Dónde vive, en
+    qué zona horaria está, a qué se dedica aparte de esto, en qué
+    horarios trabaja, qué sabe y qué no, ni rutas de su máquina ni
+    enlaces de sus cuentas.
+
+    **La pregunta que resuelve cada caso: ¿esto describe el SOFTWARE o
+    describe a una PERSONA?** Lo primero va aquí. Lo segundo va a
+    `CONTEXTO-LOCAL.md`, que git ignora.
+
+    Cuando el software de verdad necesita el dato, casi siempre lo que
+    necesita es la consecuencia, no el dato. La regla 5 existe porque
+    hay una diferencia de horario de verano entre quien desarrolla y
+    Bogotá — eso es lo que el código necesita saber, y se escribe así,
+    sin la ciudad. "Se midió desde fuera de Colombia" dice todo lo que
+    aporta y no dice nada de nadie.
+
+    **Por qué es una regla y no una recomendación:** este repositorio es
+    público, y lo público no es el estado de hoy sino TODO EL HISTORIAL.
+    Borrar un dato en un commit posterior no lo saca: queda para
+    siempre, legible por cualquiera. Es la misma razón de la regla 3 de
+    PARAR, aplicada a quien escribe en vez de a los clientes.
+
+    **Hay un guardia, y no vive aquí.** `.git/hooks/pre-commit` revisa
+    lo que se está a punto de commitear y frena el commit si encuentra
+    algo. La lista de términos concretos está en `CONTEXTO-LOCAL.md`,
+    fuera de git: publicar el catálogo de lo que no debe saberse sería
+    contradecir la regla al escribirla. El hook vive en `.git/hooks/`,
+    que git nunca versiona ni empuja, así que **un clon nuevo no lo
+    trae** y hay que volver a ponerlo a mano.
+
+    Esta regla es lo único que se puede decir en público sin filtrar
+    nada: describe una política, no a una persona.
+
 ## Mapa del código
 
 ```
