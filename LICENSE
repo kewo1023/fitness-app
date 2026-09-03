@@ -1,0 +1,113 @@
+Copyright (c) 2026 Kevin Rincón. Todos los derechos reservados.
+All rights reserved.
+
+==========================================================================
+ESPAÑOL
+==========================================================================
+
+DOS CAPAS DISTINTAS, Y ES IMPORTANTE NO CONFUNDIRLAS
+--------------------------------------------------------------------------
+
+Este repositorio contiene el SOFTWARE de una aplicación de entrenamiento:
+el código fuente, la estructura de la base de datos, los textos de la
+interfaz, el diseño y los íconos. Todo eso es propiedad de Kevin Rincón y
+está protegido por las leyes de derecho de autor.
+
+El CONTENIDO DEPORTIVO que la aplicación muestra cuando está en
+funcionamiento —los ejercicios, las indicaciones de técnica, las rutinas,
+los programas y las recetas— NO está en este repositorio y NO es propiedad
+del titular del software. Ese contenido es obra del entrenador que lo
+escribió, le pertenece a él, y su uso se rige por lo que él decida.
+
+Los datos de ejemplo que sí están en el repositorio (el archivo
+supabase/04-ejemplo.sql) son inventados para poder probar la aplicación.
+No son contenido real de ningún entrenador.
+
+SE PERMITE
+--------------------------------------------------------------------------
+
+  • Usar la aplicación desde su dirección pública, instalándola en el
+    teléfono propio.
+
+  • Leer y estudiar el código fuente. Es público a propósito: sirve para
+    aprender de él y para que se pueda auditar cómo se tratan los datos
+    personales, que en una aplicación con datos de salud no es un detalle
+    menor.
+
+  • Citar fragmentos cortos del código con atribución, por ejemplo en un
+    artículo, una clase o una reseña.
+
+NO SE PERMITE, sin autorización escrita del titular
+--------------------------------------------------------------------------
+
+  • Copiar, reproducir o redistribuir el código, en todo o en parte, más
+    allá de la cita corta con atribución.
+
+  • Modificar el código o crear obras derivadas de él.
+
+  • Publicar la aplicación, o una versión modificada, en otra dirección,
+    tienda de aplicaciones o repositorio.
+
+  • Usar el código con fines comerciales.
+
+Que este repositorio sea público NO significa que el código sea de dominio
+público ni de uso libre. Es público por decisión de su autor, para que se
+pueda leer y auditar. No hay ninguna licencia de código abierto aquí: sin
+una licencia que lo permita, el derecho de autor se reserva por defecto.
+
+Para pedir permiso: kevin.rincon1023@gmail.com
+
+
+==========================================================================
+ENGLISH
+==========================================================================
+
+TWO SEPARATE LAYERS — DO NOT CONFLATE THEM
+--------------------------------------------------------------------------
+
+This repository contains the SOFTWARE of a fitness training application:
+source code, database schema, interface copy, design and icons. All of it
+is the property of Kevin Rincón and is protected by copyright law.
+
+The TRAINING CONTENT the application displays when running — the
+exercises, the technique cues, the routines, the programs and the recipes
+— is NOT in this repository and is NOT owned by the software's copyright
+holder. That content is the work of the trainer who wrote it, belongs to
+him, and its use is governed by his decisions.
+
+The sample data that IS in this repository (supabase/04-ejemplo.sql) is
+invented for testing purposes. It is not any trainer's real content.
+
+PERMITTED
+--------------------------------------------------------------------------
+
+  • Using the application from its public address, installing it on your
+    own phone.
+
+  • Reading and studying the source code. It is public on purpose: so it
+    can be learned from, and so the handling of personal data can be
+    audited — which in an application holding health data is not a minor
+    detail.
+
+  • Quoting short excerpts with attribution, for example in an article, a
+    class or a review.
+
+NOT PERMITTED without the copyright holder's written authorization
+--------------------------------------------------------------------------
+
+  • Copying, reproducing or redistributing the code, in whole or in part,
+    beyond short quotation with attribution.
+
+  • Modifying the code or creating derivative works from it.
+
+  • Publishing the application, or a modified version of it, at another
+    address, app store or repository.
+
+  • Using the code for commercial purposes.
+
+A public repository does NOT mean the code is public domain or free to
+use. It is public by its author's choice, so that it can be read and
+audited. There is no open-source license here: absent a license granting
+otherwise, copyright is reserved by default.
+
+To request permission: kevin.rincon1023@gmail.com

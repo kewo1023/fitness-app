@@ -3,6 +3,7 @@ import Pantalla from '../components/Pantalla.jsx'
 import MisDatos from './MisDatos.jsx'
 import PanelEntrenador from './PanelEntrenador.jsx'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
+import { VERSION, avisoDerechos } from '../lib/version.js'
 import { LOGROS } from '../data/mock.js'
 
 /* El perfil. Ya con el usuario REAL de la base.
@@ -143,6 +144,22 @@ export default function Perfil ({ perfil, alSalir }) {
       <button type="button" className="enlace" onClick={alSalir}>
         Cerrar sesión
       </button>
+
+      {/* El pie. Va en Perfil porque es la pantalla de "lo mío": la
+          cuenta, los datos y ahora también qué versión se está usando.
+          No va en las otras cuatro — un aviso de derechos repetido cinco
+          veces se lee como desconfianza, y aquí lo va a ver quien lo
+          necesite.
+
+          La versión no es adorno: esta app se actualiza sola con cada
+          push y nadie ve nunca una pantalla de "actualizar", así que sin
+          este número no hay forma de saber qué está corriendo cuando
+          alguien reporte un fallo por WhatsApp. */}
+      <p className="pie">
+        {VERSION}
+        <br />
+        {avisoDerechos()}
+      </p>
     </Pantalla>
   )
 }

@@ -753,6 +753,56 @@ vea la cara, pide que no sea identificable. Quedó agregado a
 
 ---
 
+**2026-09-02 — Versión a la vista y aviso de derechos, con una separación
+que tips-app no necesitaba**
+
+La app ya muestra su versión (`v0.3.0`) y el aviso de derechos en Perfil,
+y el repositorio tiene `LICENSE`. El modelo es el de `tips-control-app`,
+pero con tres diferencias que no son de redacción:
+
+**1. La autoría aquí está partida en dos.** Tips Control es de un solo
+dueño. Este proyecto tiene dos, por acuerdo del 1/09: el software es de
+quien lo escribe, y el contenido deportivo —ejercicios, indicaciones,
+rutinas, recetas— es obra del entrenador y le pertenece a él. Un aviso de
+"todos los derechos reservados" a secas se lo atribuiría todo a una sola
+parte y contradiría el acuerdo. El aviso separa las dos capas, y hay una
+prueba que se cae si alguien "simplifica" el texto y borra la distinción.
+
+Además protege mejor: decir exactamente qué es lo que nadie puede copiar
+vale más que una frase amplia.
+
+**2. Va © y NUNCA ®.** El © es automático, protege la obra desde que
+existe y no requiere registrar nada. El ® afirma que hay una marca
+registrada ante una oficina de propiedad industrial, y usarlo sin ese
+registro es una declaración falsa. La app ni siquiera tiene nombre
+todavía. Hay una prueba que lo verifica.
+
+**3. La razón de que el repo sea público es distinta.** El LICENSE de
+tips-app dice que es público porque GitHub Pages en su plan gratuito solo
+publica desde repositorios públicos. Aquí eso es falso: esto está en
+Vercel y el repo es público por decisión, para que se pueda leer y
+auditar. Copiar esa frase habría metido una afirmación falsa en un
+archivo legal.
+
+**Cómo se numera.** El primer número es 0 mientras la app no esté
+terminada; el segundo es la última fase cerrada, así que `v0.3.x` es la
+Fase 3. El tercero sube con cada arreglo, **en el mismo commit que
+arregla algo**: una versión que no cambia cuando cambia el código hace
+creer que se probó algo que no se probó.
+
+**Por qué la versión importa más aquí que en otra app.** Esta se instala
+desde el navegador y se actualiza sola con cada push, así que nadie ve
+nunca una pantalla de "actualizar". Sin un número a la vista, cuando el
+entrenador escriba "no me funciona el botón de guardar" no hay forma de
+saber qué está corriendo.
+
+El año del aviso se calcula en hora de Bogotá, no se escribe a mano: un
+"© 2026" fijo se queda viejo el 1 de enero y nadie se acuerda de tocarlo.
+
+De 53 a 59 pruebas.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas.** La app está publicada, con base de datos real,

@@ -261,6 +261,12 @@ src/lib/ejercicios.js    El vocabulario (grupos, movimientos, equipos,
                          credenciales.
 src/lib/imagenes.js      La dirección pública de una foto. La base
                          guarda la RUTA, no la dirección completa.
+src/lib/version.js       La versión que se ve en Perfil y el aviso de
+                         derechos. El año se calcula en hora de Bogotá.
+LICENSE                  Todos los derechos reservados, en español e
+                         inglés. Separa el SOFTWARE (de quien lo
+                         escribe) del CONTENIDO DEPORTIVO (del
+                         entrenador). No es código abierto.
 src/components/
   Navegacion.jsx         La barra de abajo. Respeta var(--sab).
   Pantalla.jsx           El envoltorio con el encabezado. Lo usan las cinco
@@ -376,7 +382,7 @@ debe recortar:
 tiene acceso por cuenta, tres roles y la Ley 1581 implementada. Todo
 verificado contra producción: se creó un visitante desde la app, se
 comprobó qué ve, se guardaron y descargaron sus datos, y se eliminó la
-cuenta. 53 pruebas pasan.
+cuenta. 59 pruebas pasan.
 
 **En curso: Fase 3 — la biblioteca de ejercicios.** Ya existen el
 catálogo (pestaña Ejercicios, que reemplazó a Programas), el panel del
@@ -410,7 +416,7 @@ es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 
 1. Leer `BITACORA.md` (el estado y el siguiente paso están al final) y
    `CONTEXTO-LOCAL.md`.
-2. `npm install && npm run dev`. Verificar con `npm run test` que las **53
+2. `npm install && npm run dev`. Verificar con `npm run test` que las **59
    pruebas** siguen pasando antes de tocar nada.
 3. **Comprobar que `.env.local` existe.** No está en git y sin él la app
    no arranca: lanza un error explícito en la consola. Las dos variables
@@ -436,6 +442,29 @@ políticas están bien; no dice que el código sepa usarlas. El día que se
 cerró la Fase 2 las políticas estaban perfectas y la app llevaba cuatro
 bugs que solo se veían entrando con la cuenta de admin — la única que no
 se probó.
+
+## Derechos y versión
+
+El repo es público **por decisión**, no por una limitación de la
+plataforma: sirve para que se pueda leer y auditar cómo se tratan los
+datos personales. Eso NO lo vuelve de uso libre — sin licencia que lo
+permita, el derecho de autor se reserva por defecto. Las condiciones
+están en `LICENSE`.
+
+Dos reglas al escribir cualquier aviso de derechos en este proyecto:
+
+1. **Se separa el software del contenido deportivo.** El código, la base
+   de datos, el diseño y los textos de la interfaz son de quien los
+   escribe. Los ejercicios, las indicaciones, las rutinas y las recetas
+   son obra del entrenador. Son dos dueños con dominios distintos y así
+   se acordó el 1/09.
+2. **Va © y nunca ®.** El © es automático. El ® afirma un registro de
+   marca que no existe, y ponerlo sin ese registro es una declaración
+   falsa. Hay pruebas que verifican las dos reglas.
+
+**La versión** (`src/lib/version.js`) se muestra en Perfil. `v0.3.x` = la
+Fase 3 está cerrada. **Súbela en el mismo commit que arregla algo**, no
+después.
 
 ## Cosas ya decididas — no volver a proponerlas
 

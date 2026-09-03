@@ -913,3 +913,20 @@ button {
    cada una arrastre el margen que trae un <p> por defecto. */
 .aviso p { margin: 0; }
 .aviso p + p { margin-top: 6px; }
+
+/* --- El pie de Perfil: versión y derechos -----------------------------
+   Apagado a propósito. Es información que tiene que estar y que casi
+   nadie necesita leer: quien la busca la encuentra, y a quien no le
+   importa no le compite con nada.
+
+   Centrado y con line-height holgado porque son dos renglones cortos, y
+   con margen arriba para que no se pegue al botón de cerrar sesión — que
+   es lo último que alguien quiere tocar por error. */
+.pie {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--tinta-tenue);
+  text-wrap: balance;   /* parte los renglones parejos si se envuelve */
+}
