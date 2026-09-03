@@ -55,6 +55,15 @@
   --acento-suave: #E3E7D8;   /* relleno de la píldora activa */
   --sobre-acento: #FAF8F4;
 
+  /* --- La tinta de los dibujos --------------------------------------
+     Los dibujos de ejercicios y recetas se pintan con este color (ver
+     .lamina en app.css). Va aparte de --tinta a propósito: el texto
+     quiere el máximo contraste y un dibujo de líneas finas a máximo
+     contraste se ve duro y le roba atención al nombre, que es lo que
+     de verdad se lee. Un punto más suave que la tinta, y encima del
+     hueco --superficie-2 sigue leyéndose de sobra. */
+  --lamina:       #443D35;
+
   /* --- Señal: SOLO la racha ----------------------------------------
      Cobre tostado. Un solo lugar donde la app grita; si aparece en tres
      sitios deja de significar algo. */
@@ -124,6 +133,8 @@
   --acento-fuerte:#B0C692;
   --acento-suave: #262D1C;
   --sobre-acento: #14180E;
+
+  --lamina:       #BDB5A9;
 
   --senal:        #D9915C;
   --senal-suave:  #2C1D13;

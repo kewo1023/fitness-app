@@ -55,6 +55,36 @@ público ni de uso libre. Es público por decisión de su autor, para que se
 pueda leer y auditar. No hay ninguna licencia de código abierto aquí: sin
 una licencia que lo permita, el derecho de autor se reserva por defecto.
 
+MATERIAL DE TERCEROS, QUE NO ESTÁ CUBIERTO POR LO ANTERIOR
+--------------------------------------------------------------------------
+
+El "todos los derechos reservados" de arriba cubre lo que escribió el
+titular. NO puede cubrir material ajeno, y aquí hay material ajeno:
+
+  public/ilustraciones/ejercicios/*.svg
+
+Son las ilustraciones de los ejercicios. Son obra de Everkinetic
+(https://github.com/everkinetic/data), normalizadas por Workout Guide de
+Bryl Lim (https://github.com/bryllim/workout-guide), y están bajo la
+licencia Creative Commons Atribución-CompartirIgual 4.0 Internacional
+(CC BY-SA 4.0): https://creativecommons.org/licenses/by-sa/4.0/deed.es
+
+Se modificaron: se les cambió el color —venían blancas y sobre fondo
+blanco no se ven— y se les redondearon las coordenadas para que pesen
+alrededor de un tercio menos.
+
+Por la cláusula de CompartirIgual, ESOS ARCHIVOS MODIFICADOS también
+están bajo CC BY-SA 4.0 y cualquiera puede usarlos con esa licencia, sin
+pedir permiso al titular de este repositorio.
+
+Eso NO alcanza al resto del proyecto. CompartirIgual se aplica a las
+adaptaciones de la obra, no al programa que la muestra: el código, la
+base de datos y el diseño siguen con todos los derechos reservados.
+
+Las ilustraciones de las recetas (public/ilustraciones/recetas/*.svg) NO
+son de terceros: se dibujaron para esta aplicación y quedan cubiertas por
+el "todos los derechos reservados" de arriba.
+
 Para pedir permiso: kevin.rincon1023@gmail.com
 
 
@@ -109,5 +139,35 @@ A public repository does NOT mean the code is public domain or free to
 use. It is public by its author's choice, so that it can be read and
 audited. There is no open-source license here: absent a license granting
 otherwise, copyright is reserved by default.
+
+THIRD-PARTY MATERIAL, NOT COVERED BY THE ABOVE
+--------------------------------------------------------------------------
+
+The "all rights reserved" above covers what the holder wrote. It cannot
+cover third-party material, and this repository contains some:
+
+  public/ilustraciones/ejercicios/*.svg
+
+These are the exercise illustrations. They are the work of Everkinetic
+(https://github.com/everkinetic/data), normalized by Bryl Lim's Workout
+Guide (https://github.com/bryllim/workout-guide), and are licensed under
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0):
+https://creativecommons.org/licenses/by-sa/4.0/
+
+They were modified: recolored — they ship white, and are invisible on a
+white background — and their path coordinates were rounded, making them
+about a third smaller.
+
+Under the ShareAlike clause, THOSE MODIFIED FILES are likewise licensed
+under CC BY-SA 4.0 and may be used by anyone under that license, without
+permission from the holder of this repository.
+
+That does NOT extend to the rest of the project. ShareAlike applies to
+adaptations of the work, not to the program that displays it: the code,
+the database and the design remain all rights reserved.
+
+The recipe illustrations (public/ilustraciones/recetas/*.svg) are NOT
+third-party material: they were drawn for this application and fall under
+the "all rights reserved" above.
 
 To request permission: kevin.rincon1023@gmail.com

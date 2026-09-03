@@ -3,6 +3,8 @@ import Pantalla from '../components/Pantalla.jsx'
 import { supabase } from '../lib/supabase.js'
 import { GRUPOS, EQUIPOS, etiqueta } from '../lib/ejercicios.js'
 import { urlDeImagen } from '../lib/imagenes.js'
+import { ilustracionDeEjercicio } from '../lib/ilustraciones.js'
+import Ilustracion from '../components/Ilustracion.jsx'
 
 /* =====================================================================
    El catálogo de ejercicios. La primera pantalla que lo muestra.
@@ -236,16 +238,28 @@ function Filtro ({ titulo, valores, activo, alElegir }) {
 
 function Tarjeta ({ ejercicio: e, alAbrir }) {
   const imagen = urlDeImagen(e.imagen_url)
+  const lamina = ilustracionDeEjercicio(e.nombre)
 
   return (
     <button type="button" className="tarjeta tarjeta-boton" onClick={alAbrir}>
-      {/* Sin imagen se pinta el mismo rectángulo hundido que en Recetas.
-          Se decidió NO poner un icono ni la palabra "sin foto": un hueco
-          neutro se lee como "todavía no", y un icono de imagen rota se
-          lee como que la app falló. */}
+      {/* TRES NIVELES, Y EL ORDEN ES LA DECISIÓN:
+
+          1. La FOTO del entrenador, si la subió. Siempre gana. El
+             dibujo es relleno mientras él arma su biblioteca, no un
+             reemplazo, así que el día que suba la foto de este
+             ejercicio el dibujo desaparece solo.
+          2. El DIBUJO, si este ejercicio tiene uno.
+          3. El hueco neutro de siempre.
+
+          El tercero sigue existiendo y va a seguir apareciendo: los
+          ejercicios que el entrenador cree no van a tener dibujo hasta
+          que se agreguen a la tabla de ilustraciones.js. Se decidió NO
+          poner ahí un icono ni la palabra "sin foto": un hueco neutro
+          se lee como "todavía no", y un icono de imagen rota se lee
+          como que la app falló. */}
       {imagen
         ? <img className="foto" src={imagen} alt="" loading="lazy" />
-        : <div className="foto-vacia" aria-hidden="true" />}
+        : <Ilustracion ruta={lamina} />}
 
       <h2 className="chico">{e.nombre}</h2>
       <p className="pastillas">
@@ -261,6 +275,7 @@ function Tarjeta ({ ejercicio: e, alAbrir }) {
  * sitio; el día que se use, se saca a src/components/. */
 function Detalle ({ ejercicio: e, alVolver }) {
   const imagen = urlDeImagen(e.imagen_url)
+  const lamina = ilustracionDeEjercicio(e.nombre)
 
   return (
     <Pantalla
@@ -271,9 +286,14 @@ function Detalle ({ ejercicio: e, alVolver }) {
         </button>
       }
     >
+      {/* Mismo orden que en la tarjeta. La diferencia es que aquí el
+          dibujo SÍ lleva etiqueta: en la tarjeta el nombre va pegado
+          debajo y repetirlo sería ruido para quien usa lector de
+          pantalla, pero aquí es la imagen principal de la pantalla. */}
       {imagen
         ? <img className="foto foto-grande" src={imagen} alt={e.nombre} />
-        : <div className="foto-vacia foto-grande" aria-hidden="true" />}
+        : <Ilustracion ruta={lamina} clase="foto-grande"
+                       alt={`Ilustración de ${e.nombre}`} />}
 
       <p className="pastillas">
         <span className="pastilla">{etiqueta(e.grupo)}</span>

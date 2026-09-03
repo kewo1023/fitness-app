@@ -210,6 +210,20 @@ No son preferencias. Son las que sostienen el proyecto:
     entero, y es la causa número uno de que una web se sienta lenta en un
     celular.
 
+15. **Las ilustraciones se pintan con `mask-image`, nunca con `<img>`.**
+    Los archivos vienen blancos sobre transparente: dentro de un `<img>`
+    el navegador los pinta en su propio mundo, el CSS de afuera no entra,
+    y se verían blancos sobre el fondo blanco de la app. Usados como
+    plantilla, el archivo solo decide POR DÓNDE se pinta y el color sale
+    de `--lamina` en `theme.css` — que es lo que cumple la regla 1 y lo
+    que hace que el MISMO archivo sirva en claro y en oscuro sin
+    duplicar nada.
+
+    Y el orden al mostrar un ejercicio no se toca: **foto del entrenador
+    → dibujo → hueco neutro.** El dibujo es relleno mientras él arma su
+    biblioteca, no un reemplazo. Si algún día el dibujo le gana a la
+    foto, se rompió el acuerdo: el contenido es dominio de él.
+
 ## Mapa del código
 
 ```
@@ -261,6 +275,26 @@ src/lib/ejercicios.js    El vocabulario (grupos, movimientos, equipos,
                          credenciales.
 src/lib/imagenes.js      La dirección pública de una foto. La base
                          guarda la RUTA, no la dirección completa.
+src/lib/ilustraciones.js La tabla de qué dibujo le toca a cada ejercicio
+                         y a cada receta, escrita A MANO. No se calcula
+                         traduciendo: el vocabulario de gimnasio en
+                         español no es la traducción del inglés.
+                         También vive aquí el crédito que exige la
+                         licencia. NO toca la base, igual que
+                         ejercicios.js y por la misma razón.
+src/components/Ilustracion.jsx
+                         Pinta el dibujo con mask-image, no con <img>:
+                         los archivos vienen blancos y hay que teñirlos
+                         desde el CSS. Ver la regla 15.
+src/sections/Creditos.jsx
+                         La atribución de CC BY-SA 4.0. Se entra desde
+                         Perfil. No es cortesía: sin ella el uso de las
+                         ilustraciones es una infracción, y el repo es
+                         público.
+public/ilustraciones/    30 láminas de ejercicios (de terceros,
+                         CC BY-SA 4.0) y 4 marcas de recetas (propias).
+                         Las 30 pesan 135 KB en gzip: lo mismo que UNA
+                         foto comprimida.
 src/lib/version.js       La versión que se ve en Perfil y el aviso de
                          derechos. El año se calcula en hora de Bogotá.
 LICENSE                  Todos los derechos reservados, en español e
@@ -382,14 +416,15 @@ debe recortar:
 tiene acceso por cuenta, tres roles y la Ley 1581 implementada. Todo
 verificado contra producción: se creó un visitante desde la app, se
 comprobó qué ve, se guardaron y descargaron sus datos, y se eliminó la
-cuenta. 59 pruebas pasan.
+cuenta. 71 pruebas pasan.
 
 **En curso: Fase 3 — la biblioteca de ejercicios.** Ya existen el
 catálogo (pestaña Ejercicios, que reemplazó a Programas), el panel del
-entrenador para crear/editar/archivar, y las políticas del bucket en
-`05-storage.sql`. **Faltan la carga masiva desde hoja de cálculo y las
-imágenes**, y para eso hace falta crear el bucket a mano y conseguir la
-hoja del entrenador: los dos pasos están en `PASOS-FASE-3.md`.
+entrenador para crear/editar/archivar, las políticas del bucket en
+`05-storage.sql`, y desde el 2/09 **las ilustraciones**: los 30
+ejercicios de ejemplo y las recetas ya no muestran un hueco gris.
+**Falta la carga masiva desde hoja de cálculo**, y para eso hace falta
+conseguir la hoja del entrenador: está en `PASOS-FASE-3.md`.
 
 **Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
 Perfil, Recetas y Ejercicios son reales. `Hoy` tiene el saludo real y el
@@ -416,7 +451,7 @@ es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 
 1. Leer `BITACORA.md` (el estado y el siguiente paso están al final) y
    `CONTEXTO-LOCAL.md`.
-2. `npm install && npm run dev`. Verificar con `npm run test` que las **59
+2. `npm install && npm run dev`. Verificar con `npm run test` que las **71
    pruebas** siguen pasando antes de tocar nada.
 3. **Comprobar que `.env.local` existe.** No está en git y sin él la app
    no arranca: lanza un error explícito en la consola. Las dos variables

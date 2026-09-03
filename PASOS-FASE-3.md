@@ -22,6 +22,19 @@ cálculo del entrenador.
 | Carga masiva desde hoja de cálculo | la hoja del entrenador | ~2,5 h |
 | Compresión y subida de imágenes | tener imágenes | ~2 h |
 
+**Las ilustraciones ya entraron (2/09).** El entrenador las aprobó, así
+que los 30 ejercicios de ejemplo y las recetas ya se ven con dibujo en
+vez de un hueco gris. Eso NO reemplaza sus fotos: **la foto que él suba
+siempre gana**, y el día que suba la de un ejercicio el dibujo
+desaparece solo. Sirve para que la app no se vea vacía mientras él
+arma su biblioteca, y para quitarle la presión de tener 150 fotos
+listas el primer día. Está contado en `BITACORA.md`.
+
+Ojo con una consecuencia: los ejercicios que él CREE desde el panel no
+van a tener dibujo hasta que se agreguen a mano a
+`src/lib/ilustraciones.js`. No es un error, es el caso normal, y la
+tarjeta se ve como se veía antes.
+
 ---
 
 ## LO ÚNICO QUE TIENES QUE HACER TÚ

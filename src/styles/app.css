@@ -866,6 +866,71 @@ button {
 
 .foto-grande { aspect-ratio: 3 / 2; width: 100%; }
 
+
+/* --- El dibujo del ejercicio o de la receta ---------------------------
+   Se apoya en .foto-vacia para la caja (misma proporción, mismo radio,
+   mismo fondo hundido). No se repiten esas medidas aquí a propósito: el
+   día que cambie el tamaño de la tarjeta, cambia en un solo sitio y la
+   foto, el hueco y el dibujo siguen midiendo lo mismo. Si se separan,
+   la rejilla queda a saltos en cuanto se mezclen los tres.
+
+   EL DIBUJO NO ES UNA IMAGEN, ES UNA PLANTILLA. Los archivos vienen
+   blancos sobre transparente y sobre el fondo de la app no se verían.
+   Con mask-image el archivo solo decide POR DÓNDE se pinta, y el color
+   lo pone background-color, que sale de una variable como manda la
+   regla 1. De ahí que el mismo archivo sirva en claro y en oscuro.
+
+   Es un stencil: la lámina recortada la da el archivo, la pintura la
+   elige la hoja de estilos. */
+.lamina-caja {
+  display: grid;
+  place-items: center;
+  /* El dibujo no llega hasta el borde: respira, y así no se lee como
+     una foto mal recortada. */
+  padding: 6%;
+  overflow: hidden;
+}
+
+.lamina {
+  width: 100%;
+  height: 100%;
+  background-color: var(--lamina);
+  /* La RUTA entra como --lamina-img desde el componente, porque cambia
+     en cada tarjeta. El COLOR es --lamina, de theme.css. Son dos cosas
+     distintas y por eso llevan dos nombres. */
+  -webkit-mask-image: var(--lamina-img);
+          mask-image: var(--lamina-img);
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+          mask-position: center;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+}
+
+/* Las de RECETAS son marcas de categoría dibujadas para esta app, no
+   fotos del plato, y por eso se pintan pequeñas y centradas. Estiradas
+   a tamaño de foto se leerían como una foto que no cargó, que es
+   exactamente el efecto que se quiere evitar. Van además más apagadas:
+   marcan el momento del día, no compiten con el nombre de la receta. */
+.lamina-marca {
+  width: 46%;
+  height: 46%;
+  background-color: var(--tinta-tenue);
+}
+
+/* SI EL NAVEGADOR NO SABE ENMASCARAR se esconde el dibujo y queda el
+   hueco neutro de siempre. Es la misma decisión que ya estaba tomada
+   para los ejercicios sin foto: un hueco se lee como "todavía no", un
+   icono roto se lee como que la app falló.
+
+   Se pregunta por la versión con prefijo además de la estándar porque
+   Chrome de Android la soportó con -webkit- mucho antes que sin él, y
+   ese es el navegador del 83% del público. */
+@supports not ((mask-size: contain) or (-webkit-mask-size: contain)) {
+  .lamina { display: none; }
+}
+
 /* --- Los dos botones de cada fila del panel --------------------------- */
 .fila-acciones {
   display: flex;

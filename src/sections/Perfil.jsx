@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Pantalla from '../components/Pantalla.jsx'
 import MisDatos from './MisDatos.jsx'
 import PanelEntrenador from './PanelEntrenador.jsx'
+import Creditos from './Creditos.jsx'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
 import { VERSION, avisoDerechos } from '../lib/version.js'
 import { LOGROS } from '../data/mock.js'
@@ -26,6 +27,11 @@ const NOMBRE_DEL_ROL = {
 export default function Perfil ({ perfil, alSalir }) {
   const [viendoDatos, setViendoDatos] = useState(false)
   const [viendoPanel, setViendoPanel] = useState(false)
+  const [viendoCreditos, setViendoCreditos] = useState(false)
+
+  if (viendoCreditos) {
+    return <Creditos alVolver={() => setViendoCreditos(false)} />
+  }
 
   if (viendoDatos) {
     return <MisDatos perfil={perfil}
@@ -138,6 +144,17 @@ export default function Perfil ({ perfil, alSalir }) {
             <small>Recordatorio del entrenamiento del día</small>
           </span>
           <span className="estado">Fase 7</span>
+        </li>
+        {/* Los créditos NO son un adorno legal escondido: la licencia de
+            las ilustraciones exige que la atribución sea visible, así que
+            tiene que poderse llegar aquí sin saber que existe. */}
+        <li className="fila">
+          <span className="fila-datos">
+            <strong>Créditos</strong>
+            <small>De dónde salen las ilustraciones</small>
+          </span>
+          <button type="button" className="enlace enlace-fila"
+                  onClick={() => setViendoCreditos(true)}>Abrir</button>
         </li>
       </ul>
 

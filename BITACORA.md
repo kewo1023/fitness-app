@@ -900,6 +900,118 @@ Para recetas, Pexels sin más.
 
 ---
 
+---
+
+**2026-09-02 — Las ilustraciones ENTRAN. Aprobadas por el entrenador**
+
+Se cierra la pregunta abierta de esta misma fecha ("Imágenes libres —
+evaluado, NO decidido"). El entrenador dio luz verde. Van como RELLENO,
+no como reemplazo: la foto que él suba siempre gana y el dibujo
+desaparece solo.
+
+**Cinco hallazgos técnicos que no estaban en la evaluación**, porque
+salieron de bajar los archivos y mirarlos:
+
+1. **Son line art, no siluetas.** Dibujo de contorno, se lee bien a
+   tamaño de tarjeta y también a tamaño de detalle.
+2. **Vienen blancas sobre transparente**, o sea INVISIBLES sobre el
+   fondo blanco de la app. Recolorearlas no es una opción estética, es
+   obligatorio para que se vean.
+3. **Cada figura es UN solo `<path>` sin color propio.** Eso permite
+   pintarlas desde el CSS, y de ahí sale la decisión de abajo.
+4. **No tienen cara.** Refuerza justo el argumento por el que se
+   eligieron: no hay a quién identificar.
+5. **Los tres fotogramas están numerados al revés de lo que uno
+   supone:** en la sentadilla goblet el frame-1 es la posición ABAJO y
+   el frame-3 es de pie. Si algún día se muestran dos poses, ojo con
+   esto.
+
+**LA DECISIÓN TÉCNICA QUE MANDA: se pintan con `mask-image`, no con
+`<img>`.** El archivo se usa como PLANTILLA y el color lo pone
+`background-color` desde `theme.css` (variable `--lamina`). Un `<img>`
+se pinta en su propio mundo y el CSS de afuera no entra: se verían
+blancas sobre blanco.
+
+Lo que se gana con eso, y es más de lo que parece:
+
+- **El mismo archivo sirve en tema claro y en oscuro**, sin duplicar
+  nada. Una foto en tema oscuro se queda como un rectángulo blanco
+  pegado en la pantalla; el dibujo se adapta.
+- **No se rompe la regla 1**: el color sale de una variable, no está
+  dentro del archivo.
+- Si el navegador no sabe enmascarar, un `@supports` esconde el dibujo y
+  queda el hueco neutro de siempre. Nunca un icono roto.
+
+**Por eso viven en `public/`, no en Supabase Storage.** Tres razones y
+ninguna es preferencia: Storage sirve imágenes que no se dejan teñir;
+Storage es donde vive lo del ENTRENADOR y mezclar ahí material de
+terceros invita a que alguien borre lo que no debe; y desde `public/`
+entran en la caché del navegador sin gastar tráfico de Supabase.
+
+**El peso, que era la duda razonable.** Las 30 pesan **135 KB en gzip,
+4,5 KB cada una** — lo mismo que UNA sola foto comprimida al objetivo
+del proyecto. Se les redondearon las coordenadas a un decimal, que
+quita un 33%. El bundle de JavaScript no creció ni un byte: los SVG se
+sirven aparte.
+
+**Sobre el redondeo, una trampa que costó un intento.** El primer
+optimizador también quitaba separadores para ahorrar más, y convertía
+`1 .5` (dos números) en `1.5` (uno). Los dibujos salían como manchas.
+Se rehízo tokenizando el trazo y emitiendo separadores siempre válidos:
+menos ahorro agresivo, imposible cambiar un número. **Lo cazó una
+prueba visual, no una prueba automática** — el código no fallaba, solo
+dibujaba mal.
+
+**El emparejado: los 30 ejercicios de `04-ejemplo.sql` tienen lámina.**
+Está escrito a mano en `src/lib/ilustraciones.js`, con la llave pasada
+por `claveNombre()`, la misma que usa la carga masiva. NO se calcula, y
+la razón está en el comentario del archivo: el vocabulario de gimnasio
+en español no es la traducción del inglés. "Pájaros con banda" no es
+"birds with band", es `rear-delt-fly`. "Fondos entre bancos" no es
+"bottoms between benches", es `bench-dip`.
+
+Dos emparejados imperfectos que se dejan a propósito, con el movimiento
+correcto y el implemento distinto: "Pájaros con banda" (aparece con
+mancuernas) y "Elevación de talones" (sin peso). Si al entrenador le
+molestan, se quita la línea y esa tarjeta vuelve al hueco.
+
+**RECETAS: problema distinto, solución distinta.** No hay biblioteca
+libre de dibujos de comida que sirva, y una foto por receta miente el
+día que cambien los ingredientes. Se dibujaron **cuatro marcas propias**
+—desayuno, almuerzo, cena, snack— colgadas de la columna `momento`, que
+la tabla ya tenía. Cuatro archivos cubren todas las recetas que existan.
+Al ser de autoría propia no deben atribución ni arrastran licencia
+ajena. Se pintan pequeñas y apagadas a propósito: son marca de
+categoría, no foto del plato. Un icono estirado a tamaño de foto se lee
+como una foto que no cargó.
+
+**Lo que costó decir que sí, que era lo anunciado:**
+
+- **Pantalla de créditos** (`src/sections/Creditos.jsx`), colgada de
+  Perfil. No es cortesía: CC BY-SA 4.0 exige nombrar al autor, enlazar
+  la licencia y declarar los cambios. Sin eso el uso es una infracción,
+  y este repo es público.
+- **Sección de terceros en `LICENSE`**, en español y en inglés. Dice
+  que esos SVG modificados quedan bajo CC BY-SA 4.0 y que cualquiera
+  puede usarlos con esa licencia — y que eso **NO alcanza al resto del
+  proyecto**: el share-alike aplica a las adaptaciones de la obra, no al
+  programa que la muestra.
+- **Tres pruebas de crédito** que se caen si alguien "simplifica" la
+  atribución, en la misma línea que las del consentimiento y las del ©.
+
+**De 59 a 71 pruebas.** Las nuevas van contra el disco a propósito: una
+tabla que apunta a un archivo borrado no falla al compilar ni al abrir
+la app, el dibujo simplemente no aparece. Es el peor tipo de error, el
+que no se nota. También se verifica que no sobre ningún SVG sin usar —
+peso muerto que igual se descarga.
+
+Versión a `v0.3.1`.
+
+**Lo que NO se verificó y hay que decir:** las pantallas se comprobaron
+renderizando el CSS real con el markup real, en claro y en oscuro, pero
+**no entrando a la app con una cuenta**. Falta el ritual del 2/09 —
+entrar con cada rol — y sigue faltando el Android real.
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -1021,8 +1133,6 @@ filas dice que las políticas están bien, no que el código sepa usarlas.
 
 ## Preguntas abiertas
 
-- **¿Ilustraciones libres o fotos del entrenador?** Investigado el 2/09,
-  sin decidir. Es contenido, así que lo decide él.
 - **Nombre de la app.** Provisional: "Entrena". El repo va como `fitness-app`
   y renombrarlo después en GitHub no rompe nada.
 - **El artículo 12 del Decreto 1377** (datos de menores). Sin verificar.
@@ -1036,4 +1146,5 @@ filas dice que las políticas están bien, no que el código sepa usarlas.
 
 Resueltas: clientes (6 a 15 para arrancar, sin techo), videos (arranca con
 imágenes), certificación de entrenador (en regla), alojar en EE. UU.
-(legal, Circular 005 de 2017).
+(legal, Circular 005 de 2017), **ilustraciones libres (sí, como relleno —
+aprobadas por el entrenador el 2/09)**.

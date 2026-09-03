@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import Pantalla from '../components/Pantalla.jsx'
 import { supabase } from '../lib/supabase.js'
+import { ilustracionDeMomento } from '../lib/ilustraciones.js'
+import Ilustracion from '../components/Ilustracion.jsx'
 
 /* Recetas y hábitos. Ya con datos REALES de la base.
  *
@@ -57,8 +59,21 @@ export default function Recetas ({ perfil }) {
       <div className="rejilla">
         {recetas.map(r => (
           <article key={r.id} className="tarjeta">
-            {/* En la Fase 6 aquí va la foto del plato. */}
-            <div className="foto-vacia" aria-hidden="true" />
+            {/* En la Fase 6 aquí va la foto del plato —la columna
+                foto_url ya existe, pero todavía no hay bucket donde
+                guardarla— y cuando llegue gana, igual que en
+                Ejercicios. La marca de abajo es relleno mientras tanto.
+
+                MIENTRAS TANTO NO ES LA FOTO DE LA RECETA, es una marca
+                del momento del día —desayuno, almuerzo, cena, snack—,
+                que es una columna que la tabla ya tiene. Cuatro dibujos
+                cubren todas las recetas que existan, y ninguno miente
+                el día que el entrenador cambie los ingredientes.
+
+                Son de autoría propia, dibujados para esta app, así que
+                no deben atribución a nadie. Los de ejercicios sí, y por
+                eso están en la pantalla de créditos y estos no. */}
+            <Ilustracion ruta={ilustracionDeMomento(r.momento)} marca />
             <h2 className="chico">{r.nombre}</h2>
             <p className="pastillas">
               {r.momento && <span className="pastilla">{r.momento}</span>}
