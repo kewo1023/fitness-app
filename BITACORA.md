@@ -827,11 +827,85 @@ simplemente no aplican a nada. Parece que funcionó.
 
 ---
 
+**2026-09-02 — Imágenes libres: evaluado, NO decidido todavía**
+
+Pregunta: ¿se pueden meter imágenes libres de derechos para ejercicios y
+recetas, en vez de esperar a que el entrenador las tome? Se investigó
+contra las fuentes, no de memoria. **La decisión es de Kev y del
+entrenador; aquí queda el hallazgo.**
+
+**El hallazgo que ordena todo el problema:** una foto de ejercicio es,
+por definición, la foto de una persona. Una foto de receta es la foto de
+un plato. Son dos problemas distintos y no se resuelven igual.
+
+**RECETAS — resuelto y barato.** Pexels y Unsplash sirven. La comida no
+es nadie: no hay derechos de imagen de por medio. Pexels no exige
+atribución; Unsplash tampoco. Prohíben revender la foto sin modificar y
+dar a entender que alguien te patrocina, que no es el caso.
+
+**EJERCICIOS — las fotos de banco de imágenes son un problema, y no de
+copyright.** Una licencia de derechos de autor NO es una autorización de
+la persona retratada. Unsplash lo dice explícitamente: no verifica
+autorizaciones de modelo, y la responsabilidad de determinar si hace
+falta un permiso adicional recae "solely and exclusively" en quien usa
+la foto. O sea que la foto es legal de copiar y aun así la persona
+retratada puede reclamar.
+
+Con datos de salud, dos dueños y un público colombiano, ese no es el
+riesgo que conviene asumir por una imagen decorativa.
+
+**La salida son ILUSTRACIONES, no fotos.** Un dibujo no es la foto de
+nadie: el problema desaparece de raíz, no se mitiga.
+
+**Fuentes revisadas, con su veredicto:**
+
+| Fuente | Licencia | Veredicto |
+|---|---|---|
+| Everkinetic (`everkinetic/data`) | CC-BY-SA 4.0 | **Sí.** Ilustraciones, no fotos. |
+| `bryllim/workout-guide` | assets CC-BY-SA 4.0, código MIT | **Sí.** Es Everkinetic normalizado: 302 ejercicios, 906 SVG de 512 px, 3 fotogramas cada uno. |
+| wger (`wger.de`) | CC-BY-SA, por ejercicio | **No, en la práctica.** Los campos `license_author` y `license_title` de su API vienen VACÍOS, así que no hay a quién atribuir. Se debe una atribución que no se puede cumplir. |
+| `yuhonas/free-exercise-db` | dice "public domain" | **No.** Hay issues abiertos desde 2023 (#2, #12, #13) preguntando de dónde salieron las imágenes, sin responder. Origen desconocido no es dominio público. |
+
+**Por qué SVG importa aquí más que en otro proyecto.** El 1/09 se
+descartó Google Fonts porque una fuente son 30–100 KB que el cliente
+descarga con datos móviles antes de ver la primera letra. Un SVG de una
+figura pesa unos pocos KB contra los ~150 KB de una foto comprimida.
+Con 150 ejercicios la diferencia no es estética.
+
+**El costo, dicho completo, porque no es gratis:**
+
+1. **Atribución obligatoria y visible.** CC-BY-SA 4.0 exige nombrar a
+   Everkinetic. Hace falta una pantalla de créditos.
+2. **Choca con el `LICENSE` que se escribió hoy.** Dice "todos los
+   derechos reservados", y eso no puede cubrir material de terceros bajo
+   CC-BY-SA. Habría que agregar una sección de activos de terceros y un
+   archivo de créditos. **Esto NO afecta al código:** el share-alike
+   alcanza a las adaptaciones de la imagen, no a la app que la muestra.
+   Si se le cambia el color a un SVG, ese SVG modificado queda CC-BY-SA.
+3. **Emparejar es trabajo manual.** Los 302 nombres están en inglés y los
+   del entrenador van a estar en español. No hay emparejado automático
+   fiable. Estimado: 2 a 3 h para 150 ejercicios, y es trabajo de una
+   persona, no de código.
+4. **Es contenido, y el contenido es dominio del entrenador.** Que sus
+   clientes vean un dibujo genérico en vez de una demostración suya
+   afecta cómo lo perciben a él. Esa decisión no se toma desde aquí.
+
+**Recomendación:** ilustraciones de Everkinetic como RELLENO mientras él
+construye su propia biblioteca de fotos, no como reemplazo. Encaja con la
+decisión del 1/09 de que él "arranca con imágenes y va reemplazando poco
+a poco", y le quita la presión de tener 150 fotos listas el primer día.
+Para recetas, Pexels sin más.
+
+**Pendiente de decidir con el entrenador antes de construir nada.**
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
-**Fases 1 y 2 cerradas.** La app está publicada, con base de datos real,
-acceso por cuenta y tres roles funcionando. Todo verificado contra
-producción, no en local con datos falsos.
+**Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
+base de datos real, acceso por cuenta, tres roles y la biblioteca de
+ejercicios funcionando. Todo verificado contra producción, no en local
+con datos falsos.
 
 ### Lo que existe y funciona
 
@@ -848,8 +922,14 @@ producción, no en local con datos falsos.
   el "no" se guarda igual que el "sí", y los tres derechos —conocer,
   actualizar, suprimir— son botones que funcionan. El borrado en cascada
   se probó de verdad.
-- **32 pruebas** (`npm run test`). Seis existen para que nadie vuelva
-  ilegal el formulario "simplificándolo".
+- **El catálogo de ejercicios y el panel del entrenador** (Fase 3).
+  Crear, editar y archivar sin depender del desarrollo.
+- **El bucket de imágenes protegido:** el admin sube, un cliente recibe
+  `42501` si lo intenta. Verificado suplantando los dos roles.
+- **59 pruebas** (`npm run test`). Seis existen para que nadie vuelva
+  ilegal el formulario "simplificándolo", y dos para que nadie ponga un
+  ® donde va un ©.
+- **La versión a la vista** (`v0.3.0`) y el aviso de derechos en Perfil.
 - **Botón de tema** claro/oscuro, con la elección guardada en el celular.
 - En línea en `https://fitness-app-ivory-mu.vercel.app`. Cada push a
   `main` republica sola.
@@ -859,15 +939,17 @@ producción, no en local con datos falsos.
 | Pantalla | Estado |
 |---|---|
 | Acceso, Activar, Mis datos | reales |
+| Ejercicios (catálogo) y el panel del entrenador | reales |
 | Perfil | real (nombre, rol, XP) — los logros siguen de mock |
 | Recetas | real |
 | Hoy | medio: el saludo es real, la rutina y la racha son mock |
-| Programas, Progreso | mock |
+| Progreso | mock |
 
 `src/data/mock.js` **no se borra de golpe: se encoge.** La regla es que
 cada vez que una pantalla se conecta, su parte se borra el mismo día. Ya
-se fue `RECETAS`. Faltan `RUTINA_DE_HOY` y `PROGRAMAS` (Fase 4),
-`HISTORIAL` y `LOGROS` (Fase 5), `USUARIO` y `META_SEMANAL` (Fase 4).
+se fueron `RECETAS` (Fase 2) y `PROGRAMAS` (Fase 3 — ese no se conectó,
+se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
+4), `HISTORIAL` y `LOGROS` (Fase 5), `USUARIO` y `META_SEMANAL` (Fase 4).
 
 ### Pendientes que vienen de atrás
 
@@ -876,7 +958,8 @@ se fue `RECETAS`. Faltan `RUTINA_DE_HOY` y `PROGRAMAS` (Fase 4),
    más que mirar que antes: los formularios, el teclado tapando el botón
    de entrar, y si el vidrio de la barra va a tirones. Si va mal, se sube
    el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`.
-   **No bloquea la Fase 3.**
+   **Sigue sin hacerse, y ahora hay más que mirar:** el catálogo con dos
+   filas de filtros que se deslizan de lado y una rejilla de tarjetas.
 
 2. **La puerta de edad.** El artículo 7 de la Ley 1581 prohíbe tratar
    datos de niños, niñas y adolescentes salvo los de naturaleza pública.
@@ -892,65 +975,54 @@ se fue `RECETAS`. Faltan `RUTINA_DE_HOY` y `PROGRAMAS` (Fase 4),
 
 ---
 
-## Siguiente paso — Fase 3: la biblioteca de ejercicios
+## Siguiente paso — terminar la Fase 3
 
-**Objetivo: que el entrenador cargue sus 80 a 150 ejercicios sin
-depender del desarrollo.** Hoy la biblioteca tiene 30 ejercicios de
-ejemplo, inventados; él tiene los suyos y nadie más los puede meter.
+**BLOQUEADA POR UNA SOLA COSA: la hoja de cálculo del entrenador.** Sin
+datos que cargar, la carga masiva no se puede probar de verdad, y probar
+con datos inventados es probar el código contra sí mismo.
 
-Estimado: **~10 h.** Bajó de 12 porque Bunny está aplazado y se arranca
-con imágenes.
+Lo que Kev tiene que conseguir está en `PASOS-FASE-3.md`, con las
+columnas y con lo que hay que decirle a él sobre las fotos.
 
-### Lo que hay que construir
+### Hecho y en producción (2/09)
 
-1. **Panel de administración** (visible solo con `rol = 'admin'`). Es la
-   primera pantalla que existe solo para el entrenador. Crear, editar y
-   archivar ejercicios: nombre, grupo, movimiento, equipo, nivel e
-   indicaciones.
+- Catálogo de ejercicios, con buscador y filtros por grupo y equipo.
+- Panel del entrenador: crear, editar, archivar. Entra desde Perfil.
+- Bucket `ejercicios` con políticas corridas y verificadas.
+- Versión visible (`v0.3.0`), aviso de derechos y `LICENSE`.
+- 59 pruebas.
 
-   Recordar la regla de los DOS ejes: `grupo` (músculo) y `movimiento`
-   (patrón) son columnas distintas porque así los piensa él. No
-   colapsarlas.
+### Lo que queda de la fase (~4,5 h)
 
-2. **Carga masiva desde hoja de cálculo.** A 80–150 ejercicios, meterlos
-   de a uno en un formulario es media tarde perdida. Se pega un CSV o se
-   sube el archivo, se muestra una vista previa, y solo entonces se
-   guarda.
+1. **Carga masiva** (~2,5 h). Pegar CSV → vista previa con los errores
+   señalados por fila → guardar. La validación YA está escrita y probada
+   en `src/lib/ejercicios.js`; la carga la reusa, así que el formulario
+   y la hoja no pueden aceptar cosas distintas. El índice único
+   `ux_ejercicios_nombre` permite volver a correr la carga entera sin
+   duplicar.
+2. **Compresión y subida de imágenes** (~2 h). A ~150 KB en el navegador
+   antes de mandarlas, y emparejado por nombre de archivo.
 
-   El índice único `ux_ejercicios_nombre` ya existe justo para esto: si
-   la carga se cae a la mitad, se vuelve a correr entera y las filas que
-   ya estaban se ignoran.
+### Decisión pendiente antes de tocar las imágenes
 
-3. **Imágenes en Supabase Storage.** Bucket público, con sus políticas.
-   `ejercicios.imagen_url` guarda la ruta.
+Si se usan ilustraciones libres (Everkinetic, CC-BY-SA 4.0) como relleno
+o se espera a las fotos del entrenador. Ver la entrada "Imágenes libres"
+del 2/09. **Lo decide Kev con el entrenador, es contenido.** Si la
+respuesta es que sí, hay que sumar la pantalla de créditos y la sección
+de terceros en el `LICENSE`.
 
-   **`video_id` se queda vacío y así está bien.** El entrenador arranca
-   con imágenes y va reemplazando. Toda pantalla que muestre un ejercicio
-   tiene que verse bien sin video Y sin imagen — hoy hay 30 ejercicios sin
-   ninguna de las dos cosas, y es el caso real del primer día.
+### La prueba que cierra la fase
 
-4. **Comprimir antes de subir.** El público abre esto con datos móviles
-   en Colombia. Una foto de celular son 3–5 MB; hay que bajarla a ~150 KB
-   en el navegador antes de mandarla, no después.
-
-### Lo que necesita la cuenta de Kev
-
-El bucket de Storage y sus políticas **ya están hechos** (2/09). Queda
-conseguir del entrenador la hoja de cálculo con sus ejercicios, y
-decirle antes de que empiece a tomar fotos que no pueden ser de
-clientes: el bucket es público y la imagen de una persona identificable
-es un dato personal bajo la Ley 1581. Está redactado en
-`PASOS-FASE-3.md` para copiárselo tal cual.
-
-### La prueba que cierra la Fase 3
-
-El entrenador entra con su cuenta, pega su hoja de cálculo, y sus
-ejercicios quedan en la app con sus imágenes. Un cliente los ve; un
-visitante también (el catálogo es el gancho); ninguno de los dos puede
-editarlos. Verificado suplantando los tres roles, como en la Fase 2.
+El entrenador pega su hoja y sus ejercicios quedan en la app. Un cliente
+los ve, un visitante también, y ninguno de los dos puede editarlos.
+Verificado suplantando los tres roles en el SQL Editor **y entrando a la
+app con cada uno** — esa segunda mitad es la lección del 2/09: contar
+filas dice que las políticas están bien, no que el código sepa usarlas.
 
 ## Preguntas abiertas
 
+- **¿Ilustraciones libres o fotos del entrenador?** Investigado el 2/09,
+  sin decidir. Es contenido, así que lo decide él.
 - **Nombre de la app.** Provisional: "Entrena". El repo va como `fitness-app`
   y renombrarlo después en GitHub no rompe nada.
 - **El artículo 12 del Decreto 1377** (datos de menores). Sin verificar.
