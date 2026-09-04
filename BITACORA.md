@@ -1450,6 +1450,149 @@ fondo: cada lámina sería una sola forma maciza, que además es lo que
 
 ---
 
+## 4 de septiembre de 2026 — Fase 4, primer corte: `Hoy` ya es real
+
+**`mock.js` perdió lo suyo.** Se fueron `RUTINA_DE_HOY` y `META_SEMANAL`,
+y de `USUARIO` solo quedó el nivel. La pantalla de entrada lee el plan
+del cliente desde la base.
+
+### Media fase ya estaba escrita, y nadie la estaba usando
+
+Antes de construir nada se revisó qué existía. `clonar_plantilla` estaba
+en `supabase/03-funciones.sql` **desde la Fase 2**, completa: archiva el
+plan anterior, crea el nuevo y copia sus días. `04-ejemplo.sql` ya
+sembraba 4 rutinas con sus ejercicios y 1 plantilla con sus días.
+
+O sea que no había que construir el motor, había que construir el botón.
+Vale la pena anotarlo porque es una lección que se repite: **antes de
+estimar una fase, mirar qué de esa fase ya está en la base.**
+
+### Por qué asignar un plan es una función y no tres escrituras
+
+`AsignarPlan.jsx` no escribe en la base. Llama a la función.
+
+No es pereza: asignar un plan son tres escrituras que tienen que pasar
+juntas o no pasar —archivar el anterior, crear el nuevo, copiar los
+días—. Con tres llamadas desde el navegador, una señal que se cae en la
+segunda deja al cliente **sin plan activo y con uno a medias**. Dentro
+de la función es una transacción. Y además valida en el servidor que
+quien llama sea admin, que es lo único que de verdad protege: que la
+pantalla se muestre solo con rol admin es comodidad.
+
+### La decisión que sostiene toda la pantalla: semanas de calendario
+
+`plan_dias` guarda `semana` y `dia`, y el `dia` es el DÍA DE LA SEMANA
+—1 es lunes— porque así piensa el entrenador: "los lunes, Empuje A".
+
+Eso obliga a que las semanas del plan sean **semanas de calendario**. Si
+la semana 1 fueran "los primeros 7 días desde el inicio", un plan que
+arranca un miércoles tendría su semana 1 corriendo de miércoles a
+martes, y el lunes de por medio pertenecería a la semana 1 y a la 2 al
+mismo tiempo: la rutina del lunes se vería dos veces o ninguna.
+
+**Consecuencia que hay que decirle al entrenador:** si asigna un plan un
+miércoles, la semana 1 le queda de 5 días. La pantalla lo avisa en el
+mismo campo de la fecha, y el valor que ofrece por defecto es el lunes
+que viene.
+
+Analogía de Excel: es `NUM.DE.SEMANA()` contra restar dos fechas y
+dividir entre 7. Lo segundo es más simple y da la respuesta equivocada
+en cuanto la primera semana no arranca en lunes.
+
+### Cuatro estados que no son "no hay nada"
+
+Un cliente sin rutina hoy puede estar en cuatro situaciones, y decirle
+"no hay nada" a las cuatro sería mentirle a tres:
+
+| Situación | Qué se le dice |
+|---|---|
+| No tiene plan | Su entrenador no se lo asignó todavía |
+| El plan arranca después | Cuándo empieza. Es lo normal: se asigna el viernes para el lunes |
+| Hoy es **descanso** programado | "El descanso es parte del plan" |
+| El plan terminó | Cumplió sus semanas, que hable con su entrenador |
+
+El descanso es el que más importa, y por eso `diaDelPlan` devuelve la
+fila entera y no la rutina: una fila con `rutina_id` en null es un
+descanso que el entrenador PUSO, y que no exista fila es un día sin
+programar. Se ven igual desde afuera y no son lo mismo. Convertir una
+decisión suya en un hueco sería el mismo error que castigar el descanso
+con una racha diaria, que ya se descartó el 31/08.
+
+### La regla 13 muerde tres veces en una sola pantalla
+
+`planes`, `plan_dias` y `sesiones` tienen políticas que terminan en `or
+es_admin()`. Sin filtro explícito, `Hoy` le mostraría al entrenador el
+plan de un cliente cualquiera —el primero que devuelva la base— como si
+fuera suyo, y las sesiones de otro. Las tres consultas llevan su
+`.eq('cliente_id', …)`.
+
+Van ya **siete** consultas en el proyecto donde esta misma trampa
+aparece. No es un descuido recurrente: es lo que pasa cuando las
+políticas están bien escritas y el código las lee mal.
+
+### El colchón de un día al leer las sesiones
+
+La base guarda un instante en UTC y la semana se corta en hora de
+Bogotá, cinco horas atrás. Una sesión del lunes a las 8 p.m. en Bogotá
+quedó guardada como **martes** en UTC. Con el corte justo en el lunes,
+esa sesión se perdería de la racha.
+
+Así que se pide desde el lunes menos un día y se filtra después con
+`diaEnBogota`, que es quien de verdad decide. Es exactamente el daño que
+la regla 5 existe para evitar: romperle a alguien una racha que sí
+completó.
+
+**21 pruebas nuevas** en `plan.js`, todas sobre fechas. Las que más
+valen son las del plan que arranca a mitad de semana y la del domingo
+—JavaScript lo numera 0, y si eso se cuela la rutina del domingo no
+aparece nunca—.
+
+### Lo que NO entró, y se dice en pantalla
+
+Marcar el entrenamiento como hecho y el XP quedan para la próxima
+sesión. En vez de dejar el botón "Empezar entrenamiento" sin función, se
+quitó y hay una línea que dice que llega en la próxima versión. Un botón
+muerto se lee como que la app falló.
+
+---
+
+## 4 de septiembre de 2026 — segundo intento de las láminas, tampoco
+
+Se probaron dos direcciones para dibujar el músculo en vez de señalarlo:
+**A**, siluetas macizas del músculo; **B**, las mismas con segmentación
+interna entre haces. Los archivos están en `public/_mock/`, que git
+ignora.
+
+**Ninguna de las dos sirve entera**, y el patrón de qué funcionó y qué
+no es el hallazgo que hay que guardar:
+
+| Funciona | No funciona |
+|---|---|
+| `core` — la parrilla del abdomen | `pecho`, `hombro`, `brazo`, `pierna` |
+| `espalda` — la V de los dorsales | |
+| `cardio` — el corazón | |
+
+**Las tres que funcionan no son anatomía: son ICONOS.** La parrilla del
+abdomen, la V de la espalda y el corazón son formas que cualquiera
+reconoce sin saber cómo se llama el músculo. Las cuatro que fallan son
+anatómicamente más correctas y se leen peor, porque un bíceps y un
+cuádriceps aislados **son los dos un huso** y nada los distingue sin un
+cuerpo alrededor que dé la escala.
+
+O sea que el problema no es el estilo ni el nivel de detalle: es que
+para cuatro de los siete grupos **no existe un icono conocido del
+músculo solo**. Quien retome esto tiene que resolver eso, no dibujar
+mejor. Dos salidas posibles, ninguna probada todavía:
+
+1. Dejar un ancla mínima de cuerpo —un hombro, una cadera— sin volver al
+   muñeco completo.
+2. Aceptar que los cuatro difíciles se representen por otra cosa
+   reconocible, aunque no sea el músculo.
+
+La segunda contradice lo que se pidió, así que no se toma sin hablarlo.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con

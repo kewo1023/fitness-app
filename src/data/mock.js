@@ -29,38 +29,28 @@
           no va a existir. La pestaña ahora muestra el catálogo real de
           ejercicios.
 
-      Faltan: RUTINA_DE_HOY (Fase 4), HISTORIAL y LOGROS (Fase 5),
-      USUARIO y META_SEMANAL (Fase 4, salen del plan).
+      4/09 — se fueron RUTINA_DE_HOY y META_SEMANAL: `Hoy` ya lee el
+          plan real del cliente. De USUARIO solo queda el nivel, que
+          usa `Progreso`.
+
+      Faltan: HISTORIAL y LOGROS (Fase 5), y el nivel de USUARIO.
    ===================================================================== */
 
+
+
+
+/* Lo único que queda de USUARIO. `Progreso` lo usa para el nivel, y esa
+ * pantalla sigue en mock hasta la Fase 5.
+ *
+ * `racha` y el resto SE FUERON el 4/09: los usaba `Hoy`, que ya lee el
+ * plan real. La regla es que cada pantalla borra SU parte el mismo día
+ * que se conecta, no la del vecino — borrar el nivel de aquí habría
+ * roto `Progreso` sin conectarlo, que es cambiar un mock por un hueco. */
 export const USUARIO = {
   nombre: 'Camilo',
   rol: 'cliente',
   xp: 340,
-  nivel: 4,
-  racha: 3                 // entrenamientos hechos esta semana
-}
-
-export const META_SEMANAL = 4
-
-export const RUTINA_DE_HOY = {
-  nombre: 'Tren superior — empuje',
-  duracionMin: 45,
-  semana: 2,
-  dia: 3,
-  programa: 'Fuerza en casa',
-  ejercicios: [
-    { id: 1, nombre: 'Flexiones', series: 4, reps: '10-12', descanso: 60,
-      grupo: 'Pecho', equipo: 'Ninguno' },
-    { id: 2, nombre: 'Press militar con mancuernas', series: 4, reps: '8-10',
-      descanso: 90, grupo: 'Hombro', equipo: 'Mancuernas' },
-    { id: 3, nombre: 'Fondos en silla', series: 3, reps: '12', descanso: 60,
-      grupo: 'Tríceps', equipo: 'Ninguno' },
-    { id: 4, nombre: 'Elevaciones laterales', series: 3, reps: '15',
-      descanso: 45, grupo: 'Hombro', equipo: 'Mancuernas' },
-    { id: 5, nombre: 'Plancha', series: 3, reps: '40 seg', descanso: 45,
-      grupo: 'Core', equipo: 'Ninguno' }
-  ]
+  nivel: 4
 }
 
 export const HISTORIAL = [

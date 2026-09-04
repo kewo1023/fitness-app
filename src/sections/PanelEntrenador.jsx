@@ -5,6 +5,7 @@ import {
   GRUPOS, MOVIMIENTOS, EQUIPOS, NIVELES, etiqueta, validarEjercicio
 } from '../lib/ejercicios.js'
 import CargaMasiva from './CargaMasiva.jsx'
+import AsignarPlan from './AsignarPlan.jsx'
 
 /* =====================================================================
    El panel del entrenador. La primera pantalla que existe solo para él.
@@ -45,6 +46,7 @@ export default function PanelEntrenador ({ alVolver }) {
   const [busqueda, setBusqueda] = useState('')
   const [editando, setEditando] = useState(null)   // null = no hay formulario
   const [cargandoHoja, setCargandoHoja] = useState(false)
+  const [asignando, setAsignando] = useState(false)
   const [aviso, setAviso] = useState(null)
 
   async function cargar () {
@@ -117,6 +119,13 @@ export default function PanelEntrenador ({ alVolver }) {
    * una lista larga en el medio, y meterlo aquí obligaría a
    * desplazarse por la biblioteca entera para llegar al botón de
    * guardar. */
+  /* Asignar un plan vive aparte de la biblioteca, igual que la carga
+   * masiva: son dos trabajos distintos del entrenador. La biblioteca es
+   * QUÉ ejercicios existen; el plan es QUÉ le toca a cada persona. */
+  if (asignando) {
+    return <AsignarPlan alVolver={() => setAsignando(false)} />
+  }
+
   if (cargandoHoja) {
     return (
       <CargaMasiva
@@ -163,6 +172,18 @@ export default function PanelEntrenador ({ alVolver }) {
       </button>
 
       <ul className="lista">
+        <li className="fila">
+          <span className="fila-datos">
+            <strong>Asignar un plan a un cliente</strong>
+            <small>Copiar una plantilla y entregársela a alguien</small>
+          </span>
+          <span className="fila-acciones">
+            <button type="button" className="enlace enlace-fila"
+                    onClick={() => setAsignando(true)}>
+              Abrir
+            </button>
+          </span>
+        </li>
         <li className="fila">
           <span className="fila-datos">
             <strong>Cargar desde una hoja de cálculo</strong>

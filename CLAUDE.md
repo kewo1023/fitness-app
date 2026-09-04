@@ -391,6 +391,19 @@ src/lib/ejercicios.js    El vocabulario (grupos, movimientos, equipos,
                          niveles) y la validación de una fila. NO toca
                          la base, para que se pueda probar sin
                          credenciales.
+src/lib/plan.js          En qué semana y qué día del plan está el
+                         cliente HOY, y su racha semanal. Las semanas
+                         del plan son de CALENDARIO (lunes a domingo)
+                         porque plan_dias.dia es el día de la semana:
+                         contarlas desde el inicio haría que un plan que
+                         arranca un miércoles tuviera el lunes en dos
+                         semanas a la vez. 21 pruebas. NO toca la base.
+src/sections/AsignarPlan.jsx
+                         El entrenador copia una plantilla y se la
+                         entrega a un cliente. NO escribe en la base:
+                         llama a clonar_plantilla, porque son tres
+                         escrituras que tienen que pasar juntas o no
+                         pasar. Se entra desde Tu biblioteca.
 src/lib/hoja.js          Lee la hoja de cálculo que pega el entrenador:
                          detecta el separador (al pegar desde Excel son
                          TABULACIONES, no comas), entiende las comillas
@@ -571,11 +584,14 @@ mucho tiempo en la dirección equivocada. Es la razón exacta por la que la
 regla 8 dice **Android** y no "un celular".
 
 **Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
-Perfil, Recetas y Ejercicios son reales. `Hoy` tiene el saludo real y el
-resto de mock; `Progreso` sigue en mock. Se conectan en las Fases 4 y 5.
+Perfil, Recetas, Ejercicios y **`Hoy`** son reales. `Progreso` sigue en
+mock. Se conectan en las Fases 4 y 5.
 `mock.js` no se borra de golpe: **cada pantalla que se conecta borra su
 parte el mismo día.** `PROGRAMAS` no se conectó: se borró, porque
-describía un modelo descartado.
+describía un modelo descartado. El 4/09 se fueron `RUTINA_DE_HOY` y
+`META_SEMANAL`; de `USUARIO` quedó solo el nivel, que usa `Progreso` —
+**se borra la parte propia, no la del vecino**, o se cambia un mock por
+un hueco.
 
 **Tres pendientes que no bloquean la Fase 3 pero sí la difusión:**
 
