@@ -5,6 +5,15 @@ import { fechaLarga, diaEnBogota, inicioSemanaBogota, hoyBogota }
   from '../data/fechas.js'
 import { puntoDelPlan, diaDelPlan, rachaSemanal } from '../lib/plan.js'
 import { etiqueta } from '../lib/ejercicios.js'
+import { nivelDesdeXp } from '../lib/gamificacion.js'
+
+/* OJO: el XP que paga una sesión NO se escribe aquí.
+ *
+ * Son 50 y viven en el trigger `otorgar_xp` de 03-funciones.sql. Poner
+ * un 50 en este archivo para mostrar "+50 XP" crearía una segunda
+ * verdad, y el día que el entrenador quiera cambiarlo la pantalla
+ * mentiría sin que nada fallara. Así que después de completar se
+ * RELEE el XP real y se muestra el número que devolvió la base. */
 
 /* =====================================================================
    Hoy — la pantalla de entrada. Ya no es mock.
@@ -52,13 +61,24 @@ import { etiqueta } from '../lib/ejercicios.js'
    descanso es lo contrario de lo que un entrenador quiere.
    ===================================================================== */
 
-export default function Hoy ({ perfil }) {
+export default function Hoy ({ perfil, recargarPerfil }) {
   const [cargando, setCargando] = useState(true)
   const [plan, setPlan] = useState(null)
   const [dias, setDias] = useState([])
   const [rutina, setRutina] = useState(null)
   const [ejercicios, setEjercicios] = useState([])
   const [fechasHechas, setFechasHechas] = useState([])
+  /* La sesión de HOY, que tiene tres estados y no dos:
+   *   null                      -> no ha empezado
+   *   { completada: false }     -> empezó y no ha terminado
+   *   { completada: true }      -> ya la hizo
+   * El del medio existe porque la tabla guarda `iniciada_en` y
+   * `terminada_en` por separado, y de ahí sale la duración real. Con un
+   * solo botón de "ya lo hice" esa columna sería siempre igual a la
+   * otra y la capa de analítica perdería el dato antes de existir. */
+  const [sesion, setSesion] = useState(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [avisoXp, setAvisoXp] = useState(null)
 
   useEffect(() => {
     let vivo = true
@@ -130,6 +150,30 @@ export default function Hoy ({ perfil }) {
       const punto = puntoDelPlan(p, hoy)
       const delDia = diaDelPlan(pd || [], punto)
 
+      /* ¿Ya hay una sesión para el día de hoy del plan?
+       *
+       * Se busca por `plan_dia_id` y no por fecha: el día del plan ES la
+       * identidad de "este entrenamiento". Y el `.eq('cliente_id')` va
+       * otra vez por la regla 13 — sin él, al entrenador le saldría la
+       * sesión de otro y creería que ya entrenó. */
+      if (delDia) {
+        const { data: hecha } = await supabase
+          .from('sesiones')
+          .select('id, completada, iniciada_en')
+          .eq('cliente_id', perfil.id)
+          .eq('plan_dia_id', delDia.id)
+          /* LA COMPLETADA GANA SIEMPRE, y por eso este orden va primero.
+           * Si alguien empezó dos veces —dos pestañas, un toque doble—
+           * queda una sesión terminada y otra en curso. Ordenando solo
+           * por fecha ganaría la más nueva, que es la que quedó a
+           * medias, y la app le ofrecería terminar algo que ya hizo. */
+          .order('completada', { ascending: false })
+          .order('iniciada_en', { ascending: false })
+          .limit(1)
+        if (!vivo) return
+        setSesion(hecha?.[0] || null)
+      }
+
       if (delDia?.rutina_id) {
         const [{ data: r }, { data: re }] = await Promise.all([
           supabase.from('rutinas')
@@ -150,6 +194,92 @@ export default function Hoy ({ perfil }) {
     })()
     return () => { vivo = false }
   }, [perfil.id])
+
+  /* ---------------------------------------------------------------
+     Empezar y terminar
+     ---------------------------------------------------------------
+     Son dos pasos y no uno porque la tabla guarda `iniciada_en` y
+     `terminada_en` por separado. Con un solo botón de "ya lo hice",
+     las dos columnas quedarían siempre iguales y la duración real del
+     entrenamiento —un dato de la capa de analítica, que según CLAUDE.md
+     no se sacrifica— nacería falsa.
+
+     Si alguien empieza y cierra la app, al volver encuentra su sesión
+     en curso y puede terminarla. No se pierde. */
+  async function empezar () {
+    const punto = puntoDelPlan(plan)
+    const delDia = diaDelPlan(dias, punto)
+    if (!delDia) return
+
+    setOcupado(true)
+    const { data, error } = await supabase
+      .from('sesiones')
+      .insert({
+        cliente_id: perfil.id,
+        plan_dia_id: delDia.id,
+        rutina_id: delDia.rutina_id
+        // `completada` se queda en false por defecto: empezar no paga
+        // XP. Lo paga terminar, y de eso se encarga el trigger.
+      })
+      .select('id, completada, iniciada_en')
+      .maybeSingle()
+    setOcupado(false)
+
+    if (error) {
+      console.error('No se pudo empezar la sesión:', error)
+      setAvisoXp({ tipo: 'error', texto: 'No se pudo empezar. Revisa la conexión.' })
+      return
+    }
+    setSesion(data)
+  }
+
+  async function terminar () {
+    if (!sesion) return
+    setOcupado(true)
+    setAvisoXp(null)
+
+    const antes = nivelDesdeXp(perfil.xp)
+
+    const { error } = await supabase
+      .from('sesiones')
+      .update({ completada: true, terminada_en: new Date().toISOString() })
+      .eq('id', sesion.id)
+      .eq('cliente_id', perfil.id)      // regla 13: la política dice
+                                        // cliente_id = auth.uid(), pero
+                                        // el filtro se escribe igual
+    if (error) {
+      setOcupado(false)
+      console.error('No se pudo terminar la sesión:', error)
+      /* 23505 es el índice único de 06-sesiones.sql: este día ya estaba
+       * completado. No es un fallo del usuario ni algo que deba ver como
+       * error rojo — casi siempre es un doble toque o dos pestañas. */
+      setAvisoXp(error.code === '23505'
+        ? { tipo: 'ok', texto: 'Este entrenamiento ya estaba marcado como hecho.' }
+        : { tipo: 'error', texto: 'No se pudo guardar. Revisa la conexión.' })
+      return
+    }
+
+    /* El XP lo sumó el TRIGGER, en la base, mientras corría el update.
+     * Aquí solo se vuelve a leer para poder decir el número de verdad.
+     * El `.eq('id')` es la regla 13 en su versión original — la del bug
+     * del 2/09, que empezó justo en esta tabla. */
+    const { data: yo } = await supabase
+      .from('perfiles').select('xp').eq('id', perfil.id).maybeSingle()
+
+    const despues = nivelDesdeXp(yo?.xp)
+    setOcupado(false)
+    setSesion(s => ({ ...s, completada: true }))
+    setFechasHechas(f => [...f, hoyBogota()])
+    setAvisoXp({
+      tipo: 'ok',
+      texto: despues > antes
+        ? `¡Subiste al nivel ${despues}! Llevas ${yo?.xp} XP.`
+        : `Entrenamiento guardado. Llevas ${yo?.xp} XP.`
+    })
+
+    // Para que el XP y el nivel de la pestaña Perfil no se queden viejos.
+    if (recargarPerfil) recargarPerfil()
+  }
 
   const encabezado = {
     titulo: `Hola, ${perfil.nombre}`,
@@ -280,14 +410,38 @@ export default function Hoy ({ perfil }) {
               {rutina.duracion_min && ` · ${rutina.duracion_min} min`}
             </p>
             {rutina.notas && <p className="meta">{rutina.notas}</p>}
-            {/* El botón de empezar entra en la próxima sesión, junto con
-                marcar la sesión como completa y el XP. Se dice en vez de
-                poner un botón que no hace nada: un botón muerto se lee
-                como que la app falló. */}
-            <p className="pista">
-              Marcar el entrenamiento como hecho llega en la próxima
-              versión. Por ahora esta es tu rutina del día.
-            </p>
+
+            {avisoXp && (
+              <p className={'aviso' + (avisoXp.tipo === 'error' ? ' es-error' : ' es-ok')}>
+                {avisoXp.texto}
+              </p>
+            )}
+
+            {/* TRES BOTONES DISTINTOS PARA TRES ESTADOS, y ninguno
+                aparece a la vez. Un solo botón que cambie de texto se
+                lee peor: aquí el estado "ya lo hiciste" no es un botón,
+                porque no hay nada más que hacer y ofrecer una acción
+                que no existe invita a tocarla. */}
+            {sesion?.completada ? (
+              <p className="estado es-ok">Hecho por hoy ✓</p>
+            ) : sesion ? (
+              <button type="button" className="boton-principal"
+                      disabled={ocupado} onClick={terminar}>
+                {ocupado ? 'Guardando…' : 'Terminar entrenamiento'}
+              </button>
+            ) : (
+              <button type="button" className="boton-principal"
+                      disabled={ocupado} onClick={empezar}>
+                {ocupado ? 'Un momento…' : 'Empezar entrenamiento'}
+              </button>
+            )}
+
+            {sesion && !sesion.completada && (
+              <p className="pista">
+                Puedes cerrar la app: cuando vuelvas sigue aquí para que
+                la termines.
+              </p>
+            )}
           </section>
 
           <h3 className="titulillo">Los ejercicios</h3>

@@ -162,6 +162,17 @@ describe('la racha semanal', () => {
     expect(r.cumplida).toBe(true)
   })
 
+  it('dos sesiones el MISMO día cuentan como un día', () => {
+    // La meta son días a la semana, no entrenamientos. Contando
+    // sesiones, quien entrena dos veces el martes llegaría a 3 en dos
+    // días y la racha diría que cumplió una semana que no cumplió.
+    const r = rachaSemanal(
+      PLAN, ['2026-09-01', '2026-09-01', '2026-09-02'], '2026-09-04'
+    )
+    expect(r.hechas).toBe(2)
+    expect(r.cumplida).toBe(false)
+  })
+
   it('sin sesiones no revienta y no cumple', () => {
     const r = rachaSemanal(PLAN, [], '2026-09-04')
     expect(r).toMatchObject({ hechas: 0, faltan: 3, cumplida: false })

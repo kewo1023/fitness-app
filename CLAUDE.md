@@ -483,6 +483,11 @@ supabase/04-ejemplo.sql  La biblioteca de prueba, con contenido
 supabase/05-storage.sql  Quién sube y borra las imágenes: todos leen,
                          solo el admin escribe. NO crea el bucket, eso
                          va a mano desde el panel.
+supabase/06-sesiones.sql UN día del plan, UNA sesión completada. Sin este
+                         índice el trigger del XP se puede cobrar veinte
+                         veces repitiendo el insert: el XP estaba
+                         protegido contra que lo ESCRIBIERAN, no contra
+                         que lo PIDIERAN de más. HAY QUE CORRERLO A MANO.
 ```
 
 Dónde va a entrar lo que sigue: la Fase 4 conecta `Hoy` y el plan del
@@ -561,11 +566,22 @@ debe recortar:
 - **La pantalla "Mis datos" es gobernanza implementada**, no un PDF.
 - **El README cuenta el problema, no las funciones.**
 
-## Estado (3 de septiembre de 2026)
+## Estado (4 de septiembre de 2026)
 
-**Fases 1 y 2 cerradas. Fase 3 construida entera.** La base de datos
-existe y está protegida; la app tiene acceso por cuenta, tres roles y la
-Ley 1581 implementada. **101 pruebas** pasan.
+**Fases 1 a 3 construidas. Fase 4 a la mitad.** La base de datos existe y
+está protegida; la app tiene acceso por cuenta, tres roles y la Ley 1581
+implementada. **132 pruebas** pasan.
+
+**Fase 4 — lo que entró el 4/09:** el entrenador asigna una plantilla a
+un cliente, `Hoy` lee el plan real, y el cliente empieza y termina su
+entrenamiento (el XP lo paga el trigger de la base, nunca la app).
+Falta que el entrenador arme sus propias rutinas y plantillas desde la
+app: hoy salen del seed de ejemplo.
+
+**PENDIENTE QUE NO PUEDE OLVIDARSE: correr `supabase/06-sesiones.sql`.**
+Hasta que se corra, el mismo día del plan se puede completar varias veces
+y cada vez paga XP. Que la app no ofrezca el botón es comodidad, no
+seguridad.
 
 **La Fase 3 ya no está bloqueada por código.** Existen el catálogo —que
 desde el 3/09 abre en una portada de 7 grupos musculares—, el panel del

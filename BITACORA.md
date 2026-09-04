@@ -1593,6 +1593,82 @@ La segunda contradice lo que se pidió, así que no se toma sin hablarlo.
 
 ---
 
+## 4 de septiembre de 2026 — marcar el entrenamiento, y el hueco del XP
+
+### Antes del botón apareció un agujero
+
+Al ir a escribir "marcar como hecho" se revisó el trigger `otorgar_xp` y
+salió esto: **nada impedía crear varias sesiones completadas del mismo
+día del plan.** Cada `insert` disparaba el trigger y pagaba 50 XP otra
+vez.
+
+El trigger existe precisamente porque *"todo lo que corre en el navegador
+lo puede reescribir quien tenga el navegador"* — el XP nunca lo suma la
+app. Pero estaba protegido contra que lo **escribieran** y no contra que
+lo **pidieran** veinte veces seguidas. Con la tabla de posiciones de la
+Fase 5, eso deja el reto sin gracia para los otros catorce clientes, que
+es el daño exacto que el trigger se inventó para evitar.
+
+**Arreglo en `supabase/06-sesiones.sql`:** un índice único parcial,
+`(cliente_id, plan_dia_id) where completada`. Es parcial para que una
+sesión en curso pueda convivir con una terminada; lo que no se puede
+repetir es el HECHO. Y como `plan_dia_id` admite null y en Postgres los
+nulos no chocan entre sí, no bloquea entrenar por fuera del plan.
+
+**Archivo NUEVO, no una edición.** Del 01 al 05 ya están corridos contra
+producción; editarlos haría que el repositorio y la base dejen de
+coincidir y nadie sabría cuál manda. Está en `CLAUDE.md`, "cómo
+retomar", paso 4.
+
+**Hay que correrlo a mano en el SQL Editor.** Hasta que se corra, el
+hueco sigue abierto: lo que la app hace —no ofrecer el botón si el día
+ya está hecho— es comodidad, no seguridad.
+
+### La racha contaba filas y debía contar días
+
+Segundo hallazgo del mismo hilo. `meta_semanal` son "los días a la
+semana que entrena esta persona" (decisión del 1/09), así que dos
+entrenamientos el mismo martes son **un** día cumplido, no dos.
+Contando sesiones, alguien que entrena dos veces un día llegaba a su
+meta de 3 en dos días y la racha le decía que cumplió una semana que no
+cumplió.
+
+Ahora se cuentan días distintos. De paso tapa el otro lado: si por lo
+que sea llegan dos filas del mismo día, la racha no se infla. Es quitar
+duplicados antes de contar, en vez de contar la columna entera.
+
+### Dos pasos y no uno, por la capa de analítica
+
+El botón podía ser uno solo: "ya lo hice". Se hicieron dos —empezar y
+terminar— porque la tabla guarda `iniciada_en` y `terminada_en` por
+separado, y con un solo botón las dos columnas quedarían siempre
+iguales: **la duración real del entrenamiento nacería falsa.**
+
+`CLAUDE.md` dice que la capa de analítica es lo primero que se recorta
+cuando falta tiempo y que no se debe recortar. Esto es exactamente ese
+caso, y costó unas pocas líneas más.
+
+Si alguien empieza y cierra la app, al volver encuentra su sesión en
+curso y puede terminarla. Y al leerla se ordena por `completada` antes
+que por fecha: si quedaron una terminada y otra a medias, gana la
+terminada — si no, la app le ofrecería terminar algo que ya hizo.
+
+### El 50 del XP no se escribió en JavaScript
+
+La pantalla quería decir "+50 XP". Eso habría puesto el número en dos
+sitios —el trigger y el navegador— y el día que el entrenador quiera
+cambiarlo, la pantalla mentiría sin que nada fallara.
+
+En vez de eso, al terminar se **relee** el XP de la base y se muestra el
+número que ella devolvió. Cuesta una consulta y elimina la segunda
+verdad. Si el nivel subió, se dice; si no, se confirma y ya.
+
+Y el error `23505` —el del índice único nuevo— no se pinta en rojo: casi
+siempre es un doble toque, así que se responde "este entrenamiento ya
+estaba marcado como hecho", que es la verdad y no asusta.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con

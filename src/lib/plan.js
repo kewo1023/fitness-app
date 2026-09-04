@@ -121,17 +121,33 @@ export function diaDelPlan (dias, punto) {
  * el código volvería a todos iguales.
  *
  * `sesiones` son las fechas (texto "2026-09-04") de las sesiones
- * completadas. Se filtran contra el lunes de ESTA semana, en hora de
- * Bogotá — que es la razón entera de la regla 5. Calculado con el reloj
- * del computador de quien programa, alguien en Bogotá vería su racha
- * saltar a las 7 de la noche.
+ * completadas. Se cuentan DÍAS DISTINTOS, no filas — ver el comentario
+ * de abajo.
+ *
+ * Se filtran contra el lunes de ESTA semana, en hora de Bogotá, que es
+ * la razón entera de la regla 5. Calculado con el reloj del computador
+ * de quien programa, alguien en Bogotá vería su racha saltar a las 7 de
+ * la noche.
  */
 export function rachaSemanal (plan, sesiones = [], fecha = hoyBogota()) {
   const meta = plan?.meta_semanal || 0
   const lunes = inicioSemanaBogota(fecha)
 
-  const hechas = sesiones.filter(f => diasEntre(lunes, f) >= 0 &&
-                                      diasEntre(f, fecha) >= 0).length
+  /* SE CUENTAN DÍAS DISTINTOS, no sesiones.
+   *
+   * `meta_semanal` son "los días a la semana que entrena esta persona"
+   * (BITACORA, 1/09), así que dos entrenamientos el mismo martes son UN
+   * día cumplido, no dos. Contando sesiones, alguien que entrena dos
+   * veces un día llegaría a su meta de 3 en dos días y la racha diría
+   * que cumplió una semana que no cumplió.
+   *
+   * Y de paso tapa el otro lado del mismo problema: si por lo que sea
+   * llegaran dos filas del mismo día —un doble toque, un reintento—, la
+   * racha no se infla. El Set es lo que en Excel sería quitar
+   * duplicados antes de contar, en vez de contar la columna entera. */
+  const hechas = new Set(
+    sesiones.filter(f => diasEntre(lunes, f) >= 0 && diasEntre(f, fecha) >= 0)
+  ).size
 
   return {
     meta,
