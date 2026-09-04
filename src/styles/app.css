@@ -1022,3 +1022,218 @@ button {
   color: var(--tinta-tenue);
   text-wrap: balance;   /* parte los renglones parejos si se envuelve */
 }
+
+/* --- Las barras por semana (Fase 5) -----------------------------------
+   Una lista de sesiones dice QUÉ hizo; esto dice si viene sosteniendo
+   el ritmo. Es el único sitio de la app donde el dato es la forma y no
+   el número.
+
+   La altura llega desde el JSX como `--alto`, en porcentaje, ya
+   calculada contra el máximo de lo que se está pintando. No se calcula
+   en CSS a propósito: el tope depende de los datos, y una hoja de
+   estilos no puede saberlo.
+
+   Alto fijo del cajón (no `aspect-ratio`) porque la barra crece desde
+   abajo y necesita un suelo estable: con alto variable, ocho barras
+   cortas se verían igual de altas que ocho largas. */
+.semanas {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+  align-items: end;
+  height: 96px;
+  margin-top: 4px;
+}
+
+.semana {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+  min-width: 0;
+}
+
+.semana small {
+  font-size: 10.5px;
+  color: var(--tinta-tenue);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* El cajón de la barra ocupa todo el alto y el relleno crece dentro.
+   `min-height` para que una semana en CERO siga siendo visible: una
+   barra de 0 px se lee como que falta el dato, no como que no entrenó,
+   y son cosas distintas. */
+.semana-barra {
+  width: 100%;
+  height: calc(var(--alto, 0%) - 0px);
+  min-height: 3px;
+  border-radius: var(--radio-chico) var(--radio-chico) 3px 3px;
+  background: var(--superficie-2);
+  border: 1px solid var(--linea-suave);
+}
+
+/* La semana cumplida se pinta con el acento. NO con el cobre de señal:
+   ese está reservado para la racha de la pantalla de Hoy, y si aparece
+   en dos sitios deja de significar una sola cosa (decisión del 1/09). */
+.semana.es-cumplida .semana-barra {
+  background: var(--acento);
+  border-color: var(--acento);
+}
+
+/* --- La marca de adherencia, en el panel del entrenador ---------------
+   El porcentaje grande con su etiqueta debajo. Los dígitos tabulares
+   son obligatorios aquí: es una columna de números que se lee de arriba
+   abajo, y sin ellos el 8% y el 100% no alinean. */
+.marca {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.marca small { font-size: 11.5px; font-weight: 500; color: var(--tinta-media); }
+
+.marca.es-al-dia    { color: var(--exito); }
+.marca.es-irregular { color: var(--aviso); }
+.marca.es-flojo     { color: var(--error); }
+.marca.es-sin-datos { color: var(--tinta-tenue); }
+
+/* --- La barra horizontal de las franjas horarias ---------------------- */
+.barra-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  width: 40%;
+  max-width: 140px;
+}
+
+.barra-fila small {
+  font-size: 12.5px;
+  color: var(--tinta-media);
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  text-align: right;
+}
+
+.barra-relleno {
+  height: 8px;
+  flex: 1;
+  border-radius: 4px;
+  background: linear-gradient(
+    to right,
+    var(--acento) var(--ancho, 0%),
+    var(--superficie-2) var(--ancho, 0%)
+  );
+}
+
+/* --- El entrenamiento en curso ----------------------------------------
+   Todo lo de aquí está dimensionado para una mano sudada. Los blancos
+   son más grandes que en el resto de la app a propósito: fallar el
+   toque a media serie es reabrir la app, buscar el ejercicio y volver a
+   empezar. */
+
+/* La barra de progreso del encabezado. Un `span` que crece por dentro,
+   y no un `width` animado sobre el contenedor: la regla 14 solo deja
+   animar opacity y transform, y aquí ni siquiera hace falta animar —
+   basta que el ancho sea correcto en cada pintada. */
+.progreso-barra {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--superficie-2);
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.progreso-barra span {
+  display: block;
+  height: 100%;
+  width: var(--ancho, 0%);
+  background: var(--acento);
+  border-radius: 3px;
+}
+
+.ejercicio-bloque { display: flex; flex-direction: column; gap: 12px; }
+
+.ejercicio-cab {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Las series. Se envuelven en vez de deslizarse de lado: con cinco
+   series y un celular de 360 px caben tres por renglón, y una fila que
+   se desliza esconde las últimas justo cuando son las que faltan. */
+.series {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 64x54 no es un capricho: es lo que hace que el dedo acierte sin
+   mirar. Las recomendaciones de accesibilidad piden 44, y esto se usa
+   con el pulso alterado. */
+.serie {
+  flex: 1 1 64px;
+  min-width: 64px;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: var(--radio-chico);
+  border: 1px solid var(--linea);
+  background: var(--superficie-2);
+  color: var(--tinta-media);
+  font: inherit;
+  cursor: pointer;
+  /* Solo transform: es la regla 14, y además es lo único que el
+     celular resuelve sin rehacer el diseño de la página. */
+  transition: transform 90ms var(--curva);
+}
+
+.serie:active { transform: scale(.96); }
+
+.serie strong {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.serie small {
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La serie ya anotada. Se distingue por relleno y no solo por color:
+   quien no distinga bien el verde tiene que poder ver cuáles llevan
+   hechas, y además el propio texto de la serie ya dice el peso. */
+.serie.es-hecha {
+  background: var(--acento-suave);
+  border-color: var(--acento);
+  color: var(--acento);
+}
+
+.serie.es-abierta {
+  border-color: var(--acento);
+  border-width: 2px;
+  /* El borde de 2px comería un pixel por lado y movería las demás
+     fichas del renglón. Se descuenta del relleno para que la ficha no
+     cambie de tamaño al abrirse. */
+  padding: 5px 3px;
+}
+
+.serie-form { display: flex; flex-direction: column; gap: 10px; }

@@ -6,6 +6,7 @@ import { fechaLarga, diaEnBogota, inicioSemanaBogota, hoyBogota }
 import { puntoDelPlan, diaDelPlan, rachaSemanal } from '../lib/plan.js'
 import { etiqueta } from '../lib/ejercicios.js'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
+import Entrenamiento from './Entrenamiento.jsx'
 
 /* OJO: el XP que paga una sesión NO se escribe aquí.
  *
@@ -79,6 +80,15 @@ export default function Hoy ({ perfil, recargarPerfil }) {
   const [sesion, setSesion] = useState(null)
   const [ocupado, setOcupado] = useState(false)
   const [avisoXp, setAvisoXp] = useState(null)
+  /* Si está DENTRO del entrenamiento o mirándolo desde fuera.
+   *
+   * Son dos pantallas y no una porque responden dos preguntas
+   * distintas: `Hoy` responde "¿qué me toca?" de un vistazo, y el
+   * entrenamiento responde "¿voy en la serie 3 o en la 4?" durante
+   * cuarenta minutos. Meter la segunda dentro de la primera dejaría la
+   * racha y el saludo ocupando la pantalla justo cuando lo único que
+   * importa es la lista de series. */
+  const [entrenando, setEntrenando] = useState(false)
 
   useEffect(() => {
     let vivo = true
@@ -180,7 +190,11 @@ export default function Hoy ({ perfil, recargarPerfil }) {
             .select('id, nombre, duracion_min, notas')
             .eq('id', delDia.rutina_id).maybeSingle(),
           supabase.from('rutina_ejercicios')
-            .select('id, orden, series, reps, ' +
+            /* `peso_sugerido` y `nota` los pide la pantalla de
+             * registrar series: el primero prellena el campo cuando no
+             * hay historial, y la nota es lo que él le diría al lado si
+             * estuviera presente. */
+            .select('id, orden, series, reps, descanso_seg, peso_sugerido, nota, ' +
                     'ejercicios ( id, nombre, grupo, equipo )')
             .eq('rutina_id', delDia.rutina_id)
             .order('orden')
@@ -231,6 +245,10 @@ export default function Hoy ({ perfil, recargarPerfil }) {
       return
     }
     setSesion(data)
+    // Se entra derecho al entrenamiento. Empezar y quedarse en esta
+    // pantalla obligaría a un segundo toque para llegar a lo único que
+    // se va a hacer los próximos cuarenta minutos.
+    setEntrenando(true)
   }
 
   async function terminar () {
@@ -253,6 +271,7 @@ export default function Hoy ({ perfil, recargarPerfil }) {
       /* 23505 es el índice único de 06-sesiones.sql: este día ya estaba
        * completado. No es un fallo del usuario ni algo que deba ver como
        * error rojo — casi siempre es un doble toque o dos pestañas. */
+      if (error.code === '23505') setEntrenando(false)
       setAvisoXp(error.code === '23505'
         ? { tipo: 'ok', texto: 'Este entrenamiento ya estaba marcado como hecho.' }
         : { tipo: 'error', texto: 'No se pudo guardar. Revisa la conexión.' })
@@ -270,6 +289,10 @@ export default function Hoy ({ perfil, recargarPerfil }) {
     setOcupado(false)
     setSesion(s => ({ ...s, completada: true }))
     setFechasHechas(f => [...f, hoyBogota()])
+    // Se vuelve a `Hoy` para que el aviso del XP se vea: es la
+    // recompensa de haber terminado y se pierde si queda detrás de la
+    // pantalla del entrenamiento.
+    setEntrenando(false)
     setAvisoXp({
       tipo: 'ok',
       texto: despues > antes
@@ -288,6 +311,24 @@ export default function Hoy ({ perfil, recargarPerfil }) {
 
   if (cargando) {
     return <Pantalla {...encabezado}><p className="meta">Cargando…</p></Pantalla>
+  }
+
+  /* DENTRO del entrenamiento. Se pide `rutina` además de la sesión
+   * porque un día suelto puede tener sesión sin rutina —entrenar fuera
+   * del plan— y ahí no hay series que registrar: no habría nada que
+   * pintar y la pantalla saldría vacía sin explicar por qué. */
+  if (entrenando && sesion && !sesion.completada && rutina) {
+    return (
+      <Entrenamiento
+        sesion={sesion}
+        rutina={rutina}
+        ejercicios={ejercicios}
+        perfil={perfil}
+        ocupado={ocupado}
+        alVolver={() => setEntrenando(false)}
+        alTerminar={terminar}
+      />
+    )
   }
 
   /* --- Sin plan: tres mensajes distintos, uno por rol --------------- */
@@ -425,9 +466,13 @@ export default function Hoy ({ perfil, recargarPerfil }) {
             {sesion?.completada ? (
               <p className="estado es-ok">Hecho por hoy ✓</p>
             ) : sesion ? (
+              /* Ya empezó y no terminó. El botón lleva DE VUELTA al
+               * entrenamiento en vez de terminarlo desde aquí: terminar
+               * es lo que se hace al final, y ofrecerlo en la pantalla
+               * de entrada invita a darle sin haber entrenado. */
               <button type="button" className="boton-principal"
-                      disabled={ocupado} onClick={terminar}>
-                {ocupado ? 'Guardando…' : 'Terminar entrenamiento'}
+                      disabled={ocupado} onClick={() => setEntrenando(true)}>
+                Seguir entrenamiento
               </button>
             ) : (
               <button type="button" className="boton-principal"

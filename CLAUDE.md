@@ -502,7 +502,8 @@ README.md                La cara pública del repo. Cuenta el problema (un
                          entrenador que manda PDFs y no sabe quién entrenó),
                          no la lista de funciones.
 src/styles/app.css       Todos los estilos.
-supabase/01-esquema.sql  Las 19 tablas.
+supabase/01-esquema.sql  Las 19 tablas del esquema original (la 20 es
+                         `logros_catalogo`, en el archivo 08).
 supabase/02-politicas.sql RLS + los índices que la sostienen. Sin esto
                          la base está abierta.
 supabase/03-funciones.sql Invitaciones, clonar plantilla, XP y habeas
@@ -528,16 +529,54 @@ supabase/06-sesiones.sql UN día del plan, UNA sesión completada. Sin este
                          veces repitiendo el insert: el XP estaba
                          protegido contra que lo ESCRIBIERAN, no contra
                          que lo PIDIERAN de más. HAY QUE CORRERLO A MANO.
+supabase/08-analitica.sql
+                         La capa de analítica (Fase 5). Tres vistas para
+                         el cliente, tres funciones para el entrenador,
+                         el catálogo de logros y el trigger que los
+                         otorga. LAS VISTAS LLEVAN `security_invoker` —
+                         sin eso se saltan el RLS y le entregan a
+                         cualquier cliente las sesiones de todos. HAY QUE
+                         CORRERLO A MANO.
+src/lib/analitica.js     Cómo se LEEN esos números: minutos a "20 h 40",
+                         días a "hace 3 semanas", porcentaje a "Al día".
+                         Ninguna cuenta vive aquí; las hace Postgres.
+src/sections/PanelClientes.jsx
+                         Perfil → "Cómo van tus clientes". Adherencia,
+                         retención y franjas horarias. Tres llamadas RPC
+                         y cero sesiones descargadas al navegador.
+supabase/09-series.sql   El registro de series: la vista que prellena el
+                         peso de la última vez, y la CUARTA métrica
+                         (ejercicios más saltados), que solo pudo
+                         escribirse cuando empezó a haber datos en
+                         `series_registradas`. HAY QUE CORRERLO A MANO.
+src/lib/series.js        Qué pide el plan, con qué llegan los campos y
+                         qué se puede guardar. Lo estricto es a
+                         propósito: de aquí sale lo que se PRELLENA, y un
+                         prellenado inventado acaba en el historial de
+                         una persona.
+src/sections/Entrenamiento.jsx
+                         La pantalla que se usa sudado y a media serie.
+                         Guarda serie por serie, salta sola a la
+                         siguiente, y NO termina el entrenamiento: eso lo
+                         hace `Hoy`, que es quien sabe leer el XP.
+herramientas/validar-sql.py
+                         Pasa supabase/*.sql por el parser real de
+                         Postgres antes de pegarlo. Trae el rodeo para
+                         las funciones de trigger, que libpg_query
+                         serializa mal.
 ```
 
-Dónde va a entrar lo que sigue: la Fase 4 conecta `Hoy` y el plan del
-cliente; el cuadro gris de `.ejercicio-video` se reemplaza por el video
-real de Bunny cuando Bunny deje de estar aplazado.
+Dónde va a entrar lo que sigue: la pantalla de registrar peso y
+repeticiones por serie, que es lo que desbloquea la cuarta métrica
+(ejercicios más saltados); el cuadro gris de `.ejercicio-video` se
+reemplaza por el video real de Bunny cuando Bunny deje de estar
+aplazado.
 
 ## La base de datos
 
 Esquema cerrado en `supabase/01-esquema.sql`, con las respuestas del
-entrenador del 1/09. 19 tablas.
+entrenador del 1/09. 19 tablas, más `logros_catalogo` que agregó la
+Fase 5 en `08-analitica.sql`: 20.
 
 **La decisión que manda sobre todo el modelo: cada cliente tiene su propia
 rutina.** No hay catálogo de programas al que la gente se inscribe. El plan
@@ -606,11 +645,42 @@ debe recortar:
 - **La pantalla "Mis datos" es gobernanza implementada**, no un PDF.
 - **El README cuenta el problema, no las funciones.**
 
+**Construida el 4/09. Las cuatro métricas están**: las tres primeras en
+`08-analitica.sql`, y *ejercicios más saltados* en `09-series.sql`, que
+es el archivo donde también entró la pantalla que la alimenta. Se
+escribió cuando hubo datos y no antes, que era lo acordado: una función
+que devuelve una lista vacía para siempre parece rota.
+
+**La trampa de esa cuarta métrica, que no se puede "simplificar":** solo
+mira las sesiones completadas EN LAS QUE SE ANOTÓ ALGO. Registrar series
+es opcional, así que sin esa exclusión el ejercicio más saltado sería
+siempre el de los clientes que no usan la función de registro, y la
+métrica mediría quién anota en vez de qué se salta.
+
+Tres reglas nuevas que salieron de construirla:
+
+- **Toda vista lleva `with (security_invoker = on)`.** Es la tercera
+  trampa de esta base y la peor de las tres porque no da error: una
+  vista corre por defecto con los permisos de quien la CREÓ, así que una
+  vista sobre `sesiones` sin eso le entrega a cualquier cliente las
+  sesiones de todos. Las políticas siguen ahí, perfectas, y no se
+  aplican.
+- **La regla 13 vale también dentro del SQL.** Una función `security
+  definer` corre como dueño de la base: el RLS no la recorta. Cada
+  consulta de `otorgar_logros` lleva su `cliente_id = new.cliente_id`
+  escrito, o el primer cliente que termine un entrenamiento le regala
+  logros a los otros catorce.
+- **Lo que agrega a varias personas va sin nombres.** `horas_tipicas()`
+  devuelve franjas y conteos, nunca `cliente_id`. Lo que los clientes
+  autorizaron es que el entrenador vea su progreso; a qué hora entra
+  cada uno al gimnasio es su rutina de vida y no ayuda a programar a
+  nadie. Agregado sirve igual.
+
 ## Estado (4 de septiembre de 2026)
 
-**Fases 1 a 3 construidas. Fase 4 a la mitad.** La base existe y está
-protegida; hay acceso por cuenta, tres roles y la Ley 1581 implementada.
-**144 pruebas** pasan. `v0.3.6`.
+**Fases 1 a 5 construidas.** La base existe y está protegida; hay acceso
+por cuenta, tres roles y la Ley 1581 implementada. **224 pruebas** pasan.
+`v0.5.1`.
 
 **Lo que el entrenador YA puede hacer sin pedirle nada a nadie:** llenar
 su biblioteca de ejercicios (uno por uno o pegando una hoja de cálculo),
@@ -623,16 +693,27 @@ empezar el entrenamiento, terminarlo y ganar XP. La racha es real.
 plantillas de varias semanas y se las asigna a un cliente. Ya no depende
 del seed de ejemplo ni del desarrollo para nada de eso.
 
-**PENDIENTE DE INFRAESTRUCTURA: correr `supabase/07-constructores.sql`.**
-Sin él, los dos constructores fallan al guardar.
+**Lo que el entrenador ve del otro lado (4/09, Fase 5):** Perfil →
+*Cómo van tus clientes*. Quién entrena, quién lleva días sin aparecer,
+cuánta gente vino cada semana y en qué franjas horarias. Es la respuesta
+a lo que él dijo en el cuestionario: que pregunta dos o tres veces por
+semana porque no se entera.
 
-**Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
-Perfil, Recetas, Ejercicios y `Hoy` son reales. `Progreso` sigue en mock
-(Fase 5), y de `USUARIO` en `mock.js` solo queda el nivel que esa
-pantalla usa.
+**Lo que el CLIENTE ya puede hacer, completo:** ver su rutina del día,
+empezar el entrenamiento, **anotar peso y repeticiones serie por serie**,
+terminarlo, ganar XP y logros, y ver su historial y sus semanas
+cumplidas.
 
-**PENDIENTE DE INFRAESTRUCTURA:** `supabase/06-sesiones.sql` ya se
-corrió (4/09) y el índice quedó verificado.
+**PENDIENTE DE INFRAESTRUCTURA: correr `supabase/09-series.sql`.** Sin
+él la pantalla del entrenamiento no prellena el peso y la sección "Lo
+que se saltan" no aparece; el resto funciona. Pasos y comprobaciones en
+`PASOS-FASE-5.md`.
+
+`06`, `07` y `08` ya se corrieron y quedaron verificados el 4/09.
+
+**Qué está conectado a la base y qué no: TODO.** `mock.js` se borró el
+4/09 al conectar `Progreso` y los logros. No queda una sola pantalla de
+la app mostrando algo inventado.
 
 **Tres pendientes que no bloquean construir, pero sí difundir:**
 
@@ -657,7 +738,7 @@ es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 
 1. Leer `BITACORA.md` (el estado y el siguiente paso están al final) y
    `CONTEXTO-LOCAL.md`.
-2. `npm install && npm run dev`. Verificar con `npm run test` que las **71
+2. `npm install && npm run dev`. Verificar con `npm run test` que las **202
    pruebas** siguen pasando antes de tocar nada.
 3. **Comprobar que `.env.local` existe.** No está en git y sin él la app
    no arranca: lanza un error explícito en la consola. Las dos variables

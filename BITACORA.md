@@ -2050,6 +2050,257 @@ el uso no comercial de Vercel.
 
 ---
 
+## 4 de septiembre de 2026 — la Fase 5: la analítica en SQL
+
+Segunda sesión del mismo día. La anterior cerró la Fase 4 y dejó tres
+opciones sobre la mesa; se eligió la Fase 5 completa menos el registro
+de series.
+
+**Y antes de eso, un pendiente que se cierra:** los dos constructores se
+probaron con datos reales —armar una rutina, cambiarle el orden,
+guardarla, reabrirla, meterla en una plantilla y asignársela a un
+cliente— y todo quedó como debía. `07-constructores.sql` corrido y
+verificado. Sale de la lista de "falta probar".
+
+### Lo que se construyó
+
+`supabase/08-analitica.sql`: tres vistas para el cliente, tres funciones
+para el entrenador, la tabla `logros_catalogo` (la número 20) y el
+trigger que otorga los logros. 31 sentencias.
+
+Del lado del navegador: `Progreso` conectado de verdad, los logros de
+`Perfil` conectados, y una pantalla nueva —Perfil → **Cómo van tus
+clientes**— que es el panel de adherencia. `src/lib/analitica.js` con
+17 pruebas. **202 pruebas, `v0.5.0`.**
+
+**`mock.js` se borró.** Era la promesa escrita en su propia cabecera
+desde la Fase 2, y se cumplió el día que la última pantalla dejó de
+inventar sus datos. Ya no queda nada falso en la app.
+
+### La trampa que casi se cuela: las vistas se saltan el RLS
+
+Es el hallazgo de la sesión y merece quedar escrito grande, porque **no
+da ningún error**: simplemente entrega de más.
+
+Una vista en Postgres corre, por defecto, con los permisos de QUIEN LA
+CREÓ, no de quien la consulta. Como el SQL de este proyecto se pega en
+el SQL Editor —o sea, como dueño de la base— una vista sobre `sesiones`
+escrita a la ligera le habría entregado a cualquier cliente autenticado
+las sesiones de todos los demás. Las 108 sentencias de políticas del
+archivo 02 seguirían ahí, perfectas, sin aplicarse: la vista pregunta
+con otra credencial.
+
+Se cierra con `with (security_invoker = on)`, que es una palabra, y por
+eso está ahora como regla en `CLAUDE.md` junto a las otras dos trampas
+de la base. Pide PostgreSQL 15 o superior, y si la base fuera anterior
+el archivo falla al correrlo — falla cerrado, que es como tiene que
+fallar.
+
+**Consecuencia que hay que recordar:** como el RLS sí se aplica, y las
+políticas de `sesiones` terminan en `or es_admin()`, para el entrenador
+estas vistas devuelven las filas de TODOS. La regla 13 vale igual aquí:
+las tres consultas de `Progreso` llevan su `.eq('cliente_id', …)`.
+
+### La regla 13 también dentro del SQL
+
+No se había necesitado hasta ahora. Una función `security definer` corre
+como dueño de la base, así que el RLS no la recorta: dentro de
+`otorgar_logros`, las vistas le entregan las filas de todo el mundo. Sin
+un `cliente_id = new.cliente_id` escrito en cada consulta, el primer
+cliente que termine un entrenamiento le regala logros a los otros
+catorce.
+
+Es la misma lección del 2/09 en una capa donde no se había pensado.
+
+### Los logros los da la base, y en un trigger APARTE
+
+Mismo argumento que el XP: lo que corre en el navegador lo reescribe
+quien tenga el navegador.
+
+Lo que sí se decidió distinto: **no se amplió `otorgar_xp`.** Esa
+función vive en el archivo 03, que ya se corrió; reescribirla desde el
+08 dejaría dos versiones de la misma función en el repositorio y la
+siguiente sesión no sabría cuál está corriendo. Va un trigger nuevo que
+no toca nada de lo anterior.
+
+Los seis logros salen de una tabla de catálogo y no de una lista en el
+JavaScript, para que la base no sea la que los otorga y el navegador el
+que decida cómo se llaman.
+
+### Decisión de privacidad: las horas van sin nombres
+
+`horas_tipicas()` devuelve franjas y conteos, y ninguna columna que
+identifique a nadie.
+
+Se revisó el texto que los clientes firman antes de construirlo: la
+finalidad `datos_personales` cubre "mi actividad dentro de la app… para
+que mi entrenador vea mi progreso", así que la adherencia y la retención
+caben y **no hubo que versionar el consentimiento**. La hora a la que
+alguien entra al gimnasio cada día es otra cosa —es una rutina de vida—
+y saberla persona por persona no ayuda a programar mejor a nadie.
+Agregada sirve igual, para decidir cuándo mandar el recordatorio de la
+Fase 7.
+
+Está dicho en la propia pantalla, para que se lea como decisión y no
+como un dato que falta.
+
+### El bug que encontró una prueba, no la pantalla
+
+`nivelDeAdherencia(null)` devolvía "Muy por debajo" en vez de "Sin
+registros", porque `Number(null)` es **cero**, no `NaN`, y el
+`Number.isFinite` de más abajo lo dejaba pasar.
+
+En la pantalla eso significa que un cliente del que no hay dato aparece
+en la lista como el que menos entrena, que es exactamente lo contrario
+de "no sabemos". La prueba se escribió con ese nombre —"nunca haber
+entrenado NO es lo mismo que cero días"— antes de mirar el código, y por
+eso lo agarró.
+
+### La cuarta métrica falta, y se dice en vez de callarla
+
+`CLAUDE.md` pide cuatro: adherencia, retención, hora típica y
+**ejercicios más saltados**. Las tres primeras están; la cuarta no.
+
+Saber qué ejercicio se salta la gente exige comparar lo PROGRAMADO
+contra lo HECHO, y lo hecho se guarda en `series_registradas`, donde hoy
+no escribe nadie: la pantalla de registrar peso y repeticiones por serie
+todavía no existe. Una función escrita ahora devolvería una lista vacía
+para siempre y parecería rota. Entra en el mismo commit que esa
+pantalla, no antes.
+
+El hueco quedó escrito dentro del propio `08-analitica.sql`, que es
+donde lo va a buscar quien lo necesite.
+
+### El validador de SQL, ahora en el repo
+
+El ritual del 1/09 —parsear los archivos con el parser real de Postgres
+antes de pegarlos— existía como práctica pero no como archivo. Ahora es
+`herramientas/validar-sql.py`. Los ocho archivos pasan: **212
+sentencias, 16 cuerpos PL/pgSQL**, y la prueba negativa confirma que el
+validador sí detecta un error.
+
+Trae un rodeo que costó encontrar: `parse_plpgsql` se ahoga con las
+funciones que devuelven `trigger` —libpg_query serializa mal los datums
+`new` y `old` y sale un texto que ni siquiera es JSON válido—. Se
+descubrió que era la herramienta y no el SQL porque falla igual con
+`otorgar_xp`, que lleva corriendo en producción desde el 1/09. Saltarse
+las funciones de trigger habría dejado sin revisar justo las dos que se
+disparan solas, así que el cuerpo se comprueba metido en un andamio.
+
+### Lo que NO se pudo verificar en esta sesión
+
+Se dice para que nadie lo dé por hecho:
+
+- **El SQL no se corrió.** Está parseado, no ejecutado. Parsear dice que
+  la sintaxis está bien; no dice que las tablas existan ni que las
+  políticas hagan lo que uno cree.
+- **Las dos pantallas nuevas no se vieron con datos reales**, porque
+  para eso hay que entrar con una cuenta. Lo que sí se verificó es el
+  CSS nuevo, con la hoja de estilos real, midiendo en el navegador: las
+  barras, la marca de adherencia y las franjas, en claro y en oscuro.
+  Ni un color literal se coló.
+- La app compila (`npm run build`) y arranca sin errores en consola.
+
+---
+
+## 4 de septiembre de 2026 — el registro de series, y la cuarta métrica
+
+Tercera sesión del día. Kev corrió `08-analitica.sql` y se siguió con lo
+que quedaba de la Fase 5.
+
+`supabase/09-series.sql`, `src/lib/series.js` con 22 pruebas y
+`src/sections/Entrenamiento.jsx`. **224 pruebas, `v0.5.1`.**
+
+### La decisión que define la pantalla: qué se prellena y qué no
+
+Es lo único de esta sesión que valía la pena discutir antes de escribir
+código, y la respuesta no es la misma para los dos campos:
+
+- **El peso SÍ se prellena**, con lo que levantó la última vez ese mismo
+  ejercicio (y si no hay historial, con la sugerencia del plan). El peso
+  de hoy es casi siempre el de la semana pasada; es un hecho sobre lo
+  que hay en la barra y equivocarse es barato, se ve mal y se corrige.
+- **Las repeticiones casi nunca.** Son lo que ACABA de pasar y es justo
+  lo que varía. Prellenarlas con lo de la semana pasada es escribirle el
+  historial a alguien, y es el dato que la app existe para medir.
+
+La única excepción son las repeticiones cuando el plan pide un número
+exacto ("12"): ahí no se supone nada sobre lo que hizo, se repite lo que
+el entrenador le pidió. Con un objetivo de "8-10" el campo llega vacío,
+porque elegir el 8 o el 10 por él sería inventar.
+
+De ahí sale que `objetivoReps` sea **deliberadamente estricta**: "12 por
+lado", "al fallo" y "AMRAP" devuelven null y no el primer número que
+aparezca. Ese número acabaría prellenado en un campo que se puede
+guardar sin mirar, y de ahí a la tabla que sirve para saber si de verdad
+entrenó. Hay una prueba con ese nombre exacto.
+
+### Cuatro decisiones más, todas de la misma condición
+
+La condición es la del esquema desde el 1/09: **esto se usa con el
+celular en la mano, sudado y a media serie.**
+
+- **Se guarda serie por serie, no al final.** Si se cae la señal o cierra
+  la app a la mitad, lo anotado ya está. Un formulario que se envía
+  entero al terminar pierde el entrenamiento completo, y a nadie se le
+  olvida ese día.
+- **Guardar salta sola a la siguiente serie**, y el campo de
+  repeticiones se enfoca solo. Anotar cuatro series son cuatro
+  confirmaciones, no cuatro búsquedas de botón.
+- **Anotar es OPCIONAL.** Se puede terminar el entrenamiento sin
+  escribir nada, y una fila con los dos campos vacíos es válida:
+  significa "hice esta serie". Si guardar exigiera números, la mitad de
+  la gente dejaría de marcar.
+- **Terminar el entrenamiento NO lo hace esta pantalla.** El botón está
+  aquí y la función es la de `Hoy`, porque el XP lo paga un trigger y
+  hay que releerlo para decir el número de verdad. Con esa lógica en dos
+  sitios, un día los dos avisos dirían cosas distintas.
+
+Y la coma decimal se acepta: en Colombia se escribe 72,5. Sin esa línea,
+la mitad de los pesos se rechazaría por escribirlos como se escriben
+allá.
+
+### La cuarta métrica, y la trampa que tiene dentro
+
+`ejercicios_saltados()` ya se pudo escribir, porque ya hay con qué
+alimentarla. Entró en el mismo archivo que la pantalla, que era
+exactamente lo acordado el 4/09 por la mañana.
+
+**Lo que no se puede "simplificar" nunca:** solo mira las sesiones
+completadas EN LAS QUE SE ANOTÓ ALGO. Como registrar es opcional,
+alguien puede terminar su entrenamiento entero sin anotar un peso, y sin
+esa exclusión saldría como si se hubiera saltado todo. El ejercicio más
+"saltado" sería siempre el de los clientes que no usan la función de
+registro, y la métrica mediría **quién anota** en vez de **qué se
+salta**. Está escrito en el archivo y hay una comprobación para eso.
+
+En la pantalla va con una frase que el número necesita para no
+malinterpretarse: un ejercicio muy saltado casi nunca es gente floja, es
+uno que no se entiende o que pide un equipo que no tienen en la casa.
+
+### La sección que puede faltar sin tumbar las otras
+
+`ejercicios_saltados` quedó FUERA de la comprobación de error del panel.
+Es la única función que puede no existir todavía en una base sin el
+archivo 09 corrido, y que le falte no puede tumbar la adherencia, la
+retención y las horas, que sí están. Si no responde, la sección no se
+pinta y el detalle queda en la consola.
+
+### Verificado y no verificado
+
+- 224 pruebas, `npm run build` compila, `09-series.sql` parseado con el
+  parser real de Postgres (7 sentencias, 1 cuerpo PL/pgSQL).
+- **El CSS nuevo, medido en el navegador con la hoja real.** Las fichas
+  de serie quedan en 68×64 px —muy por encima del mínimo de 44 que pide
+  accesibilidad, y esto se usa con el pulso alterado—, las cuatro caben
+  en un renglón a 375 px, los campos están en 16 px (regla 4, o Safari
+  hace zoom solo) y no hay desborde horizontal. En oscuro la serie
+  anotada se distingue por borde verde brillante y no solo por relleno.
+- **NO se probó contra la base ni con una cuenta real.** `09-series.sql`
+  está sin correr, y las pantallas no se han visto con datos.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -2085,6 +2336,10 @@ con datos falsos.
   `main` republica sola.
 
 ### Qué está conectado a la base y qué no
+
+**SUPERADO EL 4/09: ya está todo conectado y `mock.js` se borró.** La
+tabla de abajo se deja como quedó ese día, porque es lo que explica por
+qué el archivo se fue encogiendo en vez de desaparecer de golpe.
 
 | Pantalla | Estado |
 |---|---|
@@ -2138,62 +2393,59 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ---
 
-## Siguiente paso — al cerrar el 4 de septiembre de 2026
+## Siguiente paso — al cerrar la tercera sesión del 4 de septiembre de 2026
 
-**Fase 4 cerrada.** El entrenador arma sus ejercicios, sus rutinas y sus
-plantillas, y se las asigna a un cliente. El cliente ve su rutina del
-día, la empieza, la termina y gana XP. Nada de eso depende ya del
-desarrollo.
+**Fase 5 completa.** Las cuatro métricas están, el registro de series
+existe y `mock.js` desapareció. **224 pruebas. `v0.5.1`.**
 
-**185 pruebas. `v0.4.1`.** Los siete archivos SQL corridos y verificados.
+### LO PRIMERO
 
-### Lo primero al retomar
+**Correr `supabase/09-series.sql`.** Sin él, la pantalla del
+entrenamiento no prellena el peso de la última vez y la sección "Lo que
+se saltan" no aparece en el panel; todo lo demás funciona. Pasos y
+comprobaciones en `PASOS-FASE-5.md`.
 
-1. Leer esta bitácora desde la entrada del 4/09 y `CLAUDE.md`.
-2. `npm install && npm run dev`, y `npm run test`: **185 pruebas** tienen
-   que pasar antes de tocar nada.
-3. Comprobar que `.env.local` existe (no está en git).
+Las dos comprobaciones que no se pueden saltar:
 
-### Lo que falta probar de lo que se construyó el 4/09
+- Que el prellenado traiga la ÚLTIMA y no cualquiera.
+- Que una sesión sin registros NO cuente como saltada. Es donde esa
+  métrica se vuelve mentira si alguien "simplifica" la condición.
 
-Nada de esto bloquea seguir, pero conviene hacerlo antes de construir
-encima:
+### Después, probar con datos reales
 
-- **Los dos constructores, con datos reales.** Armar una rutina con tres
-  ejercicios, cambiarles el orden, guardar y volver a abrirla: el orden
-  tiene que estar como quedó. Después una plantilla con esa rutina, y
-  asignársela a un cliente de prueba.
-- **La puerta de edad**, con una fecha de menor: que muestre el aviso,
-  que el botón de entrar quede bloqueado, y que "Borrar mi cuenta"
-  funcione.
-- **Las dos pantallas nuevas en un Android real.** La carga masiva y la
-  portada por grupo muscular todavía no se han tocado en un celular.
+Nada de la Fase 5 se ha visto contra la base con una cuenta. Se acumula
+con lo que ya venía:
+
+- **`Progreso` y el panel de clientes**, con cuenta de cliente y de
+  admin. Que a cada uno le salga LO SUYO (lección del 2/09).
+- **Un entrenamiento entero de punta a punta**: empezar, anotar cuatro
+  series, salir de la app a la mitad, volver y comprobar que lo anotado
+  sigue ahí, y terminar.
+- **Las pantallas nuevas en un Android real.** Ya son cinco sin tocar en
+  un celular: la carga masiva, la portada por grupo muscular,
+  `Progreso`, el panel de clientes y el entrenamiento. Esta última es la
+  que más lo pide: se usa con una mano y sudado, que es justo lo que un
+  navegador de escritorio no reproduce.
+- **La puerta de edad** con una fecha de menor. Sigue pendiente.
 
 ### Las opciones, por orden de valor
 
 | Qué | Estimado | Qué aporta |
 |---|---|---|
-| **Fase 5 — Progreso y analítica en SQL** | 10 h (hoja de ruta) | La que más aporta fuera del proyecto |
-| Ajustar un día suelto de un plan ya asignado | ~2 h propios | Comodidad para el entrenador |
-| Compresión y subida de imágenes | ~2 h propios | Bloqueada por tener fotos |
+| **Fase 6 — Recetas y hábitos** | 8 h (hoja de ruta) | Contenido genérico; alcance recortado por la Ley 73 |
+| **Fase 7 — Notificaciones push** | por estimar | La palanca de retención más grande del proyecto |
+| Ajustar un día suelto de un plan ya asignado | ~2 h | Comodidad para el entrenador |
+| Compresión y subida de imágenes | ~2 h | Bloqueada por tener fotos |
 
-**La recomendación no es ninguna de las tres: es ponerle la app al
-entrenador.** Ya puede usarla de punta a punta con una persona real. Si
-la usa, la Fase 5 vale la pena; si no la usa, ninguna cantidad de horas
-más lo arregla. Lo único que sigue faltando de su lado es que devuelva
-`plantilla-ejercicios.csv`.
+**La recomendación no cambia, y ya van tres sesiones: ponerle la app al
+entrenador.** Ahora sí está completa de su lado y del lado del cliente:
+él arma contenido, asigna planes y ve quién entrena; el cliente entrena,
+anota y ve su progreso. Lo único que falta de él sigue siendo que
+devuelva `plantilla-ejercicios.csv`.
 
-### Detalle de la Fase 5, para cuando llegue
+La Fase 7 es la que más retención da, pero recordarle a alguien que
+entrene solo sirve si ya hay alguien entrenando.
 
-La analítica va **en SQL dentro de Postgres**, con vistas y funciones:
-adherencia por cliente, retención semana a semana, ejercicios más
-saltados, hora típica de entrenamiento. No con bucles en JavaScript. Es
-la parte que más fácil se recorta cuando falta tiempo y la que no se
-debe recortar — y ahora tiene de dónde salir, porque las sesiones ya se
-registran de verdad con `iniciada_en` y `terminada_en` separados.
-
-`mock.js` quedaría vacío: le faltan `HISTORIAL`, `LOGROS` y el nivel de
-`USUARIO`, los tres de `Progreso` y `Perfil`.
 
 ## Preguntas abiertas
 
