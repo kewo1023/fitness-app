@@ -196,6 +196,28 @@ No son preferencias. Son las que sostienen el proyecto:
 7. **Respeta el área segura** (`var(--sat)` / `var(--sab)`).
 8. **Verifica antes de afirmar.** Compila, y revisa en un **Android** real o
    con el viewport en móvil. No des nada por hecho sin haberlo visto.
+
+   **Y eso incluye los números, que es donde falló el 3/09.** Toda
+   cantidad que describa tiempo transcurrido, cantidad o magnitud lleva
+   su origen, o no se escribe:
+
+   - **Fechas y duraciones: la resta va por escrito.** "La bitácora es
+     del 2/09, hoy es 3/09 → un día." Las dos fechas casi siempre están
+     a la vista, y ese es el problema: por estar a la vista, el cálculo
+     se siente hecho sin haberlo hecho.
+   - **Sin fuente, va la frase cualitativa.** "Bloqueado desde la última
+     sesión", no "llevas un mes". Vaga y cierta le gana a precisa y
+     falsa.
+   - **El número que refuerza la propuesta se verifica PRIMERO.** Si
+     aparece una cifra que hace más fuerte el argumento que se está
+     defendiendo —sobre todo para cambiar algo que la bitácora ya
+     decidió— esa es la que hay que comprobar antes de escribirla. Un
+     dato que empuja justo hacia donde uno ya iba no es apoyo, es
+     sospechoso.
+
+   Salió de un caso real: para justificar saltarse una decisión
+   registrada se escribió que llevaba "un mes" esperando la hoja del
+   entrenador. Llevaba un día. Está contado en `BITACORA.md`.
 9. **Tutoriales de herramientas: busca la documentación oficial actual.** Las
    interfaces cambian; un tutorial de memoria le hace perder la tarde.
 10. **Vitest desde la Fase 2**, sobre la lógica que puede hacer daño:

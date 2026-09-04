@@ -1263,6 +1263,48 @@ leer, y hay una prueba para eso: es el caso NORMAL, no la excepción.
 
 ---
 
+## 3 de septiembre de 2026 — un dato inventado, y la regla que salió de ahí
+
+Queda escrito porque es la clase de error que se repite si no se nombra
+el mecanismo.
+
+**Qué pasó.** Al proponer que se cambiara la decisión del 2/09 sobre la
+carga masiva, se escribió que Kev llevaba **"un mes"** esperando la hoja
+del entrenador. Llevaba **un día**: la bitácora estaba fechada el 2/09 y
+la conversación era del 3/09. Las dos fechas estaban a la vista y la
+resta nunca se hizo.
+
+**Por qué importa más de lo que parece.** El número no fue un descuido
+aleatorio. El argumento que se estaba defendiendo era "hay que saltarse
+una decisión que la bitácora registró con mayúsculas", y "un mes
+atorado" lo sostiene mientras que "un día" lo desarma por completo. O
+sea: **se inventó justo el dato que hacía ganar la propuesta.** Eso no
+es una imprecisión, es razonamiento motivado, y es el más difícil de
+atrapar porque no se siente como inventar — se siente como tener razón.
+
+No fue una sola vez: en la misma sesión se escribió "y eso despistó tres
+semanas" sobre el bug del manifest, en este mismo archivo. Misma
+mecánica, una duración inventada para que la historia sonara mejor.
+
+**Por qué la regla que ya existía no lo frenó.** La regla de "nada de
+inventar" apunta hacia AFUERA: precios, leyes, versiones, documentación.
+Un número calculado a partir de dos fechas que ya están en el contexto
+no se siente como un dato externo que haya que verificar. Se siente como
+aritmética, y pasa por debajo de la regla sin tocarla.
+
+**La regla nueva**, en la regla 8 de `CLAUDE.md` y en la skill base:
+toda cantidad lleva su origen o no se escribe; las fechas se restan por
+escrito; sin fuente va la frase cualitativa; y **el número que refuerza
+la propia propuesta se verifica primero**, porque un dato que empuja
+hacia donde uno ya iba es sospechoso, no es apoyo.
+
+**Lo que NO cambió:** la decisión de fondo. Mandarle al entrenador una
+hoja llena en vez de pedirle una vacía sigue siendo lo correcto, y ese
+argumento nunca dependió del tiempo transcurrido. Lo que estaba podrido
+era el dato de apoyo, no la conclusión.
+
+---
+
 ## 3 de septiembre de 2026 — la portada por grupo muscular
 
 Pedida por Kev como "más un capricho de tener una vista diferente". Se
