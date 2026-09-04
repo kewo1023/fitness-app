@@ -559,6 +559,29 @@ src/sections/Entrenamiento.jsx
                          Guarda serie por serie, salta sola a la
                          siguiente, y NO termina el entrenamiento: eso lo
                          hace `Hoy`, que es quien sabe leer el XP.
+supabase/10-notificaciones.sql
+                         Fase 7. `suscripciones_push` es la PRIMERA
+                         tabla cuya política NO termina en
+                         `or es_admin()`: una suscripción es la
+                         dirección de un teléfono y el entrenador no
+                         manda avisos a mano. No se "corrige".
+                         `destinatarios_push` es la única función que ni
+                         siquiera `authenticated` puede ejecutar.
+                         HAY QUE CORRERLO A MANO.
+supabase/functions/enviar-recordatorios/index.ts
+                         La única parte de la app que corre en un
+                         servidor. La dispara pg_cron cada hora; NO
+                         decide a quién le manda —eso es SQL—, solo
+                         cifra y entrega. Hay que desplegarla.
+src/lib/notificaciones.js
+                         Pedir el permiso y guardar la suscripción. La
+                         mitad del archivo es el iPhone: sin instalar no
+                         hay avisos, y a esa persona hay que decirle
+                         CÓMO, no "no disponible".
+src/sections/Notificaciones.jsx
+                         Perfil → Avisos. El cuerpo es `Ajustes`, un
+                         componente aparte, porque la configuración
+                         inicial lo va a reusar tal cual.
 herramientas/validar-sql.py
                          Pasa supabase/*.sql por el parser real de
                          Postgres antes de pegarlo. Trae el rodeo para
@@ -642,6 +665,10 @@ debe recortar:
   por cliente, retención semana a semana, ejercicios más saltados, hora
   típica de entrenamiento. No con bucles en JavaScript.
 - **Rachas, XP y adherencia se calculan en la base**, no en el navegador.
+- **Y a quién se le manda una notificación, también** (Fase 7). La Edge
+  Function no decide nada: pregunta y entrega. Cambiar a qué hora le
+  llega a quien entrena de noche es cambiar una función SQL, sin
+  desplegar.
 - **La pantalla "Mis datos" es gobernanza implementada**, no un PDF.
 - **El README cuenta el problema, no las funciones.**
 
@@ -678,9 +705,17 @@ Tres reglas nuevas que salieron de construirla:
 
 ## Estado (4 de septiembre de 2026)
 
-**Fases 1 a 5 construidas.** La base existe y está protegida; hay acceso
-por cuenta, tres roles y la Ley 1581 implementada. **224 pruebas** pasan.
-`v0.5.1`.
+**Fases 1 a 5 construidas, y la 7 también** (se saltó la 6 por
+decisión del 4/09). La base existe y está protegida; hay acceso por
+cuenta, tres roles y la Ley 1581 implementada. **242 pruebas** pasan.
+`v0.5.2`.
+
+**OJO CON EL NÚMERO DE VERSIÓN.** El esquema dice que el segundo número
+es "la fase de la hoja de ruta que ya está cerrada", y eso daba por
+hecho que las fases se hacen en orden. Ya no. Mientras la Fase 6 no
+exista, el segundo número se queda en 5 aunque la 7 esté construida —
+que es lo honesto, pero deja de describir bien el estado. Está señalado
+como pregunta abierta en `BITACORA.md`.
 
 **Lo que el entrenador YA puede hacer sin pedirle nada a nadie:** llenar
 su biblioteca de ejercicios (uno por uno o pegando una hoja de cálculo),
@@ -704,12 +739,19 @@ empezar el entrenamiento, **anotar peso y repeticiones serie por serie**,
 terminarlo, ganar XP y logros, y ver su historial y sus semanas
 cumplidas.
 
-**PENDIENTE DE INFRAESTRUCTURA: correr `supabase/09-series.sql`.** Sin
-él la pantalla del entrenamiento no prellena el peso y la sección "Lo
-que se saltan" no aparece; el resto funciona. Pasos y comprobaciones en
-`PASOS-FASE-5.md`.
+**PENDIENTE DE INFRAESTRUCTURA, y la Fase 7 es la primera que necesita
+más que un SQL:** correr `10-notificaciones.sql`, generar las llaves
+VAPID, guardar tres secretos, desplegar la Edge Function y programar el
+cron. Los cinco pasos están en `PASOS-FASE-7.md`.
 
-`06`, `07` y `08` ya se corrieron y quedaron verificados el 4/09.
+`06`, `07`, `08` y `09` ya se corrieron.
+
+**Y hay una parte que NO se puede verificar sin un teléfono.** Una
+notificación push necesita HTTPS, un servicio de push real y un
+dispositivo: no hay forma de probarla desde un computador ni con una
+prueba automática. Lo que sí está cubierto con pruebas es lo que se
+rompe en silencio — el iPhone sin instalar, la conversión de la llave, y
+que las horas que la app promete sean las mismas que la base manda.
 
 **Qué está conectado a la base y qué no: TODO.** `mock.js` se borró el
 4/09 al conectar `Progreso` y los logros. No queda una sola pantalla de

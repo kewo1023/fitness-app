@@ -12,9 +12,12 @@
 
    Y hay una segunda razón, más grande: las notificaciones push exigen
    un service worker, sin excepción. Es la palanca de retención del
-   proyecto y sin este archivo no puede existir. No se activan hoy —
-   eso es una fase aparte, con su permiso y su consentimiento— pero la
-   puerta queda abierta.
+   proyecto y sin este archivo no puede existir.
+
+   DESDE LA FASE 7 YA ESTÁN AQUÍ, al final del archivo: los dos
+   manejadores que reciben el mensaje y lo muestran, y el que abre la
+   app cuando alguien lo toca. Quién recibe y cuándo lo decide la base
+   (`10-notificaciones.sql`); este archivo solo pinta lo que llegue.
 
    =====================================================================
    LO QUE ESTE ARCHIVO NO HACE, Y ES LA PARTE IMPORTANTE
@@ -44,7 +47,7 @@
  * algo de este archivo: al cambiar el nombre, el `activate` de abajo
  * borra el almacén anterior entero. Es el interruptor de "empezar de
  * cero" cuando una caché quedó mal. */
-const CACHE = 'entrena-estaticos-v1'
+const CACHE = 'entrena-estaticos-v2'
 
 /* Lo único que se guarda. Son los archivos que Vite publica con un
  * hash en el nombre (`app-9f2c1b.js`), y ese detalle es lo que hace
@@ -131,5 +134,98 @@ self.addEventListener('fetch', (evento) => {
     }
 
     return respuesta
+  })())
+})
+
+
+/* =====================================================================
+   LAS NOTIFICACIONES (Fase 7)
+   =====================================================================
+
+   Estos dos manejadores son lo único de la app que corre con la app
+   CERRADA. El navegador despierta este archivo, le entrega el mensaje y
+   lo vuelve a dormir; no hay pantalla, no hay React y no hay sesión de
+   Supabase. De ahí sale todo lo raro de aquí abajo.
+
+   POR ESO EL MENSAJE VIENE HECHO. La Edge Function manda el título y el
+   cuerpo ya escritos, en vez de mandar un identificador y que este
+   archivo consulte la base. Consultar exigiría credenciales guardadas
+   en el celular, y una notificación que necesita red para poder verse
+   es una notificación que no se ve cuando hay mala señal — que es justo
+   cuando la app tiene que seguir funcionando.
+   ===================================================================== */
+
+self.addEventListener('push', (evento) => {
+  /* TODO ESTO VA DENTRO DE UN TRY, y no por costumbre.
+   *
+   * Un push sin datos es normal: algunos servicios mandan uno vacío
+   * para comprobar que la suscripción sigue viva. Y en varios
+   * navegadores, si este manejador lanza una excepción sin mostrar
+   * ninguna notificación, el navegador muestra una suya que dice algo
+   * como "Este sitio se actualizó en segundo plano" — un mensaje que
+   * nadie escribió, en el idioma del navegador, en la pantalla de un
+   * cliente. Es peor que no mandar nada. */
+  let datos = {}
+  try {
+    datos = evento.data ? evento.data.json() : {}
+  } catch (_) {
+    datos = {}
+  }
+
+  const titulo = datos.titulo || 'Entrena'
+  const opciones = {
+    body: datos.cuerpo || 'Tienes algo pendiente en la app.',
+    icon: '/iconos/icono-192.png',
+    badge: '/iconos/icono-192.png',
+    lang: 'es-CO',
+
+    /* `tag` hace que una notificación nueva REEMPLACE a la anterior del
+     * mismo tipo en vez de apilarse. Si alguien no abre la app tres
+     * días, tiene que encontrar un aviso, no tres: una pila de
+     * recordatorios viejos es lo que hace que se apaguen las
+     * notificaciones y eso no se recupera. */
+    tag: 'entrena-recordatorio',
+    renotify: true,
+
+    /* Sin vibración ni sonido insistente: es un recordatorio, no una
+     * urgencia. `requireInteraction` queda en false (el valor de
+     * fábrica) a propósito — una notificación que no se va sola hasta
+     * que la toques es la que la gente aprende a odiar. */
+    data: { url: datos.url || '/' }
+  }
+
+  /* `waitUntil` mantiene vivo el service worker hasta que la promesa
+   * termine. Sin él, el navegador lo puede dormir antes de que la
+   * notificación llegue a mostrarse. */
+  evento.waitUntil(self.registration.showNotification(titulo, opciones))
+})
+
+self.addEventListener('notificationclick', (evento) => {
+  evento.notification.close()
+
+  const destino = (evento.notification.data && evento.notification.data.url) || '/'
+
+  evento.waitUntil((async () => {
+    /* PRIMERO SE BUSCA UNA VENTANA YA ABIERTA. Abrir una nueva cada vez
+     * deja al usuario con tres copias de la app y la sesión repetida en
+     * cada una. Si ya hay una, se le da el foco y se la lleva a donde
+     * corresponde.
+     *
+     * `includeUncontrolled` es necesario: una pestaña que se abrió
+     * antes de que este service worker tomara el control no aparece en
+     * la lista sin esa opción, y es exactamente el caso de alguien que
+     * dejó la app abierta desde ayer. */
+    const ventanas = await self.clients.matchAll({
+      type: 'window', includeUncontrolled: true
+    })
+
+    for (const ventana of ventanas) {
+      if ('focus' in ventana) {
+        if ('navigate' in ventana && destino !== '/') await ventana.navigate(destino)
+        return ventana.focus()
+      }
+    }
+
+    if (self.clients.openWindow) return self.clients.openWindow(destino)
   })())
 })

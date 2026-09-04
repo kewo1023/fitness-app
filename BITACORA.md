@@ -2301,6 +2301,153 @@ pinta y el detalle queda en la consola.
 
 ---
 
+## 4 de septiembre de 2026 — la Fase 7: las notificaciones
+
+Cuarta sesión del día. Se saltó la Fase 6 (Recetas) a propósito: la 7 es
+la palanca de retención y la 6 quedó recortada por la Ley 73 desde el
+1/09.
+
+`10-notificaciones.sql`, la Edge Function `enviar-recordatorios`, los
+manejadores de push en `sw.js`, `src/lib/notificaciones.js` con 18
+pruebas y la pantalla Perfil → Avisos. **242 pruebas, `v0.5.2`.**
+
+### La primera tabla del proyecto donde el admin NO entra
+
+`suscripciones_push` es la única cuya política no termina en
+`or es_admin()`, y eso es la decisión, no un descuido.
+
+Una suscripción no es un dato de progreso: es la dirección de un
+teléfono, y quien la tenga puede escribirle a ese aparato. El entrenador
+no manda avisos a mano —los manda el servidor— así que dársela sería
+repartir una llave que nadie va a usar. Es el principio de la Ley 1581
+aplicado al diseño: cada quien accede a lo que su finalidad necesita, y
+la del entrenador es ver progreso, no alcanzar teléfonos.
+
+Por lo mismo, `destinatarios_push` es **la única función del proyecto a
+la que se le revoca execute también a `authenticated`**. Devuelve
+endpoints ajenos. Si alguien se la concede "para probar", queda
+repartida la lista de teléfonos de todos los clientes.
+
+### El consentimiento se comprueba EN EL ENVÍO, no al suscribirse
+
+`consentimientos` es una tabla que solo crece: no se edita ni se borra,
+esa es su función. Así que revocar el permiso es insertar una fila nueva
+que dice `false`.
+
+Consecuencia que había que ver antes de escribir el filtro: mirar "¿dio
+permiso alguna vez?" haría que revocar no sirviera de nada. Lo que se
+mira es el consentimiento **más reciente**, en cada vuelta del cron.
+
+### La franja: la idea de Kev le ganó a mi recomendación
+
+Yo propuse hora fija porque no hay datos de cuándo entrena la gente, y
+`horas_tipicas()` los iba a dar. Kev propuso preguntárselo directamente
+en una configuración inicial. Es mejor y hay que dejarlo escrito:
+**inferir necesita semanas de datos y una población; preguntar funciona
+el primer día y con una sola persona.**
+
+`horas_tipicas()` no sobra: pasa a servir para comprobar si lo que
+dijeron coincide con lo que hacen.
+
+Tres cosas del diseño que salieron de ahí:
+
+**El recordatorio va ANTES de la franja, no dentro.** Mañana → 6 a.m.,
+tarde → 12 m., noche → 5 p.m. Un aviso que llega cuando ya entrenaste es
+ruido, y el ruido es lo que hace que alguien apague las notificaciones
+para siempre. Ese es el único error irreversible de esta fase.
+
+**La franja va en `perfiles`, NUNCA en `perfil_salud`.** Esa tabla es de
+datos sensibles, es opcional y su dueño la puede borrar entera sin
+borrar la cuenta. Si la franja viviera ahí, alguien que ejerce su
+derecho de supresión perdería sus recordatorios sin pedirlo ni
+enterarse.
+
+**Se hizo hoy la columna, aunque la pantalla sea después.** El envío ya
+la lee, con la hora por defecto para quien no ha contestado. Así la
+configuración inicial va a ser solo interfaz, sin migración. Y el cuerpo
+de la pantalla de Avisos ya es un componente aparte (`Ajustes`) para que
+esa configuración lo reuse en vez de copiarlo.
+
+### Una columna nueva en `perfiles` nace sin permiso de escritura
+
+Detalle que habría costado una sesión de depuración: el archivo 02 hizo
+`revoke update on perfiles` y devolvió solo `nombre` y `alias`, para que
+nadie se escriba el XP desde la consola. Una columna nueva no hereda
+nada. Sin `grant update (franja_entrenamiento)`, la pantalla de ajustes
+guardaría en silencio y no pasaría nada.
+
+Es la gracia del mecanismo funcionando, no un estorbo.
+
+### La prueba que cruza la frontera entre el navegador y la base
+
+La hora de cada franja vive en dos sitios por necesidad: la base la usa
+para decidir a quién escribe, y la app la muestra para que la persona
+sepa qué está eligiendo. Dos sitios son dos verdades esperando a
+separarse — y el día que se separen, la app promete las 6 y el aviso
+llega a las 12, **sin que nada falle ni avise**.
+
+`notificaciones.test.js` lee `10-notificaciones.sql` y compara los
+números. Es la única prueba del proyecto que cruza esa frontera, y está
+ahí porque es el único sitio donde un desajuste no produce ningún error.
+
+### El secreto del cron, que parece de más
+
+Una Edge Function se invoca con la llave publicable, y esa llave vive
+dentro del navegador de todo el mundo. Sin una puerta propia, cualquiera
+que abra la app puede disparar los envíos las veces que quiera. No
+mandaría avisos repetidos —de eso se encarga el único de `envios_push`—
+pero sí gastaría el cupo del proyecto.
+
+Va como cabecera `x-cron-secreto`, que pone el cron y comprueba la
+función antes de hacer nada.
+
+### Se apunta ANTES de mandar, no después
+
+Si se apuntara después y el proceso se muriera entre el envío y el
+registro, la siguiente vuelta del cron lo mandaría otra vez. Apuntando
+primero, el peor caso es que alguien no reciba un aviso; al revés, el
+peor caso es que lo reciba en bucle.
+
+Entre esos dos errores no hay empate: el segundo hace que apague las
+notificaciones para siempre, y eso no se recupera.
+
+### El iPhone, que es la mitad de `notificaciones.js`
+
+En iPhone los avisos **solo funcionan con la app agregada a la pantalla
+de inicio** (iOS 16.4+). En una pestaña de Safari no llegan. Verificado
+contra documentación de este año, no de memoria.
+
+Lo importante del diseño: a esa persona la app **no le dice "no
+disponible"**, le muestra los tres pasos para instalar. Si se mirara
+`tienePush` antes que el iPhone, caería en "no soportado" — y la app le
+estaría cerrando una puerta a alguien que está a dos toques de que sí
+funcione. Hay una prueba con ese nombre.
+
+Consecuencia: `PASOS-FASE-8.md` (instalación) sube otra vez de
+importancia.
+
+### Lo que NO se pudo verificar, y esta vez es más que otras veces
+
+- **Una notificación push no se puede probar desde un computador.**
+  Necesita HTTPS, un servicio de push real y un dispositivo. No hay
+  prueba automática que la cubra y no la va a haber.
+- **La Edge Function no se ejecutó ni una vez.** No hay llaves VAPID, no
+  está desplegada y el cron no existe. Lo que está verificado de ella es
+  que la API de `@negrel/webpush` se leyó del código de la versión 0.5.0
+  publicada, no de memoria.
+- Sí están: 242 pruebas, `npm run build`, el SQL parseado (20 sentencias,
+  3 cuerpos), `node --check` sobre el service worker, y el CSS nuevo
+  medido en el navegador.
+
+### Una cosa que se vio de paso y no se tocó
+
+`.enlace-fila` —el botón "Abrir"/"Elegir" de todas las listas de la
+app— mide 37×33 px. El mínimo que pide accesibilidad para un blanco de
+toque es 44. No se cambió porque toca todas las pantallas y no era el
+encargo, pero está anotado.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -2393,62 +2540,70 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ---
 
-## Siguiente paso — al cerrar la tercera sesión del 4 de septiembre de 2026
+## Siguiente paso — al cerrar la cuarta sesión del 4 de septiembre de 2026
 
-**Fase 5 completa.** Las cuatro métricas están, el registro de series
-existe y `mock.js` desapareció. **224 pruebas. `v0.5.1`.**
+**Fase 7 construida.** Falta la infraestructura, y es la primera vez que
+es más que correr un SQL. **242 pruebas. `v0.5.2`.**
 
-### LO PRIMERO
+### LO PRIMERO: los cinco pasos de `PASOS-FASE-7.md`
 
-**Correr `supabase/09-series.sql`.** Sin él, la pantalla del
-entrenamiento no prellena el peso de la última vez y la sección "Lo que
-se saltan" no aparece en el panel; todo lo demás funciona. Pasos y
-comprobaciones en `PASOS-FASE-5.md`.
+Ninguno se puede hacer desde aquí: necesitan la cuenta de Supabase y
+llaves que no deben existir en este repositorio.
 
-Las dos comprobaciones que no se pueden saltar:
+1. Generar las llaves VAPID con Deno.
+2. Correr `supabase/10-notificaciones.sql`.
+3. Guardar tres secretos y desplegar la Edge Function.
+4. Poner `VITE_VAPID_PUBLICA` en `.env.local` **y en Vercel**.
+5. Programar el cron con `cron.schedule`.
 
-- Que el prellenado traiga la ÚLTIMA y no cualquiera.
-- Que una sesión sin registros NO cuente como saltada. Es donde esa
-  métrica se vuelve mentira si alguien "simplifica" la condición.
+Y después, la parte que **solo se puede hacer con un teléfono en la
+mano**: instalar la app en un Android, activar los avisos, disparar la
+función a mano y ver si llega. No hay prueba automática que cubra esto y
+no la va a haber.
 
-### Después, probar con datos reales
+### Las tres comprobaciones de permisos
 
-Nada de la Fase 5 se ha visto contra la base con una cuenta. Se acumula
-con lo que ya venía:
+Están al final de `10-notificaciones.sql`. La que no se puede saltar es
+la primera: que un cliente NO pueda llamar `destinatarios_push`. Esa
+función devuelve las direcciones de los teléfonos de todos.
 
-- **`Progreso` y el panel de clientes**, con cuenta de cliente y de
-  admin. Que a cada uno le salga LO SUYO (lección del 2/09).
-- **Un entrenamiento entero de punta a punta**: empezar, anotar cuatro
-  series, salir de la app a la mitad, volver y comprobar que lo anotado
-  sigue ahí, y terminar.
-- **Las pantallas nuevas en un Android real.** Ya son cinco sin tocar en
-  un celular: la carga masiva, la portada por grupo muscular,
-  `Progreso`, el panel de clientes y el entrenamiento. Esta última es la
-  que más lo pide: se usa con una mano y sudado, que es justo lo que un
-  navegador de escritorio no reproduce.
-- **La puerta de edad** con una fecha de menor. Sigue pendiente.
+### La cola de pruebas, que ya viene larga
+
+Se acumula de tres sesiones y conviene bajarla antes de construir más:
+
+- **Nada de la Fase 5 se ha visto contra la base con una cuenta.**
+  `Progreso`, el panel de clientes y el entrenamiento entero.
+- **Siete pantallas sin tocar en un Android real**: carga masiva,
+  portada por grupo muscular, Progreso, panel de clientes,
+  entrenamiento, avisos y la instalación en iPhone.
+- **La puerta de edad** con una fecha de menor.
 
 ### Las opciones, por orden de valor
 
 | Qué | Estimado | Qué aporta |
 |---|---|---|
-| **Fase 6 — Recetas y hábitos** | 8 h (hoja de ruta) | Contenido genérico; alcance recortado por la Ley 73 |
-| **Fase 7 — Notificaciones push** | por estimar | La palanca de retención más grande del proyecto |
-| Ajustar un día suelto de un plan ya asignado | ~2 h | Comodidad para el entrenador |
-| Compresión y subida de imágenes | ~2 h | Bloqueada por tener fotos |
+| **La configuración inicial** | ~3 h | Cierra la idea del 4/09; el código ya está preparado y no necesita migración |
+| Fase 6 — Recetas y hábitos | 8 h (hoja de ruta) | La única fase de la 1 a la 8 que falta entera |
+| Fase 8 — Instalación y offline | por estimar | Subió de importancia: en iPhone no hay avisos sin instalar |
+| `.enlace-fila` a 44 px | ~1 h | Accesibilidad, toca todas las pantallas |
 
-**La recomendación no cambia, y ya van tres sesiones: ponerle la app al
-entrenador.** Ahora sí está completa de su lado y del lado del cliente:
-él arma contenido, asigna planes y ve quién entrena; el cliente entrena,
-anota y ve su progreso. Lo único que falta de él sigue siendo que
-devuelva `plantilla-ejercicios.csv`.
+**La recomendación no ha cambiado en cuatro sesiones: ponerle la app al
+entrenador.** Y ahora pesa más que antes, porque lo que se construyó hoy
+solo se puede probar de verdad con gente usándola: un recordatorio que
+nadie recibe no se sabe si funciona.
 
-La Fase 7 es la que más retención da, pero recordarle a alguien que
-entrene solo sirve si ya hay alguien entrenando.
+Lo único que falta de su lado sigue siendo `plantilla-ejercicios.csv`.
 
 
 ## Preguntas abiertas
 
+- **Qué significa el segundo número de la versión, ahora que las fases
+  no van en orden.** El esquema decía "la fase de la hoja de ruta que ya
+  está cerrada", dando por hecho que se hacen seguidas. Con la 7
+  construida y la 6 sin empezar, el número se quedó en 5 — que es lo
+  honesto pero ya no describe el estado. Lo decide Kev: o el número es
+  "la última fase cerrada sin huecos" (lo de ahora), o pasa a ser un
+  contador suelto.
 - **Nombre de la app.** Provisional: "Entrena". El repo va como `fitness-app`
   y renombrarlo después en GitHub no rompe nada.
 - **El artículo 12 del Decreto 1377** (datos de menores). Sin verificar.

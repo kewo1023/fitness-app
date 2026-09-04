@@ -4,6 +4,7 @@ import MisDatos from './MisDatos.jsx'
 import PanelEntrenador from './PanelEntrenador.jsx'
 import PanelClientes from './PanelClientes.jsx'
 import Creditos from './Creditos.jsx'
+import Notificaciones from './Notificaciones.jsx'
 import { supabase } from '../lib/supabase.js'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
 import { VERSION, avisoDerechos } from '../lib/version.js'
@@ -32,6 +33,7 @@ export default function Perfil ({ perfil, alSalir }) {
   const [viendoPanel, setViendoPanel] = useState(false)
   const [viendoClientes, setViendoClientes] = useState(false)
   const [viendoCreditos, setViendoCreditos] = useState(false)
+  const [viendoAvisos, setViendoAvisos] = useState(false)
   const [logros, setLogros] = useState([])
 
   /* El catálogo y lo conseguido se piden por separado y se cruzan aquí.
@@ -74,6 +76,11 @@ export default function Perfil ({ perfil, alSalir }) {
 
   if (viendoCreditos) {
     return <Creditos alVolver={() => setViendoCreditos(false)} />
+  }
+
+  if (viendoAvisos) {
+    return <Notificaciones perfil={perfil}
+                           alVolver={() => setViendoAvisos(false)} />
   }
 
   if (viendoDatos) {
@@ -201,13 +208,19 @@ export default function Perfil ({ perfil, alSalir }) {
           <button type="button" className="enlace enlace-fila"
                   onClick={() => setViendoDatos(true)}>Abrir</button>
         </li>
-        <li className="fila es-proxima">
-          <span className="fila-datos">
-            <strong>Notificaciones</strong>
-            <small>Recordatorio del entrenamiento del día</small>
-          </span>
-          <span className="estado">Fase 7</span>
-        </li>
+        {/* Al VISITANTE no se le ofrece: no tiene plan, así que no hay
+            entrenamiento del cual recordarle nada. Ofrecerlo sería
+            pedirle permiso para mandarle algo que no existe. */}
+        {!esVisitante && (
+          <li className="fila">
+            <span className="fila-datos">
+              <strong>Avisos</strong>
+              <small>Recordatorio del entrenamiento del día</small>
+            </span>
+            <button type="button" className="enlace enlace-fila"
+                    onClick={() => setViendoAvisos(true)}>Abrir</button>
+          </li>
+        )}
         {/* Los créditos NO son un adorno legal escondido: la licencia de
             las ilustraciones exige que la atribución sea visible, así que
             tiene que poderse llegar aquí sin saber que existe. */}

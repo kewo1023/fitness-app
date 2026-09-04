@@ -1237,3 +1237,29 @@ button {
 }
 
 .serie-form { display: flex; flex-direction: column; gap: 10px; }
+
+/* --- Los avisos (Fase 7) ---------------------------------------------- */
+
+/* La franja elegida. Borde y no relleno: la fila ya tiene texto y un
+   botón que dice "Elegida", así que el color aquí solo confirma — y un
+   relleno fuerte compitiendo con el botón haría dudar de dónde tocar. */
+.fila.es-elegida {
+  border-color: var(--acento);
+  background: var(--acento-suave);
+}
+
+/* Los pasos para instalar en iPhone. Numerados de verdad con <ol>: es
+   una secuencia y hay que poder decir "voy en el dos". El sangrado deja
+   sitio al número sin que el texto se monte encima. */
+.pasos {
+  margin: 10px 0 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tinta-media);
+}
+
+.pasos strong { color: var(--tinta); font-weight: 650; }
