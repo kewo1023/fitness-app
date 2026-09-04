@@ -1,13 +1,14 @@
 # Fase 3 — La biblioteca de ejercicios
 
-**Estado al 3 de septiembre de 2026.** Ya no falta construir nada para
-cargar la biblioteca. Falta que el entrenador devuelva la hoja.
+**Estado al 4 de septiembre de 2026. Construida entera.** No falta
+código para que el entrenador llene su biblioteca. Falta que devuelva la
+hoja.
 
 ## Lo que YA está hecho
 
-- El catálogo (pestaña **Ejercicios**), que desde el 3/09 abre en una
-  **portada de 7 grupos musculares** con su dibujo. El buscador queda
-  arriba: escribir se salta la portada.
+- El catálogo (pestaña **Ejercicios**), que abre en una **portada de 7
+  grupos musculares** con su dibujo. El buscador queda arriba: escribir
+  se salta la portada.
 - El panel del entrenador (Perfil → **Tu biblioteca**): crear, editar y
   archivar.
 - **La carga masiva** (Tu biblioteca → *Cargar desde una hoja de
@@ -15,15 +16,17 @@ cargar la biblioteca. Falta que el entrenador devuelva la hoja.
   por número de fila, y solo entonces se guarda. Sirve pegando desde
   Excel o Google Sheets, y también con el contenido de un `.csv`.
 - El bucket `ejercicios` con sus políticas verificadas.
-- **La app ya se instala de verdad en Android** (manifest + iconos +
-  service worker). Antes creaba un marcador que abría el navegador.
-- 101 pruebas.
+- **La app se instala de verdad en Android** (manifest + iconos +
+  service worker).
 
-## Lo que FALTA
+## Lo único que FALTA de esta fase
 
 | Falta | Bloqueado por | Estimado |
 |---|---|---|
 | Compresión y subida de imágenes | tener imágenes | ~2 h |
+
+Y no corre prisa: la app se ve bien sin foto, que fue el motivo entero
+de meter las ilustraciones el 2/09.
 
 ---
 

@@ -568,62 +568,45 @@ debe recortar:
 
 ## Estado (4 de septiembre de 2026)
 
-**Fases 1 a 3 construidas. Fase 4 a la mitad.** La base de datos existe y
-está protegida; la app tiene acceso por cuenta, tres roles y la Ley 1581
-implementada. **132 pruebas** pasan.
+**Fases 1 a 3 construidas. Fase 4 a la mitad.** La base existe y está
+protegida; hay acceso por cuenta, tres roles y la Ley 1581 implementada.
+**144 pruebas** pasan. `v0.3.6`.
 
-**Fase 4 — lo que entró el 4/09:** el entrenador asigna una plantilla a
-un cliente, `Hoy` lee el plan real, y el cliente empieza y termina su
-entrenamiento (el XP lo paga el trigger de la base, nunca la app).
-Falta que el entrenador arme sus propias rutinas y plantillas desde la
-app: hoy salen del seed de ejemplo.
+**Lo que el entrenador YA puede hacer sin pedirle nada a nadie:** llenar
+su biblioteca de ejercicios (uno por uno o pegando una hoja de cálculo),
+archivar, y **asignarle un plan a un cliente** copiando una plantilla.
 
-**PENDIENTE QUE NO PUEDE OLVIDARSE: correr `supabase/06-sesiones.sql`.**
-Hasta que se corra, el mismo día del plan se puede completar varias veces
-y cada vez paga XP. Que la app no ofrezca el botón es comodidad, no
-seguridad.
+**Lo que el CLIENTE ya puede hacer:** ver su rutina del día en `Hoy`,
+empezar el entrenamiento, terminarlo y ganar XP. La racha es real.
 
-**La Fase 3 ya no está bloqueada por código.** Existen el catálogo —que
-desde el 3/09 abre en una portada de 7 grupos musculares—, el panel del
-entrenador, y la **carga masiva** desde hoja de cálculo. Lo único que
-falta construir es la compresión y subida de imágenes (~2 h), que espera
-a que haya imágenes.
-
-Lo que falta no es código: **mandarle `plantilla-ejercicios.csv` al
-entrenador y que la devuelva editada.** Está en `PASOS-FASE-3.md`.
-
-**Desde el 3/09 la app se instala de verdad.** Hasta ese día no existía
-ningún manifest: en Android, "agregar a pantalla de inicio" creaba un
-marcador que abría el navegador con su barra. En el iPhone no se notaba
-—Safari abre sus atajos sin barra tenga o no manifest— y eso apuntó
-mucho tiempo en la dirección equivocada. Es la razón exacta por la que la
-regla 8 dice **Android** y no "un celular".
+**Lo que le falta a la Fase 4, y es lo que decide si la app sirve:** el
+entrenador todavía **no puede armar sus propias rutinas ni sus propias
+plantillas** desde la app. Las que hay salen del seed de ejemplo. Hasta
+que eso exista, no puede usarla de verdad con un cliente suyo.
 
 **Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
-Perfil, Recetas, Ejercicios y **`Hoy`** son reales. `Progreso` sigue en
-mock. Se conectan en las Fases 4 y 5.
-`mock.js` no se borra de golpe: **cada pantalla que se conecta borra su
-parte el mismo día.** `PROGRAMAS` no se conectó: se borró, porque
-describía un modelo descartado. El 4/09 se fueron `RUTINA_DE_HOY` y
-`META_SEMANAL`; de `USUARIO` quedó solo el nivel, que usa `Progreso` —
-**se borra la parte propia, no la del vecino**, o se cambia un mock por
-un hueco.
+Perfil, Recetas, Ejercicios y `Hoy` son reales. `Progreso` sigue en mock
+(Fase 5), y de `USUARIO` en `mock.js` solo queda el nivel que esa
+pantalla usa.
 
-**Tres pendientes que no bloquean la Fase 3 pero sí la difusión:**
+**PENDIENTE DE INFRAESTRUCTURA:** `supabase/06-sesiones.sql` ya se
+corrió (4/09) y el índice quedó verificado.
 
-1. **El Android real ya se probó y funciona**, pero falta mirar dos cosas
-   en él: si el vidrio de la barra de abajo va a tirones (si va mal, se
-   sube el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`) y si
-   el teclado tapa el botón de entrar. Y hay dos pantallas nuevas que
-   nadie ha visto en un celular: la carga masiva y la portada.
-2. **Falta la puerta de edad.** Con registro abierto entran menores, y el
-   artículo 7 de la Ley 1581 prohíbe tratar sus datos salvo excepciones.
-   El artículo 12 del Decreto 1377 sigue sin verificar. **Antes de darle
-   la URL a desconocidos, esto se resuelve.**
-3. **Los 30 ejercicios de producción tienen indicaciones inventadas.**
-   Un visitante las lee ahora mismo como si fueran del entrenador. Es
-   contenido, así que lo decide él — pero si la URL va a circular antes
-   de que responda, la opción segura es vaciarlas. Está en `BITACORA.md`.
+**Tres pendientes que no bloquean construir, pero sí difundir:**
+
+1. **Falta la puerta de edad.** Artículo 7 de la Ley 1581; el artículo
+   12 del Decreto 1377 sigue sin verificar. **Antes de darle la URL a
+   desconocidos.**
+2. **Los 30 ejercicios de ejemplo tienen indicaciones inventadas.** Kev
+   decidió el 4/09 no vaciarlas: la URL no va a circular hasta que haya
+   una versión más robusta. Se reemplazan cuando el entrenador devuelva
+   su hoja.
+3. **Vercel y el uso no comercial.** Sin verificar.
+
+**Decisión del 4/09 que reordena todo lo anterior:** la URL no se le da
+a nadie hasta que exista una versión más seria. Los tres pendientes
+siguen siendo obligatorios antes de difundir, pero ninguno bloquea
+ninguna fase.
 
 **No se publica en tiendas por ahora** (decisión del 1/09): la instalación
 es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.

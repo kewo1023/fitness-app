@@ -1783,6 +1783,9 @@ regla 15 promete y lo que ninguna versión de dos colores daría gratis.
 
 ## 4 de septiembre de 2026 — el parpadeo, tercer diagnóstico y arreglo real
 
+**CONFIRMADO POR KEV: ya no aparece.** El hilo se cierra después de tres
+diagnósticos, dos de ellos equivocados.
+
 Kev confirmó que seguía apareciendo después del segundo arreglo. Los dos
 anteriores no lo tocaron **porque no había ninguna respuesta
 involucrada: el `null` era un SOBRANTE.**
@@ -1961,56 +1964,51 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ---
 
-## Siguiente paso — la Fase 3 depende de UNA respuesta
+## Siguiente paso — que el entrenador pueda trabajar solo
 
-**Ya no está bloqueada por construir nada.** La carga masiva existe y
-está probada. Lo que falta es que el entrenador devuelva la hoja.
+**El corte que decide si la app sirve.** Hoy el entrenador puede llenar
+su biblioteca y asignar un plan, pero las rutinas y las plantillas que
+asigna **salen del seed de ejemplo**. No puede armar las suyas. Hasta que
+pueda, la app no la puede usar de verdad con un cliente.
 
-### Hecho y en producción
+Son dos pantallas, y la segunda depende de la primera:
 
-**2/09:** catálogo con buscador y filtros, panel del entrenador
-(crear/editar/archivar), bucket `ejercicios` con sus políticas, versión
-visible y `LICENSE`, ilustraciones en ejercicios y recetas.
+| # | Qué | Estimado |
+|---|---|---|
+| 1 | **Constructor de rutinas.** Elegir ejercicios del catálogo, ponerles series, reps y descanso, y ordenarlos | ~4 h |
+| 2 | **Constructor de plantillas.** La rejilla de semanas × días: qué rutina va cada día, o descanso | ~3 h |
 
-**3/09:**
-- **Manifest, iconos y service worker.** La app ya se instala de verdad
-  en Android. Era el bug que el iPhone escondía.
-- **Carga masiva** desde hoja de cálculo, con vista previa por fila.
-  Detecta el separador, así que sirve pegando desde Excel o Sheets.
-- **`plantilla-ejercicios.csv`**, la hoja ya llena para mandarle a él.
-- **Portada por grupo muscular** en Ejercicios, con 7 láminas propias.
-- **101 pruebas** (eran 71). Las 30 nuevas son de `hoja.js`.
-- `v0.3.2`.
+Detalle del punto 1 que ya está decidido: **el orden se cambia con
+botones de subir/bajar, no arrastrando.** Arrastrar en un celular pelea
+con el desplazamiento de la página y es de lo más caro de hacer bien; la
+tabla `rutina_ejercicios` ya tiene su columna `orden` y un único por
+`(rutina_id, orden)`, así que el intercambio de dos filas es una
+operación, no un rediseño.
 
-### Lo que hay que hacer, y no es código
+Los estimados son propios y no medidos. La hoja de ruta del 1/09 le da
+20 h a la Fase 4 completa.
 
-**Mandarle `plantilla-ejercicios.csv` al entrenador**, con estas tres
-cosas dichas (están largas en `PASOS-FASE-3.md`):
+### Lo que queda después, por orden de valor
 
-1. Que borre los que no usa y agregue los suyos.
-2. **Que llene la columna `indicaciones`.** Es la única que no puede
-   llenar nadie más y es lo que hace la app distinta de YouTube. Además
-   resuelve el pendiente 4: hoy esas indicaciones son inventadas.
-3. Que las fotos sean de él, de alguien que le dio permiso, o
-   ilustraciones. **Nunca la foto de un cliente** — el bucket es público
-   y la dirección se adivina.
+1. **Fase 5 — Progreso y la capa de analítica** (10 h en la hoja de
+   ruta). Es la que más aporta fuera del proyecto: adherencia,
+   retención semana a semana, ejercicios más saltados, hora típica de
+   entrenamiento. **En SQL dentro de Postgres, no en JavaScript** — esa
+   decisión no se recorta.
+2. **Ajustar el plan de un cliente ya asignado** (~2 h propios). Cambiar
+   la rutina de un día suelto sin volver a copiar la plantilla.
+3. **Compresión y subida de imágenes** (~2 h). Sigue bloqueada por tener
+   imágenes.
+4. **La puerta de edad** (~2 h más verificar el Decreto 1377). No
+   bloquea construir; bloquea difundir.
 
-### Lo que queda de la fase (~2 h)
+### Lo que NO hay que hacer todavía
 
-**Compresión y subida de imágenes** (~2 h). A ~150 KB en el navegador
-antes de mandarlas, emparejadas por nombre de archivo. Bloqueada por
-tener imágenes.
-
-### La prueba que cierra la fase
-
-El entrenador pega su hoja y sus ejercicios quedan en la app. Un cliente
-los ve, un visitante también, y ninguno de los dos puede editarlos.
-Verificado suplantando los tres roles en el SQL Editor **y entrando a la
-app con cada uno** — esa segunda mitad es la lección del 2/09: contar
-filas dice que las políticas están bien, no que el código sepa usarlas.
-
-Y una cuarta comprobación que ahora sí se puede hacer: **correr la carga
-completa dos veces y que no se duplique nada.**
+- Notificaciones push. El service worker ya existe y la puerta quedó
+  abierta el 3/09, pero avisar sin que el entrenador pueda armar el plan
+  es avisar de nada.
+- Bunny y el video. Sigue aplazado.
+- Las tiendas. Decisión del 1/09.
 
 ## Preguntas abiertas
 
