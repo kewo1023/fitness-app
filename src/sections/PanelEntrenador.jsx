@@ -6,6 +6,8 @@ import {
 } from '../lib/ejercicios.js'
 import CargaMasiva from './CargaMasiva.jsx'
 import AsignarPlan from './AsignarPlan.jsx'
+import Rutinas from './Rutinas.jsx'
+import Plantillas from './Plantillas.jsx'
 
 /* =====================================================================
    El panel del entrenador. La primera pantalla que existe solo para él.
@@ -47,6 +49,7 @@ export default function PanelEntrenador ({ alVolver }) {
   const [editando, setEditando] = useState(null)   // null = no hay formulario
   const [cargandoHoja, setCargandoHoja] = useState(false)
   const [asignando, setAsignando] = useState(false)
+  const [seccion, setSeccion] = useState(null)   // 'rutinas' | 'plantillas'
   const [aviso, setAviso] = useState(null)
 
   async function cargar () {
@@ -126,6 +129,19 @@ export default function PanelEntrenador ({ alVolver }) {
     return <AsignarPlan alVolver={() => setAsignando(false)} />
   }
 
+  /* Rutinas y plantillas viven en sus propias pantallas. La biblioteca
+   * de ejercicios responde QUÉ movimientos existen; las rutinas, QUÉ
+   * sesión se hace; las plantillas, EN QUÉ ORDEN a lo largo de las
+   * semanas. Son tres trabajos distintos y meterlos en una sola
+   * pantalla obligaría a desplazarse por los ciento cincuenta
+   * ejercicios para llegar al calendario. */
+  if (seccion === 'rutinas') {
+    return <Rutinas alVolver={() => setSeccion(null)} />
+  }
+  if (seccion === 'plantillas') {
+    return <Plantillas alVolver={() => setSeccion(null)} />
+  }
+
   if (cargandoHoja) {
     return (
       <CargaMasiva
@@ -171,7 +187,35 @@ export default function PanelEntrenador ({ alVolver }) {
         Agregar un ejercicio
       </button>
 
+      {/* EL ORDEN DE ESTA LISTA ES EL ORDEN DEL TRABAJO, no alfabético:
+          se arman ejercicios, con ellos rutinas, con ellas plantillas, y
+          la plantilla se le asigna a alguien. Quien abre esto por
+          primera vez lee de arriba abajo qué tiene que hacer. */}
       <ul className="lista">
+        <li className="fila">
+          <span className="fila-datos">
+            <strong>Tus rutinas</strong>
+            <small>Armar una sesión: qué ejercicios, en qué orden</small>
+          </span>
+          <span className="fila-acciones">
+            <button type="button" className="enlace enlace-fila"
+                    onClick={() => setSeccion('rutinas')}>
+              Abrir
+            </button>
+          </span>
+        </li>
+        <li className="fila">
+          <span className="fila-datos">
+            <strong>Tus plantillas</strong>
+            <small>El molde de varias semanas: qué rutina cada día</small>
+          </span>
+          <span className="fila-acciones">
+            <button type="button" className="enlace enlace-fila"
+                    onClick={() => setSeccion('plantillas')}>
+              Abrir
+            </button>
+          </span>
+        </li>
         <li className="fila">
           <span className="fila-datos">
             <strong>Asignar un plan a un cliente</strong>

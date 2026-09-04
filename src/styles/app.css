@@ -691,6 +691,33 @@ button {
   gap: 12px;
 }
 
+/* Series, repeticiones y descanso, en la fila de un ejercicio del
+   constructor de rutinas. Van los tres juntos porque son un solo dato
+   —"3 x 10, descansando 60"— y separarlos en tres renglones haría que
+   una rutina de ocho ejercicios midiera dos pantallas.
+
+   minmax(0, 1fr) y no 1fr, por la regla 6: con 1fr a secas, un campo
+   numérico ancho empuja la rejilla más allá del ancho del celular y
+   aparece el desplazamiento horizontal. */
+.rejilla-tres {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* La etiqueta de esos tres es más pequeña que la de un formulario
+   normal: es una fila dentro de una lista, no un campo suelto, y a
+   13.5px las tres palabras se parten en dos renglones. El CAMPO sigue
+   a 16px — la regla 4 es sobre lo que se toca, no sobre el rótulo. */
+.rejilla-tres > .campo > span {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.rejilla-tres input { padding: 10px 10px; }
+
 .campo textarea {
   font-size: 16px;          /* la regla 4, también aquí */
   font-family: inherit;

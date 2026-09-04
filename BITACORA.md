@@ -1874,6 +1874,99 @@ Las siete quedan aprobables. Ninguna necesita que el rótulo la explique.
 
 ---
 
+## 4 de septiembre de 2026 — los dos constructores: el entrenador ya trabaja solo
+
+Con esto se cierra el hueco que dejaba la app inservible. Hasta hoy el
+entrenador podía llenar su biblioteca y asignar planes, pero **las
+rutinas que asignaba salían del seed de ejemplo**. Podía mostrar la app;
+no podía usarla.
+
+### Las dos pantallas
+
+**Rutinas** — qué ejercicios, en qué orden, con cuántas series, cuántas
+reps y cuánto descanso. Se eligen de su catálogo, con buscador y filtro
+por grupo: con 150 ejercicios un desplegable nativo es una lista de 150
+renglones sin forma de buscar.
+
+**Plantillas** — la rejilla de semanas × días. Una sección por semana y
+no una tabla de 7 columnas: en un celular de 360 px, siete desplegables
+en fila salen a 40 px cada uno y no se pueden tocar.
+
+### Por qué el guardado pasa por una función
+
+Guardar una rutina son **tres escrituras que tienen que pasar juntas o
+no pasar**: grabar la rutina, borrar sus ejercicios anteriores y meter
+los nuevos en orden. Con tres llamadas desde el navegador, una señal que
+se cae en medio deja la rutina **sin ejercicios** y el entrenador pierde
+su trabajo sin que nada avise. El público entra con datos móviles.
+
+Va en `supabase/07-constructores.sql`, archivo nuevo. **Hay que correrlo
+a mano.**
+
+**Se borra y se reinserta en vez de actualizar** por el único de
+`(rutina_id, orden)`: mover el ejercicio 3 al puesto 2 con dos updates
+sueltos choca contra ese único a mitad de camino. Reinsertar en el orden
+final evita esa gimnasia, y es barato porque una rutina tiene ocho
+ejercicios, no ocho mil. Se comprobó antes que nada apunte a
+`rutina_ejercicios`: `series_registradas` apunta a `ejercicios` directo.
+
+### Una diferencia con `clonar_plantilla` que vale la pena entender
+
+`clonar_plantilla` es `security definer` porque escribe en el plan de
+OTRA persona, algo que ninguna política permite; por eso su `es_admin()`
+interno es su única protección.
+
+Estas dos **no lo son**, y es a propósito: escriben en tablas donde el
+admin ya tiene permiso por política, así que **RLS sigue siendo el
+guardia** y el `es_admin()` de adentro solo sirve para dar un mensaje
+claro en vez de un `42501` crudo.
+
+Una función `security definer` es una puerta que se salta las
+cerraduras. Se abre cuando hace falta, no por costumbre.
+
+### El orden: botones, no arrastrar
+
+Decisión tomada antes de escribir nada. Arrastrar es lo que todo el
+mundo espera y en un celular es lo peor que se puede elegir: **el gesto
+de arrastrar hacia arriba es el mismo con el que se desplaza la
+página.** Hacerlo bien exige distinguir "mantuvo apretado y movió" de
+"deslizó para bajar", manejar el desplazamiento al llegar al borde, y
+volverlo accesible para quien no puede arrastrar. Son horas, y el
+resultado sigue peleando con el navegador.
+
+Dos botones funcionan al primer toque y un lector de pantalla los lee
+solos. En Excel es arrastrar una fila contra Alt+Flecha.
+
+### Detalles que costaron una decisión cada uno
+
+**Los tres campos de la fila llevan etiqueta VISIBLE.** Tres cajas
+numéricas seguidas sin rótulo son adivinanza: nadie sabe si el 60 son
+segundos de descanso o repeticiones. Se agregó `.rejilla-tres` a
+`app.css`, con `minmax(0, 1fr)` por la regla 6 y el campo a 16 px por la
+regla 4 — la etiqueta sí baja de tamaño, porque la regla 4 es sobre lo
+que se toca, no sobre el rótulo. Verificado a 375 px: sin
+desplazamiento horizontal y ningún campo por debajo de 16 px.
+
+**Los valores de arranque son 3×10 con 60 s**, no ceros. Un formulario
+vacío obliga a llenar tres campos por ejercicio; uno que arranca en lo
+que se hace el 90% de las veces se corrige solo donde haga falta.
+
+**La casilla de "muestra gratis" lleva el texto completo al lado**, no
+solo una etiqueta. Es lo que más se puede hacer mal de esa pantalla: una
+rutina pública la ve cualquiera que abra la app sin ser cliente, y
+regalar la equivocada es regalar el trabajo.
+
+**Se puede agregar el mismo ejercicio dos veces**, a propósito: repetir
+un movimiento al final de la sesión es normal. La app avisa con "Otra
+vez" en vez del "Agregar", pero no bloquea.
+
+**Al bajar las semanas de una plantilla, los días que sobran se
+descartan** — en el SQL y en el navegador. Sin eso quedarían filas
+huérfanas que nadie ve pero que `clonar_plantilla` sí copiaría al plan
+de un cliente.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con

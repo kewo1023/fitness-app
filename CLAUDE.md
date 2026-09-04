@@ -398,6 +398,22 @@ src/lib/plan.js          En qué semana y qué día del plan está el
                          contarlas desde el inicio haría que un plan que
                          arranca un miércoles tuviera el lunes en dos
                          semanas a la vez. 21 pruebas. NO toca la base.
+src/lib/rutinas.js       Mover un ejercicio de puesto, validar una
+                         rutina, y traducir la rejilla de la plantilla a
+                         filas y al revés. 23 pruebas. NO toca la base.
+                         El orden se cambia con botones y NO arrastrando:
+                         en un celular el gesto de arrastrar es el mismo
+                         con el que se desplaza la página.
+src/sections/Rutinas.jsx El constructor de rutinas: qué ejercicios, en
+                         qué orden, con cuántas series. Ojo con la
+                         casilla de "muestra gratis": una rutina pública
+                         la ve cualquiera sin ser cliente.
+src/sections/Plantillas.jsx
+                         El constructor de plantillas: la rejilla de
+                         semanas × días. Cada celda tiene TRES estados
+                         —rutina, descanso, sin programar— y descanso NO
+                         es lo mismo que vacío: la pantalla de Hoy le
+                         dice cosas distintas al cliente.
 src/sections/AsignarPlan.jsx
                          El entrenador copia una plantilla y se la
                          entrega a un cliente. NO escribe en la base:
@@ -483,6 +499,16 @@ supabase/04-ejemplo.sql  La biblioteca de prueba, con contenido
 supabase/05-storage.sql  Quién sube y borra las imágenes: todos leen,
                          solo el admin escribe. NO crea el bucket, eso
                          va a mano desde el panel.
+supabase/07-constructores.sql
+                         guardar_rutina y guardar_plantilla. Cada una
+                         graba, BORRA las filas hijas anteriores y mete
+                         las nuevas en orden, en una transacción: con
+                         tres llamadas sueltas, una señal que se cae deja
+                         la rutina SIN ejercicios. A diferencia de
+                         clonar_plantilla NO son security definer —el
+                         admin ya tiene permiso por política, así que RLS
+                         sigue siendo el guardia y el es_admin() interno
+                         solo da un mensaje claro. HAY QUE CORRERLO.
 supabase/06-sesiones.sql UN día del plan, UNA sesión completada. Sin este
                          índice el trigger del XP se puede cobrar veinte
                          veces repitiendo el insert: el XP estaba
@@ -579,10 +605,12 @@ archivar, y **asignarle un plan a un cliente** copiando una plantilla.
 **Lo que el CLIENTE ya puede hacer:** ver su rutina del día en `Hoy`,
 empezar el entrenamiento, terminarlo y ganar XP. La racha es real.
 
-**Lo que le falta a la Fase 4, y es lo que decide si la app sirve:** el
-entrenador todavía **no puede armar sus propias rutinas ni sus propias
-plantillas** desde la app. Las que hay salen del seed de ejemplo. Hasta
-que eso exista, no puede usarla de verdad con un cliente suyo.
+**El entrenador ya trabaja solo (4/09).** Arma sus rutinas, arma sus
+plantillas de varias semanas y se las asigna a un cliente. Ya no depende
+del seed de ejemplo ni del desarrollo para nada de eso.
+
+**PENDIENTE DE INFRAESTRUCTURA: correr `supabase/07-constructores.sql`.**
+Sin él, los dos constructores fallan al guardar.
 
 **Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
 Perfil, Recetas, Ejercicios y `Hoy` son reales. `Progreso` sigue en mock
