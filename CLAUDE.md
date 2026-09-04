@@ -91,6 +91,12 @@ diseño de producto, no un párrafo en un PDF:
   reclamo: 15).
 - **Nada de fotos de progreso en la v1.** Es el dato más sensible y el que
   menos aporta al principio.
+- **Menores: la app bloquea, no pide permiso del representante.** El
+  artículo 12 del Decreto 1377 exige autorización del representante
+  legal tras oír al menor. Montar eso a medias deja la apariencia de
+  cumplimiento sin el cumplimiento, y aquí hay datos de salud. La
+  puerta vive en `src/lib/edad.js` y se aplica en `Activar`. Si algún
+  día se quiere abrir a menores, es un proyecto aparte, no un `if`.
 
 Lo que sí está resuelto y no hay que volver a discutir: alojar los datos en
 Estados Unidos es legal. La SIC declaró a EE. UU. país con nivel adecuado en
@@ -398,6 +404,14 @@ src/lib/plan.js          En qué semana y qué día del plan está el
                          contarlas desde el inicio haría que un plan que
                          arranca un miércoles tuviera el lunes en dos
                          semanas a la vez. 21 pruebas. NO toca la base.
+src/lib/edad.js          La puerta de edad. Artículo 7 de la Ley 1581 y
+                         artículo 12 del Decreto 1377 (verificado el
+                         4/09): tratar datos de menores está prohibido
+                         salvo con autorización del representante legal,
+                         así que la app BLOQUEA en vez de intentar ese
+                         flujo a medias. La fecha no se guarda: se
+                         calcula y se descarta. Se calcula en hora de
+                         Bogotá (regla 5). 18 pruebas.
 src/lib/rutinas.js       Mover un ejercicio de puesto, validar una
                          rutina, y traducir la rejilla de la plantilla a
                          filas y al revés. 23 pruebas. NO toca la base.
@@ -622,9 +636,9 @@ corrió (4/09) y el índice quedó verificado.
 
 **Tres pendientes que no bloquean construir, pero sí difundir:**
 
-1. **Falta la puerta de edad.** Artículo 7 de la Ley 1581; el artículo
-   12 del Decreto 1377 sigue sin verificar. **Antes de darle la URL a
-   desconocidos.**
+1. **HECHA EL 4/09.** El artículo 12 del Decreto 1377 quedó verificado
+   y la puerta de edad está en `Activar`: bloquea menores de 18, no
+   guarda la fecha y ofrece borrar la cuenta. Ya no bloquea difundir.
 2. **Los 30 ejercicios de ejemplo tienen indicaciones inventadas.** Kev
    decidió el 4/09 no vaciarlas: la URL no va a circular hasta que haya
    una versión más robusta. Se reemplazan cuando el entrenador devuelva

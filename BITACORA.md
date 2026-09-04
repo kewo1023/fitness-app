@@ -1967,6 +1967,89 @@ de un cliente.
 
 ---
 
+## 4 de septiembre de 2026 — la puerta de edad, con el decreto ya verificado
+
+**El artículo 12 del Decreto 1377 quedó verificado.** Estaba pendiente
+desde el 1/09, cuando la fuente oficial no abrió, y era la única pieza
+que faltaba para poder decidir el diseño en vez de adivinarlo.
+
+Lo que dice, contra la fuente oficial (Función Pública y la compilación
+del MinTIC): el tratamiento de datos de niños y adolescentes está
+**prohibido** salvo los de naturaleza pública, y cuando se permite la
+autorización la da el **representante legal**, después de que el menor
+haya sido oído, respetando su interés superior y sus derechos
+fundamentales.
+
+### Por qué la puerta bloquea en vez de pedir el permiso del representante
+
+Porque hacerlo bien es otro producto: habría que identificar al
+representante, capturar SU autorización, poder demostrar que es quien
+dice ser, y dejar constancia de que el menor fue oído. Y esta app guarda
+datos de **salud**, que son sensibles. Hacerlo a medias es peor que no
+hacerlo, porque deja la apariencia de cumplimiento sin el cumplimiento.
+
+**Bloquear no le impide al entrenador entrenar a un menor.** Le impide a
+la APP guardar sus datos, que es lo que la ley regula. Eso se dice tal
+cual en la pantalla, porque quien la lee necesita saber que no se quedó
+sin entrenador, solo sin cuenta.
+
+### Tres decisiones de diseño
+
+**La puerta va en `Activar`, no en el registro.** El registro solo crea
+un correo y una clave, y sin perfil eso no da acceso a nada. `Activar`
+es el momento en que la app empieza a tratar datos de una persona: su
+nombre, y detrás su plan y su salud.
+
+**La fecha no se guarda.** Se pregunta, se calcula la edad y se
+descarta. `perfiles` no tiene columna de fecha de nacimiento y no se le
+agrega: guardar la fecha de alguien a quien se le va a negar la entrada
+sería tratar el dato del menor que la ley dice que no se trate — justo
+lo contrario de lo que la puerta existe para evitar. Se dice en la
+pantalla, debajo del campo.
+
+**A quien no pasa se le ofrece borrar su cuenta ahí mismo.** Ya tiene un
+correo y una clave creados en la pantalla anterior; dejarlo así sería
+quedarse con el correo de un menor. El botón llama a
+`eliminar_mi_cuenta`, la misma función del habeas data: no hay una
+versión especial para este caso, porque el derecho de supresión es el
+mismo.
+
+### Detalles que costaron una prueba cada uno
+
+**La edad se calcula en hora de Bogotá** (regla 5). Un cumpleaños cambia
+a medianoche allá, no en el reloj de quien programa.
+
+**Tres estados, no dos.** `sinRespuesta` existe aparte de `menor`: con
+dos, quien todavía no ha escrito nada quedaría clasificado como menor y
+vería el mensaje de que no puede usar la app antes de haber contestado.
+Es la misma lección de `acceso.js` por cuarta vez: no saber no es saber
+que no.
+
+**El `max` del campo es comodidad, no seguridad.** El calendario del
+celular no deja pasar de ahí, así que el caso normal se resuelve sin que
+nadie vea un error. Pero quien decide es `puertaDeEdad`: un atributo del
+HTML lo cambia cualquiera desde la consola. Por lo mismo, la puerta se
+vuelve a comprobar **dentro del envío**, no solo deshabilitando el
+botón.
+
+**Un 31 de febrero no pasa.** `new Date(2026, 1, 31)` no falla: se
+desborda al 3 de marzo. Hay que reconstruir la fecha y comparar.
+
+Las **18 pruebas** de `edad.js` no están para que el código no falle:
+están para que no se pueda "simplificar". Si alguien cambia el cálculo
+por `año de hoy − año de nacimiento`, las dos pruebas del cumpleaños se
+ponen rojas y explican por qué.
+
+### Qué desbloquea
+
+El pendiente de difusión más viejo queda cerrado. Con esto **ya se le
+puede dar la URL a alguien que no se conozca**, en lo que toca a
+menores. Siguen abiertos los otros dos: las indicaciones inventadas de
+los 30 ejercicios de ejemplo (se resuelven con la hoja del entrenador) y
+el uso no comercial de Vercel.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -2029,13 +2112,11 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
    carga masiva y la portada por grupo muscular— todavía no se han
    tocado en un celular de verdad.
 
-2. **La puerta de edad.** El artículo 7 de la Ley 1581 prohíbe tratar
-   datos de niños, niñas y adolescentes salvo los de naturaleza pública.
-   Con registro abierto van a entrar menores. Falta puerta de edad en el
-   registro y decidir qué pasa con un menor. **El artículo 12 del Decreto
-   1377, que regula el cómo, sigue SIN VERIFICAR** — la fuente oficial no
-   abrió el 1/09. Confirmarlo antes de abrir el registro al público.
-   **Bloquea la difusión, no la Fase 3.**
+2. **CERRADO EL 4/09.** El artículo 12 del Decreto 1377 quedó
+   verificado contra la fuente oficial, y la puerta de edad está
+   implementada en `Activar`: bloquea a los menores de 18, no guarda la
+   fecha, y les ofrece borrar la cuenta que ya tenían. Ver la entrada
+   del 4/09.
 
 3. **El plan gratis de Vercel es para uso no comercial.** Una app
    gratuita que funciona como embudo hacia un servicio pago es zona gris.
@@ -2057,51 +2138,62 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ---
 
-## Siguiente paso — que el entrenador pueda trabajar solo
+## Siguiente paso — al cerrar el 4 de septiembre de 2026
 
-**El corte que decide si la app sirve.** Hoy el entrenador puede llenar
-su biblioteca y asignar un plan, pero las rutinas y las plantillas que
-asigna **salen del seed de ejemplo**. No puede armar las suyas. Hasta que
-pueda, la app no la puede usar de verdad con un cliente.
+**Fase 4 cerrada.** El entrenador arma sus ejercicios, sus rutinas y sus
+plantillas, y se las asigna a un cliente. El cliente ve su rutina del
+día, la empieza, la termina y gana XP. Nada de eso depende ya del
+desarrollo.
 
-Son dos pantallas, y la segunda depende de la primera:
+**185 pruebas. `v0.4.1`.** Los siete archivos SQL corridos y verificados.
 
-| # | Qué | Estimado |
+### Lo primero al retomar
+
+1. Leer esta bitácora desde la entrada del 4/09 y `CLAUDE.md`.
+2. `npm install && npm run dev`, y `npm run test`: **185 pruebas** tienen
+   que pasar antes de tocar nada.
+3. Comprobar que `.env.local` existe (no está en git).
+
+### Lo que falta probar de lo que se construyó el 4/09
+
+Nada de esto bloquea seguir, pero conviene hacerlo antes de construir
+encima:
+
+- **Los dos constructores, con datos reales.** Armar una rutina con tres
+  ejercicios, cambiarles el orden, guardar y volver a abrirla: el orden
+  tiene que estar como quedó. Después una plantilla con esa rutina, y
+  asignársela a un cliente de prueba.
+- **La puerta de edad**, con una fecha de menor: que muestre el aviso,
+  que el botón de entrar quede bloqueado, y que "Borrar mi cuenta"
+  funcione.
+- **Las dos pantallas nuevas en un Android real.** La carga masiva y la
+  portada por grupo muscular todavía no se han tocado en un celular.
+
+### Las opciones, por orden de valor
+
+| Qué | Estimado | Qué aporta |
 |---|---|---|
-| 1 | **Constructor de rutinas.** Elegir ejercicios del catálogo, ponerles series, reps y descanso, y ordenarlos | ~4 h |
-| 2 | **Constructor de plantillas.** La rejilla de semanas × días: qué rutina va cada día, o descanso | ~3 h |
+| **Fase 5 — Progreso y analítica en SQL** | 10 h (hoja de ruta) | La que más aporta fuera del proyecto |
+| Ajustar un día suelto de un plan ya asignado | ~2 h propios | Comodidad para el entrenador |
+| Compresión y subida de imágenes | ~2 h propios | Bloqueada por tener fotos |
 
-Detalle del punto 1 que ya está decidido: **el orden se cambia con
-botones de subir/bajar, no arrastrando.** Arrastrar en un celular pelea
-con el desplazamiento de la página y es de lo más caro de hacer bien; la
-tabla `rutina_ejercicios` ya tiene su columna `orden` y un único por
-`(rutina_id, orden)`, así que el intercambio de dos filas es una
-operación, no un rediseño.
+**La recomendación no es ninguna de las tres: es ponerle la app al
+entrenador.** Ya puede usarla de punta a punta con una persona real. Si
+la usa, la Fase 5 vale la pena; si no la usa, ninguna cantidad de horas
+más lo arregla. Lo único que sigue faltando de su lado es que devuelva
+`plantilla-ejercicios.csv`.
 
-Los estimados son propios y no medidos. La hoja de ruta del 1/09 le da
-20 h a la Fase 4 completa.
+### Detalle de la Fase 5, para cuando llegue
 
-### Lo que queda después, por orden de valor
+La analítica va **en SQL dentro de Postgres**, con vistas y funciones:
+adherencia por cliente, retención semana a semana, ejercicios más
+saltados, hora típica de entrenamiento. No con bucles en JavaScript. Es
+la parte que más fácil se recorta cuando falta tiempo y la que no se
+debe recortar — y ahora tiene de dónde salir, porque las sesiones ya se
+registran de verdad con `iniciada_en` y `terminada_en` separados.
 
-1. **Fase 5 — Progreso y la capa de analítica** (10 h en la hoja de
-   ruta). Es la que más aporta fuera del proyecto: adherencia,
-   retención semana a semana, ejercicios más saltados, hora típica de
-   entrenamiento. **En SQL dentro de Postgres, no en JavaScript** — esa
-   decisión no se recorta.
-2. **Ajustar el plan de un cliente ya asignado** (~2 h propios). Cambiar
-   la rutina de un día suelto sin volver a copiar la plantilla.
-3. **Compresión y subida de imágenes** (~2 h). Sigue bloqueada por tener
-   imágenes.
-4. **La puerta de edad** (~2 h más verificar el Decreto 1377). No
-   bloquea construir; bloquea difundir.
-
-### Lo que NO hay que hacer todavía
-
-- Notificaciones push. El service worker ya existe y la puerta quedó
-  abierta el 3/09, pero avisar sin que el entrenador pueda armar el plan
-  es avisar de nada.
-- Bunny y el video. Sigue aplazado.
-- Las tiendas. Decisión del 1/09.
+`mock.js` quedaría vacío: le faltan `HISTORIAL`, `LOGROS` y el nivel de
+`USUARIO`, los tres de `Progreso` y `Perfil`.
 
 ## Preguntas abiertas
 
