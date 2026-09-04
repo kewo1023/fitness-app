@@ -16,9 +16,15 @@
 
    Los tres estados que devuelve, y qué pinta la app en cada uno:
 
-     sesion=null                  -> pantalla de acceso
-     sesion=algo, perfil=null     -> pantalla de activación
-     sesion=algo, perfil=algo     -> la app
+     sesion=null                    -> pantalla de acceso
+     sesion=algo, perfil=undefined  -> todavía no se sabe: cargando
+     sesion=algo, perfil=null       -> pantalla de activación
+     sesion=algo, perfil=algo       -> la app
+
+   OJO CON undefined Y null: no son lo mismo y confundirlos costó dos
+   bugs. `undefined` es "no sabemos"; `null` es "preguntamos y no
+   tiene". Quién decide la pantalla es `src/lib/acceso.js`, que está
+   probado.
 
    Analogía de Excel: `sesion` es haber abierto el archivo protegido con
    contraseña; `perfil` es la fila que dice tu nombre y qué permisos
@@ -30,7 +36,13 @@ import { supabase } from '../lib/supabase.js'
 
 export function useSesion () {
   const [sesion, setSesion] = useState(null)
-  const [perfil, setPerfil] = useState(null)
+  /* undefined, NO null. Los dos valores significan cosas distintas y
+   * confundirlos es el bug del 4/09 (ver src/lib/acceso.js):
+   *   undefined -> todavía no se sabe
+   *   null      -> se preguntó y esta persona no tiene perfil
+   * Arrancar en null sería afirmar, antes de preguntar, que no tiene. */
+  const [perfil, setPerfil] = useState(undefined)
+  const [errorPerfil, setErrorPerfil] = useState(false)
   const [cargando, setCargando] = useState(true)
 
   /* Trae el perfil del usuario actual.
@@ -70,21 +82,40 @@ export function useSesion () {
    * solo quedó una fila visible, contra usar BUSCARV con la clave. Lo
    * segundo devuelve lo que pediste aunque el filtro cambie. */
   const traerPerfil = useCallback(async (idUsuario) => {
-    if (!idUsuario) return null
+    if (!idUsuario) return undefined
 
-    const { data, error } = await supabase
-      .from('perfiles')
-      .select('*')
-      .eq('id', idUsuario)
-      .maybeSingle()
+    /* REINTENTOS, y la razón es concreta.
+     *
+     * Al abrir la app con la sesión guardada, Supabase avisa primero
+     * con el token que tenía en el celular. Si ese token ya venció, esta
+     * consulta falla, y un instante después la librería lo refresca
+     * sola y todo funciona. O sea: el primer fallo no es un fallo, es el
+     * estado normal de arrancar.
+     *
+     * Sin reintentos había que esperar al siguiente aviso de Supabase
+     * para recuperarse, y en ese hueco la app ya había decidido qué
+     * pantalla mostrar — con información equivocada. */
+    for (let intento = 0; intento < 3; intento++) {
+      const { data, error } = await supabase
+        .from('perfiles')
+        .select('*')
+        .eq('id', idUsuario)
+        .maybeSingle()
 
-    if (error) {
+      // Sin error hay respuesta de verdad, y `null` aquí SÍ significa
+      // "no tiene perfil": la consulta corrió y no encontró la fila.
+      if (!error) return data
+
       // A la consola, no a la pantalla: quien abre la app no sabe qué
       // es una tabla ni le sirve saberlo (regla 3 de CLAUDE.md).
-      console.error('No se pudo leer el perfil:', error)
-      return null
+      console.error(`No se pudo leer el perfil (intento ${intento + 1}):`, error)
+      await new Promise(r => setTimeout(r, 300 * (intento + 1)))
     }
-    return data
+
+    /* undefined, NUNCA null. Es la corrección del 4/09: agotados los
+     * reintentos seguimos SIN SABER si esta persona tiene perfil, y
+     * devolver null haría que la app afirme que no lo tiene. */
+    return undefined
   }, [])
 
   useEffect(() => {
@@ -99,8 +130,21 @@ export function useSesion () {
       async (_evento, nuevaSesion) => {
         if (!vivo) return
         setSesion(nuevaSesion)
-        setPerfil(nuevaSesion ? await traerPerfil(nuevaSesion.user.id) : null)
-        if (vivo) setCargando(false)
+
+        // Sin sesión el perfil es null de verdad: no hay a quién
+        // buscarle uno. Aquí null sí es una respuesta.
+        if (!nuevaSesion) {
+          setPerfil(null)
+          setErrorPerfil(false)
+          setCargando(false)
+          return
+        }
+
+        const traido = await traerPerfil(nuevaSesion.user.id)
+        if (!vivo) return
+        setPerfil(traido)
+        setErrorPerfil(traido === undefined)
+        setCargando(false)
       }
     )
 
@@ -120,7 +164,11 @@ export function useSesion () {
     // cada cambio de sesión y quien la reciba por props se re-renderiza
     // sin motivo.
     const { data: { session } } = await supabase.auth.getSession()
-    setPerfil(session ? await traerPerfil(session.user.id) : null)
+    if (!session) { setPerfil(null); setErrorPerfil(false); return }
+
+    const traido = await traerPerfil(session.user.id)
+    setPerfil(traido)
+    setErrorPerfil(traido === undefined)
   }, [traerPerfil])
 
   const salir = useCallback(async () => {
@@ -130,6 +178,7 @@ export function useSesion () {
   return {
     sesion,
     perfil,
+    errorPerfil,
     cargando,
     recargarPerfil,
     salir,

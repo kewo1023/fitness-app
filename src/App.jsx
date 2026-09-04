@@ -8,25 +8,30 @@ import Perfil from './sections/Perfil.jsx'
 import Acceso from './sections/Acceso.jsx'
 import Activar from './sections/Activar.jsx'
 import { useSesion } from './hooks/useSesion.js'
+import { pantallaPara, PANTALLAS } from './lib/acceso.js'
 
 /* El cerebro de la app.
  *
  * Decide una sola cosa, pero es la más importante: QUÉ PANTALLA VE
- * QUIEN ABRIÓ LA APP. Hay cuatro respuestas, y salen de los dos datos
- * que devuelve useSesion.
+ * QUIEN ABRIÓ LA APP.
  *
- *   cargando               -> nada todavía, un instante en blanco
- *   sin sesión             -> Acceso: entrar o crear cuenta
- *   con sesión, sin perfil -> Activar: nombre y código
- *   con sesión y perfil    -> la app
+ * LA DECISIÓN YA NO VIVE AQUÍ. Está en `src/lib/acceso.js`, que es una
+ * función pura y probada. Se sacó el 4/09 después del segundo bug
+ * seguido en estas cuatro líneas: no se podían probar, y es el sitio
+ * donde un error se ve como un cambio de pantalla en vez de como un
+ * error.
  *
- * El tercer caso es el que no es obvio y el que sostiene la seguridad:
- * estar autenticado NO es tener acceso. Alguien puede registrarse y
- * quedarse ahí para siempre — y desde la base no ve ni una fila,
- * porque todas las políticas se apoyan en tener perfil.
+ * Este archivo se quedó con lo que de verdad le toca: traer el estado y
+ * pintar lo que la función diga.
  *
- * Analogía de Excel: useSesion es la fórmula que mira dos celdas, y
- * esto es el SI() anidado que decide qué hoja mostrar.
+ * El caso que no es obvio y que sostiene la seguridad: estar
+ * autenticado NO es tener acceso. Alguien puede registrarse y quedarse
+ * ahí para siempre — y desde la base no ve ni una fila, porque todas
+ * las políticas se apoyan en tener perfil.
+ *
+ * Analogía de Excel: useSesion trae los datos y acceso.js es el SI()
+ * anidado. Antes la fórmula estaba escrita dentro de la celda que
+ * pinta; ahora está en su propia hoja y se puede auditar.
  */
 
 /* La pestaña que antes era "Programas" ahora es "Ejercicios".
@@ -49,17 +54,52 @@ const SECCIONES = {
 
 export default function App () {
   const [pestana, setPestana] = useState('hoy')
-  const { sesion, perfil, cargando, recargarPerfil, salir } = useSesion()
+  const {
+    sesion, perfil, errorPerfil, cargando, recargarPerfil, salir
+  } = useSesion()
+
+  const pantalla = pantallaPara({ cargando, sesion, perfil, errorPerfil })
 
   // Un instante, mientras se le pregunta a Supabase si hay sesión
   // guardada. Va en blanco a propósito: un mensaje de "cargando" que
   // aparece y desaparece en 200 ms se lee como un parpadeo, no como
   // información.
-  if (cargando) return <div className="cargando" aria-busy="true" />
+  if (pantalla === PANTALLAS.CARGANDO) {
+    return <div className="cargando" aria-busy="true" />
+  }
 
-  if (!sesion) return <Acceso />
+  if (pantalla === PANTALLAS.ACCESO) return <Acceso />
 
-  if (!perfil) {
+  /* No se pudo confirmar quién es, ni siquiera reintentando.
+   *
+   * Antes este caso terminaba en la pantalla de Activar, o sea que la
+   * app le decía "canjea un código para unirte a un entrenador" a
+   * alguien que ya tiene cuenta. Un problema de conexión se veía como
+   * una afirmación sobre el usuario, y encima una falsa.
+   *
+   * El texto no habla de tablas ni de la base (regla 3): dice qué pasó
+   * y qué hacer. */
+  if (pantalla === PANTALLAS.ERROR_PERFIL) {
+    return (
+      <div className="acceso">
+        <div className="acceso-caja">
+          <h1>No pudimos cargar tu cuenta</h1>
+          <p className="meta">
+            Puede ser la conexión. Inténtalo otra vez.
+          </p>
+          <button type="button" className="boton-principal"
+                  onClick={recargarPerfil}>
+            Reintentar
+          </button>
+          <button type="button" className="enlace" onClick={salir}>
+            Salir de la cuenta
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (pantalla === PANTALLAS.ACTIVAR) {
     return <Activar alActivar={recargarPerfil} alSalir={salir} />
   }
 
