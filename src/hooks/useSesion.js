@@ -31,8 +31,9 @@
    tienes. Abrir el archivo no te mete en la tabla de usuarios.
    ===================================================================== */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { hayQueReintentar, resultadoPerfil } from '../lib/acceso.js'
 
 export function useSesion () {
   const [sesion, setSesion] = useState(null)
@@ -44,6 +45,11 @@ export function useSesion () {
   const [perfil, setPerfil] = useState(undefined)
   const [errorPerfil, setErrorPerfil] = useState(false)
   const [cargando, setCargando] = useState(true)
+
+  /* Cuál es la búsqueda del perfil más reciente. Ver el comentario
+   * largo dentro de onAuthStateChange: sin esto, una respuesta vieja
+   * que llega tarde pisa a una nueva que ya llegó. */
+  const peticion = useRef(0)
 
   /* Trae el perfil del usuario actual.
    *
@@ -95,27 +101,28 @@ export function useSesion () {
      * Sin reintentos había que esperar al siguiente aviso de Supabase
      * para recuperarse, y en ese hueco la app ya había decidido qué
      * pantalla mostrar — con información equivocada. */
-    for (let intento = 0; intento < 3; intento++) {
-      const { data, error } = await supabase
+    const MAXIMO = 4
+    let ultimo = { data: null, error: null }
+
+    for (let intento = 0; intento < MAXIMO; intento++) {
+      ultimo = await supabase
         .from('perfiles')
         .select('*')
         .eq('id', idUsuario)
         .maybeSingle()
 
-      // Sin error hay respuesta de verdad, y `null` aquí SÍ significa
-      // "no tiene perfil": la consulta corrió y no encontró la fila.
-      if (!error) return data
+      if (!hayQueReintentar({ ...ultimo, intento, maximo: MAXIMO })) break
 
-      // A la consola, no a la pantalla: quien abre la app no sabe qué
-      // es una tabla ni le sirve saberlo (regla 3 de CLAUDE.md).
-      console.error(`No se pudo leer el perfil (intento ${intento + 1}):`, error)
-      await new Promise(r => setTimeout(r, 300 * (intento + 1)))
+      if (ultimo.error) {
+        // A la consola, no a la pantalla: quien abre la app no sabe qué
+        // es una tabla ni le sirve saberlo (regla 3 de CLAUDE.md).
+        console.error(`No se pudo leer el perfil (intento ${intento + 1}):`,
+                      ultimo.error)
+      }
+      await new Promise(r => setTimeout(r, 250 * (intento + 1)))
     }
 
-    /* undefined, NUNCA null. Es la corrección del 4/09: agotados los
-     * reintentos seguimos SIN SABER si esta persona tiene perfil, y
-     * devolver null haría que la app afirme que no lo tiene. */
-    return undefined
+    return resultadoPerfil(ultimo)
   }, [])
 
   useEffect(() => {
@@ -134,14 +141,36 @@ export function useSesion () {
         // Sin sesión el perfil es null de verdad: no hay a quién
         // buscarle uno. Aquí null sí es una respuesta.
         if (!nuevaSesion) {
+          peticion.current++          // invalida cualquier búsqueda en vuelo
           setPerfil(null)
           setErrorPerfil(false)
           setCargando(false)
           return
         }
 
+        /* EL NÚMERO DE PETICIÓN, QUE ES LA MITAD DEL ARREGLO DEL 4/09.
+         *
+         * `onAuthStateChange` no se dispara una vez: al abrir la app
+         * llega `INITIAL_SESSION` y muy poco después puede llegar
+         * `SIGNED_IN` o `TOKEN_REFRESHED`. Cada uno arranca su propia
+         * búsqueda del perfil, y las dos van por la red al tiempo.
+         *
+         * Sin este contador gana la que TERMINE última, no la más
+         * nueva. Si la vieja —la que salió antes de que el token
+         * estuviera puesto y volvió vacía— termina de última, machaca
+         * el perfil bueno con un null y la app manda al entrenador a la
+         * pantalla de activación.
+         *
+         * Con el contador, cada búsqueda se queda con su número y solo
+         * escribe si sigue siendo la última. Es el mismo `vivo` de
+         * arriba, pero por evento en vez de por componente.
+         *
+         * En Excel: es no dejar que un cálculo viejo sobrescriba la
+         * celda cuando ya entró un dato más reciente. */
+        const mia = ++peticion.current
         const traido = await traerPerfil(nuevaSesion.user.id)
-        if (!vivo) return
+        if (!vivo || mia !== peticion.current) return
+
         setPerfil(traido)
         setErrorPerfil(traido === undefined)
         setCargando(false)
@@ -163,10 +192,14 @@ export function useSesion () {
     // del useCallback: si estuviera, esta función se volvería a crear en
     // cada cambio de sesión y quien la reciba por props se re-renderiza
     // sin motivo.
+    const mia = ++peticion.current
     const { data: { session } } = await supabase.auth.getSession()
+    if (mia !== peticion.current) return
     if (!session) { setPerfil(null); setErrorPerfil(false); return }
 
     const traido = await traerPerfil(session.user.id)
+    if (mia !== peticion.current) return   // mismo guardia que arriba
+
     setPerfil(traido)
     setErrorPerfil(traido === undefined)
   }, [traerPerfil])

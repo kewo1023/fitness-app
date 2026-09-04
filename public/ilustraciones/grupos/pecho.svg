@@ -1,1 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="138 48 236 456"><g fill="#fff" fill-opacity=".24"><circle cx="256" cy="92" r="36"/><path d="M238 124h36v26h-36z"/><rect x="174" y="146" width="164" height="56" rx="28"/><path d="M186 188H326L302 338H210Z"/><rect x="206" y="320" width="100" height="54" rx="22"/><rect x="146" y="166" width="40" height="168" rx="20" transform="rotate(-6 166 166)"/><rect x="326" y="166" width="40" height="168" rx="20" transform="rotate(6 346 166)"/><rect x="204" y="356" width="46" height="136" rx="22"/><rect x="262" y="356" width="46" height="136" rx="22"/></g><g fill="#fff"><path d="M192 206H250V240L196 254Z"/><path d="M320 206H262V240L316 254Z"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 6 200 268"><g fill="#fff" stroke="#fff" opacity=".22" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M110 8h20q2 18 6 24 22 6 44 18 14 8 17 24 4 22 2 44
+           -1 14-5 26-3 9-9 10-5 1-7-5-3-9-4-20-1 26 3 50 3 20 6 40
+           2 12-1 22-14 5-30 6h-64q-16-1-30-6-3-10-1-22 3-20 6-40
+           4-24 3-50-3 11-4 20-2 6-7 5-6-1-9-10-4-12-5-26-2-22 2-44
+           3-16 17-24 22-12 44-18 4-6 6-24z"/></g><g fill="#fff" stroke="#fff" stroke-linecap="round">
+      <path d="M116 66q-24 2-40 10-8 5-9 15-1 12 6 20 16 8 34 6 9-2 9-12z"/>
+      <path d="M124 66q24 2 40 10 8 5 9 15 1 12-6 20-16 8-34 6-9-2-9-12z"/></g></svg>

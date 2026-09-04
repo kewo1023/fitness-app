@@ -1669,6 +1669,118 @@ estaba marcado como hecho", que es la verdad y no asusta.
 
 ---
 
+## 4 de septiembre de 2026 — el parpadeo, segundo diagnóstico
+
+**El primer arreglo no sirvió.** Kev confirmó que el parpadeo seguía. La
+causa que se le atribuyó —un token vencido que hace fallar la consulta—
+o no era la que pasaba, o no era la única.
+
+Al mirarlo de verdad aparecieron **dos** cosas, y ninguna era la de la
+primera vuelta.
+
+### 1. La consulta no falla: devuelve vacío
+
+Las políticas de `perfiles` dicen `id = auth.uid()`. Si la consulta sale
+antes de que la librería tenga puesto el token del usuario, `auth.uid()`
+es nulo, ninguna fila cumple, y PostgREST responde **200 con una lista
+vacía**. Para el código eso es `data = null, error = null`: una
+respuesta perfectamente válida que significa "esta persona no tiene
+perfil".
+
+El arreglo anterior reintentaba **solo cuando había error**, así que este
+caso pasaba de largo intacto.
+
+La familia de errores es la misma de siempre, en su tercera variante:
+
+| Fecha | Qué se confundió |
+|---|---|
+| 2/09 | un fallo con una respuesta |
+| 4/09 (1.ª) | se arregló el fallo, no la confusión |
+| 4/09 (2.ª) | una respuesta **vacía** con una respuesta |
+
+Ahora se reintenta también con la lista vacía. Cuesta que un visitante
+que de verdad no tiene perfil espere unos cientos de milisegundos de más
+antes de ver la pantalla de activación — el lado barato en el que
+equivocarse.
+
+### 2. Una carrera entre eventos, que era la mitad que faltaba
+
+`onAuthStateChange` **no se dispara una vez**. Al abrir la app llega
+`INITIAL_SESSION` y poco después puede llegar `SIGNED_IN` o
+`TOKEN_REFRESHED`. Cada uno arrancaba su propia búsqueda del perfil, y
+las dos iban por la red al tiempo.
+
+Sin nada que las ordene, **gana la que TERMINE última, no la más
+nueva**. Si la vieja —la que salió antes de que el token estuviera
+puesto y volvió vacía— termina de última, machaca el perfil bueno con un
+`null`.
+
+Se arregla con un contador: cada búsqueda se queda con su número y solo
+escribe si sigue siendo la última. Es el mismo `vivo` que ya protegía el
+componente, pero por evento en vez de por montaje.
+
+**La lección, que vale más que el arreglo:** cuando algo se ve *un
+instante* y se corrige solo, casi nunca es lentitud. Es que hay dos
+respuestas compitiendo y una llegó tarde.
+
+---
+
+## 4 de septiembre de 2026 — las láminas, tercera versión
+
+Kev aprobó seguir con dibujo original mejorado, **sin agregar rojo a la
+paleta**. Eso descarta copiar la referencia de dos colores que había
+mandado, y mantiene la regla del cobre de señal intacta: la separación
+sigue saliendo de la opacidad, no de un segundo tono.
+
+Lo que cambió respecto a las dos versiones rechazadas:
+
+1. **Se encuadra la PARTE del cuerpo, no el cuerpo entero.** El brazo se
+   dibuja como un brazo, las piernas como piernas. Antes las siete
+   láminas eran la misma figura de cuerpo entero con una zona distinta
+   pintada: la zona salía diminuta y de lejos las siete se veían iguales.
+   Es lo único que se tomó de la referencia, y es lo que más ayudó.
+
+2. **El cuerpo se dibuja con curvas**, no apilando rectángulos. Un
+   contorno que se ensancha en el hombro y cierra en la cintura se lee
+   como un cuerpo; una pila de cajas se lee como un muñeco de juguete,
+   que fue el rechazo de v1.
+
+3. **El brazo se dibuja por su ESQUELETO, no por su borde.** Dos líneas
+   gruesas de punta redonda —que son cápsulas perfectas— más una elipse
+   de hombro. El intento de describirlo con un solo contorno de bézier
+   salió un gancho. Hay formas que se definen mejor por dentro que por
+   fuera.
+
+### Dos trampas técnicas que costaron una vuelta cada una
+
+**`opacity` en el grupo, no `fill-opacity` en cada forma.** No es lo
+mismo. Con `fill-opacity`, cada pieza se pinta translúcida por separado
+y donde dos se **superponen** las transparencias se suman: en el brazo
+se veían las costuras entre cápsulas. Con `opacity` en el grupo, el
+navegador pinta el grupo entero y le aplica la transparencia una sola
+vez al resultado.
+
+**El brazo no puede ser simétrico.** Tenía un puño del mismo tamaño que
+el hombro, y con un bulto igual en cada punta la figura se leía como un
+**check**, no como un brazo. Se quitó el puño: ahora el único bulto es
+el hombro y el antebrazo es más delgado que el brazo. Lo que da el
+sentido de "brazo" es que los dos tramos sean DISTINTOS, no que haya más
+piezas.
+
+### Dónde quedó
+
+Seis de las siete se leen bien. **`brazo` sigue siendo la más floja** y
+queda anotado como tal: mejoró, pero es la única que todavía necesita
+que el rótulo la explique. Si se retoma, el camino es darle más contexto
+—un trozo de torso del que salga el brazo— y no más detalle en el brazo
+mismo. Es la misma lección de v2: lo que hace legible un músculo es lo
+que tiene alrededor.
+
+Verificado en claro y en oscuro con el mismo archivo, que es lo que la
+regla 15 promete y lo que ninguna versión de dos colores daría gratis.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con

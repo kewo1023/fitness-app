@@ -77,3 +77,46 @@ export function pantallaPara ({ cargando, sesion, perfil, errorPerfil }) {
 
   return PANTALLAS.APP
 }
+
+
+/* ---------------------------------------------------------------------
+   ¿Hay que volver a preguntar por el perfil?
+   ---------------------------------------------------------------------
+   Se saca aquí para poder probarla, porque es donde estuvo el error del
+   primer intento de arreglo (4/09, segunda vuelta).
+
+   AQUEL ARREGLO REINTENTABA SOLO CUANDO LA CONSULTA FALLABA. Y resulta
+   que el caso que de verdad pasa no falla: **devuelve cero filas sin
+   error.**
+
+   Por qué. Las políticas de `perfiles` dicen `id = auth.uid()`. Si la
+   consulta sale antes de que la librería tenga el token del usuario
+   puesto, `auth.uid()` es nulo, ninguna fila cumple la condición, y
+   PostgREST responde 200 con una lista vacía. Para el código eso es
+   `data = null, error = null`: una respuesta perfectamente válida que
+   dice "esta persona no tiene perfil". Y ahí es donde la app le
+   enseñaba la pantalla de activación al entrenador.
+
+   O sea: el error del 2/09 fue confundir un fallo con una respuesta, y
+   este es confundir una respuesta VACÍA con una respuesta. La misma
+   familia.
+
+   Por eso se reintenta también con la lista vacía. El costo es que un
+   visitante que de verdad no tiene perfil espera unos cientos de
+   milisegundos de más antes de ver la pantalla de activación — que es
+   el lado barato en el que equivocarse.
+   --------------------------------------------------------------------- */
+export function hayQueReintentar ({ error, data, intento, maximo }) {
+  if (intento >= maximo - 1) return false   // ya no quedan intentos
+  return Boolean(error) || data == null
+}
+
+/* Qué significa el resultado FINAL, agotados los reintentos.
+ *
+ *   error  -> undefined: seguimos sin saber. Nunca null, que afirmaría.
+ *   vacío  -> null: se preguntó bien varias veces y no hay perfil.
+ *   fila   -> la fila. */
+export function resultadoPerfil ({ error, data }) {
+  if (error) return undefined
+  return data ?? null
+}

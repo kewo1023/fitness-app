@@ -2,31 +2,44 @@
 # generar-laminas-grupos.py — las 7 laminas de grupo muscular
 # =====================================================================
 #
-# Dibuja public/ilustraciones/grupos/*.svg: una silueta humana con la
-# zona del grupo resaltada. Se usan en la portada de la pestana
-# Ejercicios, la que muestra las categorias antes de los ejercicios.
+# Dibuja public/ilustraciones/grupos/*.svg: la parte del cuerpo que
+# trabaja cada grupo, con el musculo resaltado. Se usan en la portada de
+# la pestana Ejercicios.
 #
-# POR QUE SE DIBUJAN AQUI Y NO SE BUSCAN.
+# =====================================================================
+# TERCERA VERSION. QUE SE APRENDIO DE LAS DOS ANTERIORES
+# =====================================================================
 #
-# Las 30 laminas de ejercicios son de terceros (Everkinetic, CC BY-SA
-# 4.0) y por eso existe la pantalla de Creditos. Meter 7 dibujos mas de
-# otra fuente significaria revisar otra licencia, sumar otra atribucion
-# y arriesgarse a mezclar dos estilos. Estas figuras son formas
-# geometricas simples —ovalos y rectangulos redondeados— asi que sale
-# mas barato dibujarlas que buscarlas, y no le deben nada a nadie.
+# v1 (3/09): un muneco completo con la zona pintada. Rechazado: "cero
+#     profesional". El cuerpo era una suma de rectangulos y circulos.
 #
-# EL TRUCO DE LA TRANSPARENCIA, que es lo unico no obvio de este
-# archivo. Estos SVG no se muestran como imagen: se usan de PLANTILLA
-# (mask-image) y el color lo pone --lamina desde theme.css (regla 15 de
-# CLAUDE.md). Una plantilla no tiene colores, solo tiene "por aqui se
-# pinta" y "por aqui no" — pero SI admite grados intermedios.
+# v2 (4/09): el musculo SOLO, sin cuerpo. Peor. Y el motivo es el
+#     hallazgo que manda sobre esta version: un biceps y un cuadriceps
+#     aislados SON LOS DOS UN HUSO. Sin un cuerpo alrededor no hay nada
+#     que los distinga. Lo unico que funciono fueron `core`, `espalda` y
+#     `cardio`, y no porque fueran mejor dibujo: porque la parrilla del
+#     abdomen, la V de la espalda y el corazon son formas que cualquiera
+#     reconoce solas.
 #
-# Eso es lo que hace posible la figura completa en gris palido con una
-# sola zona a color, usando un unico color: el cuerpo va dibujado al
-# 26% de opacidad y la zona resaltada al 100%. En la lamina eso se
-# traduce en "pinta el cuerpo flojito y la zona fuerte". Es el mismo
-# efecto de un mapa donde un pais esta resaltado y los demas se ven
-# tenues, pero sin necesitar dos colores.
+# v3, esta: vuelve el cuerpo —hacia falta— pero con dos cambios.
+#
+#   1. SE ENCUADRA LA PARTE, no el cuerpo entero. El brazo se dibuja
+#      como un brazo, las piernas como piernas. Antes todas las laminas
+#      eran la misma figura de cuerpo entero con una zona distinta
+#      pintada, asi que la zona salia diminuta y las siete se veian
+#      iguales de lejos. Es la idea que se saco de la referencia.
+#
+#   2. EL CUERPO SE DIBUJA CON CURVAS, no con rectangulos. Un contorno
+#      que se ensancha en el hombro y se cierra en la cintura se lee
+#      como un cuerpo; una pila de cajas se lee como un muneco de
+#      juguete, que es lo que se rechazo.
+#
+# LO QUE NO CAMBIA, Y ES UNA RESTRICCION DEL PROYECTO: una sola tinta.
+# La referencia usaba gris + rojo, pero un rojo nuevo en la paleta choca
+# con la regla del cobre de senal ("un solo lugar donde la app grita").
+# Asi que la separacion sigue saliendo de la OPACIDAD: el cuerpo al 22%,
+# el musculo al 100%. Se pintan con mask-image (regla 15), y una
+# mascara admite grados de transparencia aunque no admita colores.
 #
 # Como se corre:
 #
@@ -38,105 +51,165 @@ import os
 
 DESTINO = 'public/ilustraciones/grupos'
 
-# Cuanto se ve el cuerpo que NO es el grupo resaltado. Si sube mucho, la
-# zona resaltada deja de distinguirse; si baja mucho, la figura
-# desaparece y el dibujo no se lee como un cuerpo.
-FANTASMA = '.24'
+# Cuanto se ve el cuerpo que NO es el musculo resaltado. Mas bajo que en
+# v1 (era .24): con el encuadre cerrado el cuerpo ocupa mucho mas de la
+# lamina, y al 24% competia con el musculo en vez de servirle de marco.
+FANTASMA = '.22'
 
-# --- Las piezas del cuerpo, compartidas por las 7 laminas ------------
-# Cada pieza tiene nombre porque las laminas la reutilizan al 100% de
-# opacidad cuando esa pieza ES el grupo resaltado: el brazo resaltado no
-# es un dibujo nuevo, es el mismo brazo pintado fuerte. Asi la zona
-# encaja exacta con la silueta y no queda un borde desalineado.
-PIEZAS = {
-    'cabeza':   '<circle cx="256" cy="92" r="36"/>',
-    'cuello':   '<path d="M238 124h36v26h-36z"/>',
-    'hombros':  '<rect x="174" y="146" width="164" height="56" rx="28"/>',
-    'torso':    '<path d="M186 188H326L302 338H210Z"/>',
-    'cadera':   '<rect x="206" y="320" width="100" height="54" rx="22"/>',
-    'brazo_i':  '<rect x="146" y="166" width="40" height="168" rx="20" '
-                'transform="rotate(-6 166 166)"/>',
-    'brazo_d':  '<rect x="326" y="166" width="40" height="168" rx="20" '
-                'transform="rotate(6 346 166)"/>',
-    'pierna_i': '<rect x="204" y="356" width="46" height="136" rx="22"/>',
-    'pierna_d': '<rect x="262" y="356" width="46" height="136" rx="22"/>',
-}
 
-TODAS = list(PIEZAS)
+# ---------------------------------------------------------------------
+# LOS CUERPOS. Uno por encuadre, no uno para todas.
+# ---------------------------------------------------------------------
+# Cada uno trae su viewBox, porque un torso y unas piernas no tienen la
+# misma proporcion y forzarlos al mismo cuadro deja aire muerto.
 
-# --- Que resalta cada grupo -------------------------------------------
-# Dos formas de resaltar, y la eleccion no es de estilo:
-#
-#   'piezas'  — el grupo ES una parte entera del cuerpo (brazo, pierna).
-#               Se repinta la misma pieza al 100%.
-#   'extra'   — el grupo es un musculo DENTRO de una pieza (el pecho
-#               esta dentro del torso). Se dibuja una forma encima.
-#
+TORSO_FRENTE = ('20 6 200 268', '''
+  <path d="M110 8h20q2 18 6 24 22 6 44 18 14 8 17 24 4 22 2 44
+           -1 14-5 26-3 9-9 10-5 1-7-5-3-9-4-20-1 26 3 50 3 20 6 40
+           2 12-1 22-14 5-30 6h-64q-16-1-30-6-3-10-1-22 3-20 6-40
+           4-24 3-50-3 11-4 20-2 6-7 5-6-1-9-10-4-12-5-26-2-22 2-44
+           3-16 17-24 22-12 44-18 4-6 6-24z"/>''')
+
+TORSO_ESPALDA = ('20 6 200 268', '''
+  <path d="M110 8h20q2 18 6 24 22 6 44 18 14 8 17 24 4 22 2 44
+           -1 14-5 26-3 9-9 10-5 1-7-5-3-9-4-20-1 26 3 50 3 20 6 40
+           2 12-1 22-14 5-30 6h-64q-16-1-30-6-3-10-1-22 3-20 6-40
+           4-24 3-50-3 11-4 20-2 6-7 5-6-1-9-10-4-12-5-26-2-22 2-44
+           3-16 17-24 22-12 44-18 4-6 6-24z"/>''')
+
+# El brazo, flexionado: es la unica postura en la que un biceps se lee
+# como un biceps. Recto seria otra vez un huso.
+# El brazo FLEXIONADO, que es la unica postura donde un biceps se lee
+# como un biceps; recto seria otra vez un huso. Y se dibuja con su
+# esqueleto —dos capsulas y dos bolas— en vez de con un contorno: el
+# intento de contorno salio un gancho.
+BRAZO = ('14 6 172 186', '''
+  <ellipse cx="66" cy="46" rx="36" ry="30"/>
+  <line x1="72" y1="52" x2="94" y2="150" stroke-width="58"/>
+  <line x1="94" y1="150" x2="150" y2="56" stroke-width="40"/>''')
+
+# Nota sobre lo que se le QUITO al brazo: tenia un circulo de puno en la
+# punta de arriba, del mismo tamano que el hombro. Con un bulto igual en
+# cada extremo la figura quedaba simetrica y se leia como un CHECK, no
+# como un brazo. Ahora el unico bulto es el hombro, el antebrazo es mas
+# delgado que el brazo, y la punta redonda de la capsula ya hace de
+# puno. Lo que da el sentido de "brazo" es que los dos tramos sean
+# DISTINTOS, no que haya mas piezas.
+
+PIERNAS = ('12 4 176 264', '''
+  <path d="M52 10h96q9 0 10 11l3 45q2 21-3 41l-11 60q-5 29-7 59l-3 34
+           q-1 9-10 9t-10-9l-6-46q-3-25-6-50-3 25-6 50l-6 46
+           q-1 9-10 9t-10-9l-3-34q-2-30-7-59l-11-60q-5-20-3-41l3-45
+           q1-11 10-11z"/>''')
+
+
+# ---------------------------------------------------------------------
+# QUE RESALTA CADA GRUPO
+# ---------------------------------------------------------------------
+# La forma va DENTRO del contorno del cuerpo, no encima ni al lado. Es
+# lo que hace que se lea como "este musculo de este cuerpo" y no como
+# dos dibujos superpuestos.
+
 GRUPOS = {
-    'pecho': {
-        # Dos losas inclinadas, no dos ovalos. Los ovalos, con la
-        # cabeza justo encima, se leian como un par de ojos y la lamina
-        # entera parecia una cara. El borde inferior en diagonal hacia
-        # el esternon es lo que la vuelve un pecho.
-        'extra': '<path d="M192 206H250V240L196 254Z"/>'
-                 '<path d="M320 206H262V240L316 254Z"/>'
-    },
-    'espalda': {
-        # Los dorsales, vistos desde el frente como las dos "alas" que
-        # ensanchan el torso. Un dibujo de espaldas obligaria a una
-        # segunda silueta completa para una sola lamina.
-        'extra': '<path d="M190 200 216 216 208 316 194 300Z"/>'
-                 '<path d="M322 200 296 216 304 316 318 300Z"/>'
-    },
-    'pierna': {'piezas': ['pierna_i', 'pierna_d'],
-               'extra': '<rect x="206" y="320" width="100" height="54" rx="22"/>'},
-    'hombro': {'extra': '<circle cx="192" cy="174" r="29"/>'
-                        '<circle cx="320" cy="174" r="29"/>'},
-    'brazo':  {'piezas': ['brazo_i', 'brazo_d']},
-    'core':   {'extra': '<path d="M214 262H298L292 336H220Z"/>'},
-    'cardio': {
-        # Cardio no es un musculo, asi que no hay zona que pintar. Un
-        # corazon sobre el pecho se lee de una y mantiene la lamina
-        # dentro del mismo juego que las otras seis.
-        'extra': '<path d="M256 292c-46-30-62-56-62-80 0-22 17-36 36-36 '
-                 '12 0 21 6 26 15 5-9 14-15 26-15 19 0 36 14 36 36 '
-                 '0 24-16 50-62 80z"/>'
-    },
+    # Los dos pectorales. Borde recto al centro (el esternon) y el
+    # inferior en diagonal: es lo que los separa de dos ovalos, que en
+    # v2 se leian como un par de ojos.
+    'pecho': (TORSO_FRENTE, '''
+      <path d="M116 66q-24 2-40 10-8 5-9 15-1 12 6 20 16 8 34 6 9-2 9-12z"/>
+      <path d="M124 66q24 2 40 10 8 5 9 15 1 12-6 20-16 8-34 6-9-2-9-12z"/>'''),
+
+    # Los dorsales: las dos alas que ensanchan la espalda y cierran en la
+    # cintura. Es la V, que fue la unica forma que funciono en v2.
+    'espalda': (TORSO_ESPALDA, '''
+      <path d="M112 64q-26 4-44 16-8 5-9 16-2 24 4 46 4 16 12 30
+               8 12 22 16-2-32 4-62 4-22 11-42z"/>
+      <path d="M128 64q26 4 44 16 8 5 9 16 2 24-4 46-4 16-12 30
+               -8 12-22 16 2-32-4-62-4-22-11-42z"/>'''),
+
+    # El deltoides y sus tres haces. Encaja sobre el hombro del torso.
+    # El deltoides. En la vuelta anterior quedaba FUERA del torso,
+    # flotando a los lados como dos orejas: las coordenadas venian del
+    # cuerpo de v1, que era mas ancho. Ahora se apoyan sobre el hombro
+    # del contorno de v3.
+    'hombro': (TORSO_FRENTE, '''
+      <path d="M78 46q-16 6-24 20-7 14-6 28 1 9 9 10 8 1 12-8
+               5-14 7-28 2-12 2-22z"/>
+      <path d="M162 46q16 6 24 20 7 14 6 28-1 9-9 10-8 1-12-8
+               -5-14-7-28-2-12-2-22z"/>'''),
+
+    # El biceps, en el brazo flexionado. Dos cabezas arriba, un vientre.
+    # El biceps, sobre el brazo. La elipse va girada 15 grados para
+    # seguir la inclinacion del brazo: derecha se saldria del contorno
+    # por un lado y dejaria hueco por el otro.
+    'brazo': (BRAZO,
+              '<ellipse cx="80" cy="88" rx="24" ry="42" '
+              'transform="rotate(15 80 88)"/>'),
+
+    # El cuadriceps de las dos piernas, con la gota del vasto interno.
+    # Los cuadriceps, uno por pierna. Antes las dos formas se
+    # superponian cerca del centro y salia una sola mancha corrida a la
+    # izquierda; ahora cada una vive sobre su muslo.
+    'pierna': (PIERNAS, '''
+      <path d="M64 46q14-6 26 0 6 3 6 12l-3 58q-2 20-7 34-3 8-8 8t-8-8
+               q-5-16-6-34l-3-58q0-9 3-12z"/>
+      <path d="M136 46q-14-6-26 0-6 3-6 12l3 58q2 20 7 34 3 8 8 8t8-8
+               q5-16 6-34l3-58q0-9-3-12z"/>'''),
+
+    # El recto abdominal. Ocho bloques que se angostan al bajar: la forma
+    # mas reconocible de las siete, y la unica que en v2 salio bien de
+    # una.
+    'core': (TORSO_FRENTE, ''.join(
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="7"/>'
+        for (y, h, w, x) in [
+            (112, 26, 30, 88), (112, 26, 30, 122),
+            (142, 26, 29, 89), (142, 26, 29, 122),
+            (172, 26, 27, 91), (172, 26, 27, 122),
+            (202, 30, 25, 93), (202, 30, 25, 122)])),
+
+    # Cardio no es un musculo. El corazon sobre el pecho se lee de una y
+    # mantiene la lamina dentro del mismo juego que las otras seis.
+    'cardio': (TORSO_FRENTE, '''
+      <path d="M120 150q-38-26-38-54 0-20 15-20 12 0 19 14 7-14 19-14
+               15 0 15 20 0 28-30 54z"/>'''),
 }
 
 
-def lamina(clave):
-    resalta = GRUPOS[clave]
-    fuertes = resalta.get('piezas', [])
-    tenues = [p for p in TODAS if p not in fuertes]
-
-    partes = [
-        # EL viewBox VA RECORTADO A LA FIGURA, no al lienzo de 512.
-        # La silueta es alta y angosta (220 de ancho por 436 de alto) y
-        # dentro de un cuadrado quedaba flotando en el medio con aire a
-        # los lados; como la tarjeta es 4:3 y la lamina se ajusta por
-        # 'contain', ese aire se sumaba al de la tarjeta y la figura se
-        # veia diminuta. Recortando el viewBox, el dibujo llena el alto.
-        '<svg xmlns="http://www.w3.org/2000/svg" '
-        'viewBox="138 48 236 456">',
-        # El cuerpo, flojito.
-        f'<g fill="#fff" fill-opacity="{FANTASMA}">',
-        *[PIEZAS[p] for p in tenues],
-        '</g>',
-        # La zona del grupo, a fondo.
-        '<g fill="#fff">',
-        *[PIEZAS[p] for p in fuertes],
-        resalta.get('extra', ''),
-        '</g>',
-        '</svg>',
-    ]
-    return ''.join(partes)
+def lamina(cuerpo, resalte):
+    viewbox, contorno = cuerpo
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{viewbox}">'
+        # El cuerpo, flojito: es el marco que da la escala.
+        #
+        # Lleva stroke ademas de fill porque el brazo se dibuja con
+        # LINEAS GRUESAS de punta redonda en vez de con un contorno. Una
+        # linea con stroke-linecap="round" es una capsula perfecta, y un
+        # brazo son dos capsulas y dos bolas. Intentar el mismo brazo
+        # con un solo contorno de bezier salio un gancho: hay formas que
+        # se describen mejor por su ESQUELETO que por su borde.
+        # OJO: `opacity` en el grupo, NO `fill-opacity` en cada forma.
+        #
+        # No es lo mismo y costo una vuelta. Con fill-opacity, cada
+        # forma se pinta translucida por separado y donde dos se
+        # SUPERPONEN las transparencias se suman: en el brazo se veian
+        # las costuras entre las capsulas, como un dibujo mal armado.
+        # Con `opacity` en el grupo, el navegador pinta el grupo entero
+        # y le aplica la transparencia UNA vez al resultado, asi que un
+        # cuerpo hecho de cinco piezas se ve como una sola.
+        #
+        # En Excel seria la diferencia entre bajarle el color a cinco
+        # celdas una por una y agruparlas para bajarselo al bloque.
+        f'<g fill="#fff" stroke="#fff" opacity="{FANTASMA}" '
+        f'stroke-linecap="round" stroke-linejoin="round">{contorno}</g>'
+        # El musculo, a fondo.
+        f'<g fill="#fff" stroke="#fff" stroke-linecap="round">{resalte}</g>'
+        '</svg>'
+    )
 
 
 if __name__ == '__main__':
     os.makedirs(DESTINO, exist_ok=True)
-    for clave in GRUPOS:
+    for clave, (cuerpo, resalte) in GRUPOS.items():
         ruta = f'{DESTINO}/{clave}.svg'
         with open(ruta, 'w', encoding='utf-8') as f:
-            f.write(lamina(clave))
+            f.write(lamina(cuerpo, resalte))
         print(f'  {ruta}  {os.path.getsize(ruta)} B')

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { pantallaPara, PANTALLAS } from './acceso.js'
+import {
+  pantallaPara, PANTALLAS, hayQueReintentar, resultadoPerfil
+} from './acceso.js'
 
 /* Estas pruebas existen por dos bugs reales, y las dos que más importan
  * son las del bloque "un fallo no es una respuesta". Si alguien
@@ -70,5 +72,51 @@ describe('la sesión manda sobre el perfil', () => {
     expect(pantallaPara({
       cargando: false, sesion: null, perfil: undefined, errorPerfil: true
     })).toBe(PANTALLAS.ACCESO)
+  })
+})
+
+describe('cuándo hay que volver a preguntar por el perfil', () => {
+  const M = 3
+
+  it('con error, sí', () => {
+    expect(hayQueReintentar({ error: {}, data: null, intento: 0, maximo: M }))
+      .toBe(true)
+  })
+
+  it('CON CERO FILAS Y SIN ERROR, TAMBIÉN', () => {
+    // El bug de la segunda vuelta del 4/09. Las políticas de `perfiles`
+    // dicen `id = auth.uid()`; si la consulta sale antes de que el token
+    // esté puesto, auth.uid() es nulo, no hay filas, y PostgREST
+    // responde 200 con una lista vacía. Sin error. El arreglo anterior
+    // solo reintentaba con error, así que este caso pasaba de largo y
+    // la app concluía "no tiene perfil".
+    expect(hayQueReintentar({ error: null, data: null, intento: 0, maximo: M }))
+      .toBe(true)
+  })
+
+  it('con una fila, no', () => {
+    expect(hayQueReintentar({
+      error: null, data: { id: 'abc' }, intento: 0, maximo: M
+    })).toBe(false)
+  })
+
+  it('agotados los intentos, no', () => {
+    expect(hayQueReintentar({ error: {}, data: null, intento: 2, maximo: M }))
+      .toBe(false)
+  })
+})
+
+describe('qué significa el resultado final', () => {
+  it('un error deja undefined, nunca null', () => {
+    // null afirmaría que no tiene perfil. Un fallo no afirma nada.
+    expect(resultadoPerfil({ error: {}, data: null })).toBe(undefined)
+  })
+
+  it('vacío tras los reintentos sí es null: no tiene perfil', () => {
+    expect(resultadoPerfil({ error: null, data: null })).toBe(null)
+  })
+
+  it('con fila devuelve la fila', () => {
+    expect(resultadoPerfil({ error: null, data: PERFIL })).toBe(PERFIL)
   })
 })
