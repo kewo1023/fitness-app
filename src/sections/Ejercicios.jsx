@@ -3,7 +3,7 @@ import Pantalla from '../components/Pantalla.jsx'
 import { supabase } from '../lib/supabase.js'
 import { GRUPOS, EQUIPOS, etiqueta } from '../lib/ejercicios.js'
 import { urlDeImagen } from '../lib/imagenes.js'
-import { ilustracionDeEjercicio } from '../lib/ilustraciones.js'
+import { ilustracionDeEjercicio, ilustracionDeGrupo } from '../lib/ilustraciones.js'
 import Ilustracion from '../components/Ilustracion.jsx'
 
 /* =====================================================================
@@ -106,6 +106,16 @@ export default function Ejercicios ({ perfil }) {
     return GRUPOS.filter(g => hay.has(g))
   }, [ejercicios])
 
+  /* Cuántos ejercicios tiene cada grupo. Va en la tarjeta de la
+   * portada porque una categoría sin número es una puerta a ciegas: no
+   * se sabe si detrás hay 2 ejercicios o 40, y eso es justo lo que
+   * decide si vale la pena tocarla. */
+  const porGrupo = useMemo(() => {
+    const cuenta = {}
+    for (const e of ejercicios) cuenta[e.grupo] = (cuenta[e.grupo] || 0) + 1
+    return cuenta
+  }, [ejercicios])
+
   const equiposConContenido = useMemo(() => {
     const hay = new Set(ejercicios.map(e => e.equipo).filter(Boolean))
     return EQUIPOS.filter(q => hay.has(q))
@@ -136,8 +146,35 @@ export default function Ejercicios ({ perfil }) {
   const esVisitante = perfil?.rol === 'visitante'
   const hayFiltro = grupo !== TODOS || equipo !== TODOS || busqueda.trim()
 
+  /* LA PORTADA: los grupos musculares en vez de los 150 ejercicios.
+   *
+   * POR QUÉ SE AGREGÓ (3/09). Con 30 ejercicios de prueba la rejilla
+   * plana con dos filas de píldoras funcionaba. Con los ~150 que va a
+   * tener el entrenador, no: una fila de filtros que se desliza de
+   * lado se descubre mal en un celular —nada indica que hay más a la
+   * derecha— y un muro de 150 tarjetas no es una biblioteca, es una
+   * lista. Siete puertas con un dibujo sí se entienden sin explicación.
+   *
+   * Y ESTA ES LA PANTALLA QUE VE UN DESCONOCIDO, que es lo que inclinó
+   * la decisión: es el gancho de la app. Siete tarjetas se leen como un
+   * producto; una lista larga con filtros se lee como una base de datos.
+   *
+   * LO QUE NO SE SACRIFICÓ. El buscador queda SIEMPRE arriba, y basta
+   * escribir para saltarse la portada y buscar en toda la biblioteca:
+   * quien ya sabe qué quiere no paga el paso extra. Y el filtro de
+   * equipo sigue existiendo dentro del grupo, porque es el que responde
+   * la pregunta que de verdad se hace un cliente —"¿qué puedo hacer hoy
+   * con lo que tengo en la casa?"—. Enterrar ese eje habría sido
+   * cambiar una mejora de navegación por una pérdida de función. */
+  const enPortada = grupo === TODOS && !busqueda.trim()
+
   return (
-    <Pantalla titulo="Ejercicios" bajada="La biblioteca del entrenador">
+    <Pantalla
+      titulo="Ejercicios"
+      bajada={enPortada || grupo === TODOS
+        ? 'La biblioteca del entrenador'
+        : `${etiqueta(grupo)} · la biblioteca del entrenador`}
+    >
       {cargando && <p className="meta">Cargando…</p>}
 
       {!cargando && ejercicios.length === 0 && (
@@ -161,42 +198,70 @@ export default function Ejercicios ({ perfil }) {
             />
           </label>
 
-          <Filtro titulo="Grupo" valores={gruposConContenido}
-                  activo={grupo} alElegir={setGrupo} />
+          {enPortada ? (
+            <>
+              <h3 className="titulillo">
+                Por grupo muscular{' '}
+                <span className="tenue">{ejercicios.length} en total</span>
+              </h3>
 
-          {/* El filtro de equipo es el que responde la pregunta que de
-              verdad se hace un cliente: "¿qué puedo hacer hoy con lo que
-              tengo en la casa?". Por eso existen los dos ejes. */}
-          {equiposConContenido.length > 1 && (
-            <Filtro titulo="Equipo" valores={equiposConContenido}
-                    activo={equipo} alElegir={setEquipo} />
+              <div className="rejilla">
+                {gruposConContenido.map(g => (
+                  <TarjetaGrupo key={g} grupo={g} cuantos={porGrupo[g]}
+                                alAbrir={() => setGrupo(g)} />
+                ))}
+              </div>
+
+              <p className="pista">
+                Toca un grupo para ver sus ejercicios, o busca por nombre
+                arriba si ya sabes cuál quieres.
+              </p>
+            </>
+          ) : (
+            <>
+              {/* La píldora "Todos" de esta fila es la forma de volver a
+                  la portada, y por eso el filtro de grupo sigue aquí en
+                  vez de desaparecer al entrar: la vuelta atrás vive en
+                  el mismo sitio donde se eligió, y de paso se puede
+                  saltar de un grupo a otro sin pasar por la portada. */}
+              <Filtro titulo="Grupo" valores={gruposConContenido}
+                      activo={grupo} alElegir={setGrupo} />
+
+              {/* El filtro de equipo es el que responde la pregunta que de
+                  verdad se hace un cliente: "¿qué puedo hacer hoy con lo que
+                  tengo en la casa?". Por eso existen los dos ejes. */}
+              {equiposConContenido.length > 1 && (
+                <Filtro titulo="Equipo" valores={equiposConContenido}
+                        activo={equipo} alElegir={setEquipo} />
+              )}
+
+              <h3 className="titulillo">
+                {visibles.length === ejercicios.length ? 'Todos' : 'Resultados'}
+                {/* El {' '} no sobra: JSX se traga el salto de línea y la
+                    sangría que hay entre una expresión y el elemento
+                    siguiente, así que sin él quedaría "Resultados9 de 30"
+                    pegado. Es un espacio escrito a mano a propósito. */}
+                {' '}
+                <span className="tenue">
+                  {visibles.length} de {ejercicios.length}
+                </span>
+              </h3>
+
+              {visibles.length === 0 && (
+                <p className="meta">
+                  Ninguno coincide con lo que buscas.
+                  {hayFiltro && ' Prueba quitando un filtro.'}
+                </p>
+              )}
+
+              <div className="rejilla">
+                {visibles.map(e => (
+                  <Tarjeta key={e.id} ejercicio={e}
+                           alAbrir={() => setAbierto(e)} />
+                ))}
+              </div>
+            </>
           )}
-
-          <h3 className="titulillo">
-            {visibles.length === ejercicios.length ? 'Todos' : 'Resultados'}
-            {/* El {' '} no sobra: JSX se traga el salto de línea y la
-                sangría que hay entre una expresión y el elemento
-                siguiente, así que sin él quedaría "Resultados9 de 30"
-                pegado. Es un espacio escrito a mano a propósito. */}
-            {' '}
-            <span className="tenue">
-              {visibles.length} de {ejercicios.length}
-            </span>
-          </h3>
-
-          {visibles.length === 0 && (
-            <p className="meta">
-              Ninguno coincide con lo que buscas.
-              {hayFiltro && ' Prueba quitando un filtro.'}
-            </p>
-          )}
-
-          <div className="rejilla">
-            {visibles.map(e => (
-              <Tarjeta key={e.id} ejercicio={e}
-                       alAbrir={() => setAbierto(e)} />
-            ))}
-          </div>
         </>
       )}
 
@@ -232,6 +297,30 @@ function Filtro ({ titulo, valores, activo, alElegir }) {
         </button>
       ))}
     </div>
+  )
+}
+
+
+/* La puerta de un grupo muscular. Es una Tarjeta con la misma forma
+ * que la de un ejercicio —mismo alto, misma rejilla— a propósito: al
+ * entrar a un grupo la pantalla no da un salto, las tarjetas se
+ * quedan donde estaban y solo cambia lo que muestran.
+ *
+ * El dibujo NO lleva etiqueta para el lector de pantalla: el nombre del
+ * grupo va escrito justo debajo, dentro del mismo botón, así que
+ * ponerle una lo haría leer "Pecho, pecho". Es la misma decisión que en
+ * la tarjeta de un ejercicio. */
+function TarjetaGrupo ({ grupo, cuantos, alAbrir }) {
+  return (
+    <button type="button" className="tarjeta tarjeta-boton" onClick={alAbrir}>
+      <Ilustracion ruta={ilustracionDeGrupo(grupo)} />
+      <h2 className="chico">{etiqueta(grupo)}</h2>
+      <p className="pastillas">
+        <span className="pastilla">
+          {cuantos} {cuantos === 1 ? 'ejercicio' : 'ejercicios'}
+        </span>
+      </p>
+    </button>
   )
 }
 

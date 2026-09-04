@@ -149,10 +149,33 @@ Un repo dentro de iCloud ya rompió git antes (`unable to map index file`).
 No son preferencias. Son las que sostienen el proyecto:
 
 1. **Ni un color literal fuera de `theme.css`.** Todo sale de `var(--...)`.
-   Una sola excepción, comentada en su sitio: el `theme-color` de
-   arranque en `index.html`. Es el valor que usa la barra de estado
-   antes de que la hoja de estilos exista, así que no hay variable de
-   dónde sacarlo. Dura milisegundos y `tema.js` lo reemplaza.
+   **Dos excepciones, y las dos por la misma razón: son valores que se
+   usan ANTES o FUERA de que exista una hoja de estilos.**
+
+   La primera es el `theme-color` de arranque en `index.html`. Es el
+   valor que usa la barra de estado antes de que la hoja de estilos
+   exista, así que no hay variable de dónde sacarlo. Dura milisegundos
+   y `tema.js` lo reemplaza.
+
+   La segunda son los **iconos de la app instalada** y el
+   `theme_color` / `background_color` de `manifest.webmanifest`. Un PNG
+   no lee variables de CSS y un manifest es JSON, que ni siquiera
+   admite comentarios. Quien pinta esos colores es el sistema
+   operativo, no el navegador: son el icono de la pantalla de inicio y
+   la pantalla de arranque de la app.
+
+   Por eso los iconos **no se guardan solo como PNG**: los dibuja
+   `herramientas/generar-iconos.py`, donde el color está escrito una
+   vez, con su nombre de `theme.css` al lado y la explicación de por
+   qué está ahí. Si cambia el acento, se cambia esa constante y se
+   vuelve a correr. Un PNG suelto sería un color sin origen.
+
+   **Consecuencia que hay que aceptar:** el `theme_color` del manifest
+   es fijo y el tema de la app no. Alguien con la app en oscuro va a
+   ver la pantalla de arranque clara durante un instante. No tiene
+   arreglo —el sistema lee el manifest antes de que exista la app— y
+   no vale la pena forzarlo.
+
 2. **Comentarios que explican el PORQUÉ, no el qué.** El código está
    comentado para que se pueda aprender leyéndolo. Si escribes algo no obvio,
    explica la razón y usa una analogía de Excel si ayuda.
@@ -263,10 +286,38 @@ No son preferencias. Son las que sostienen el proyecto:
 
 ```
 index.html               viewport-fit=cover, el theme-color de la barra
-                         de estado, y el script suelto que aplica el
-                         tema ANTES de pintar. Ese script está ahí a
-                         propósito: si fuera un módulo se vería un
-                         fogonazo blanco al abrir en oscuro.
+                         de estado, el enlace al manifest, y el script
+                         suelto que aplica el tema ANTES de pintar. Ese
+                         script está ahí a propósito: si fuera un
+                         módulo se vería un fogonazo blanco al abrir en
+                         oscuro.
+public/manifest.webmanifest
+                         LO QUE VUELVE ESTO UNA APP INSTALABLE. Nombre,
+                         iconos, color y display:standalone. Sin él,
+                         Android crea un MARCADOR que abre el navegador
+                         con su barra de direcciones en vez de instalar
+                         la app — el bug del 3/09. En iPhone no se
+                         notaba: Safari abre sus atajos sin barra tenga
+                         o no manifest, así que la app parecía bien y el
+                         problema parecía de Android. Era al revés.
+public/sw.js             El service worker. Corto y con un NO grande:
+                         no cachea nada de Supabase (van datos de salud
+                         de terceros) ni el HTML (se queda pegado en una
+                         versión vieja). Está para que Chrome OFREZCA
+                         instalar, y porque el push lo va a exigir.
+                         El caché offline de verdad es la Fase 8.
+public/iconos/           Los cuatro PNG de la app instalada. NO se
+                         editan a mano: los dibuja
+                         herramientas/generar-iconos.py.
+herramientas/            Scripts que se corren A MANO cuando cambia un
+                         dibujo, no en cada build. Necesitan Pillow, que
+                         no es dependencia de la app. Son la FUENTE de
+                         archivos que si no serían un resultado sin
+                         origen: generar-iconos.py (el icono de la app,
+                         una pesa rusa — no una letra, porque el nombre
+                         todavía se puede cambiar) y
+                         generar-laminas-grupos.py (las 7 siluetas de
+                         grupo muscular de la portada de Ejercicios).
 src/main.jsx             El arranque. theme.css va ANTES que app.css.
 src/App.jsx              El cerebro. Decide QUÉ PANTALLA se ve, que
                          sale de dos datos: hay sesión, y hay perfil.
@@ -300,6 +351,16 @@ src/sections/Ejercicios.jsx
                          propósito: el entrenador ve aquí lo mismo que
                          sus clientes, que es lo que la hace útil para
                          revisar su propio trabajo.
+                         Desde el 3/09 abre en una PORTADA de 7 grupos
+                         musculares con su dibujo, y los ejercicios
+                         están detrás de uno. El buscador queda siempre
+                         arriba: escribir se salta la portada, así que
+                         quien ya sabe qué quiere no paga el paso extra.
+public/ilustraciones/grupos/
+                         Las 7 siluetas de grupo muscular, DE AUTORÍA
+                         PROPIA — no deben atribución y no tocan la
+                         pantalla de Créditos, que sigue hablando solo
+                         de los 30 dibujos de ejercicios.
 src/sections/PanelEntrenador.jsx
                          Solo con rol admin, y se entra desde Perfil, no
                          desde una sexta pestaña: la barra de abajo
@@ -308,6 +369,26 @@ src/lib/ejercicios.js    El vocabulario (grupos, movimientos, equipos,
                          niveles) y la validación de una fila. NO toca
                          la base, para que se pueda probar sin
                          credenciales.
+src/lib/hoja.js          Lee la hoja de cálculo que pega el entrenador:
+                         detecta el separador (al pegar desde Excel son
+                         TABULACIONES, no comas), entiende las comillas
+                         y traduce los encabezados. 30 pruebas. NO toca
+                         la base, igual que ejercicios.js.
+src/sections/CargaMasiva.jsx
+                         Pegar la hoja → vista previa con los errores
+                         por número de fila → guardar. SOLO AGREGA:
+                         nunca modifica lo que ya está, porque
+                         reemplazar la fila borraría la foto que él ya
+                         subió y vaciaría las columnas que dejó en
+                         blanco. Se entra desde Tu biblioteca.
+plantilla-ejercicios.csv La hoja YA LLENA que se le manda al entrenador:
+                         los 30 ejercicios de ejemplo clasificados, con
+                         la columna `indicaciones` vacía. Se invirtió el
+                         pedido a propósito — armar una hoja desde cero
+                         es un trabajo que no vuelve; editar una llena,
+                         sí. Los 30 nombres son los que tienen dibujo,
+                         así que lo que él conserve se ve completo desde
+                         el primer día.
 src/lib/imagenes.js      La dirección pública de una foto. La base
                          guarda la RUTA, no la dirección completa.
 src/lib/ilustraciones.js La tabla de qué dibujo le toca a cada ejercicio
@@ -445,21 +526,27 @@ debe recortar:
 - **La pantalla "Mis datos" es gobernanza implementada**, no un PDF.
 - **El README cuenta el problema, no las funciones.**
 
-## Estado (2 de septiembre de 2026)
+## Estado (3 de septiembre de 2026)
 
-**Fases 1 y 2 cerradas.** La base de datos existe y está protegida; la app
-tiene acceso por cuenta, tres roles y la Ley 1581 implementada. Todo
-verificado contra producción: se creó un visitante desde la app, se
-comprobó qué ve, se guardaron y descargaron sus datos, y se eliminó la
-cuenta. 71 pruebas pasan.
+**Fases 1 y 2 cerradas. Fase 3 construida entera.** La base de datos
+existe y está protegida; la app tiene acceso por cuenta, tres roles y la
+Ley 1581 implementada. **101 pruebas** pasan.
 
-**En curso: Fase 3 — la biblioteca de ejercicios.** Ya existen el
-catálogo (pestaña Ejercicios, que reemplazó a Programas), el panel del
-entrenador para crear/editar/archivar, las políticas del bucket en
-`05-storage.sql`, y desde el 2/09 **las ilustraciones**: los 30
-ejercicios de ejemplo y las recetas ya no muestran un hueco gris.
-**Falta la carga masiva desde hoja de cálculo**, y para eso hace falta
-conseguir la hoja del entrenador: está en `PASOS-FASE-3.md`.
+**La Fase 3 ya no está bloqueada por código.** Existen el catálogo —que
+desde el 3/09 abre en una portada de 7 grupos musculares—, el panel del
+entrenador, y la **carga masiva** desde hoja de cálculo. Lo único que
+falta construir es la compresión y subida de imágenes (~2 h), que espera
+a que haya imágenes.
+
+Lo que falta no es código: **mandarle `plantilla-ejercicios.csv` al
+entrenador y que la devuelva editada.** Está en `PASOS-FASE-3.md`.
+
+**Desde el 3/09 la app se instala de verdad.** Hasta ese día no existía
+ningún manifest: en Android, "agregar a pantalla de inicio" creaba un
+marcador que abría el navegador con su barra. En el iPhone no se notaba
+—Safari abre sus atajos sin barra tenga o no manifest— y eso apuntó
+mucho tiempo en la dirección equivocada. Es la razón exacta por la que la
+regla 8 dice **Android** y no "un celular".
 
 **Qué está conectado a la base y qué no:** Acceso, Activar, Mis datos,
 Perfil, Recetas y Ejercicios son reales. `Hoy` tiene el saludo real y el
@@ -468,16 +555,21 @@ resto de mock; `Progreso` sigue en mock. Se conectan en las Fases 4 y 5.
 parte el mismo día.** `PROGRAMAS` no se conectó: se borró, porque
 describía un modelo descartado.
 
-**Dos pendientes que no bloquean la Fase 3 pero sí la difusión:**
+**Tres pendientes que no bloquean la Fase 3 pero sí la difusión:**
 
-1. **Nadie ha visto la app en un Android real.** El público es 83%
-   Android. Hay que sentir los formularios, el teclado tapando el botón de
-   entrar, y si el vidrio de la barra va a tirones; si va mal, se sube el
-   umbral de `nivelDetectado()` en `src/lib/dispositivo.js`.
+1. **El Android real ya se probó y funciona**, pero falta mirar dos cosas
+   en él: si el vidrio de la barra de abajo va a tirones (si va mal, se
+   sube el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`) y si
+   el teclado tapa el botón de entrar. Y hay dos pantallas nuevas que
+   nadie ha visto en un celular: la carga masiva y la portada.
 2. **Falta la puerta de edad.** Con registro abierto entran menores, y el
    artículo 7 de la Ley 1581 prohíbe tratar sus datos salvo excepciones.
    El artículo 12 del Decreto 1377 sigue sin verificar. **Antes de darle
    la URL a desconocidos, esto se resuelve.**
+3. **Los 30 ejercicios de producción tienen indicaciones inventadas.**
+   Un visitante las lee ahora mismo como si fueran del entrenador. Es
+   contenido, así que lo decide él — pero si la URL va a circular antes
+   de que responda, la opción segura es vaciarlas. Está en `BITACORA.md`.
 
 **No se publica en tiendas por ahora** (decisión del 1/09): la instalación
 es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.

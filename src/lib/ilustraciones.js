@@ -170,6 +170,30 @@ export function ilustracionDeMomento (momento) {
   return archivo ? `${BASE}/recetas/${archivo}.svg` : null
 }
 
+/* ---------------------------------------------------------------------
+   GRUPOS MUSCULARES — la única que SÍ se calcula
+   ---------------------------------------------------------------------
+   Arriba está escrito con mayúsculas que el emparejado de ejercicios no
+   se calcula traduciendo. Esta función lo calcula, y conviene entender
+   por qué no se contradicen.
+
+   Allá el problema es que "Jalón al pecho" y `lat-pulldown` son dos
+   vocabularios distintos, escritos por gente distinta, y ninguna regla
+   lleva de uno al otro. Aquí no hay dos vocabularios: los siete
+   archivos se dibujaron para esta app y se les puso EL MISMO NOMBRE que
+   tienen los grupos en `ejercicios.js` (`pecho.svg`, `espalda.svg`…).
+   No es una traducción, es el mismo nombre a los dos lados.
+
+   La consecuencia práctica, y es la razón de hacerlo así: el día que el
+   entrenador pida un grupo nuevo, se agrega a GRUPOS en `ejercicios.js`
+   y se dibuja el archivo con ese nombre. No hay una tercera lista que
+   se pueda quedar atrás. Si el archivo todavía no existe la portada
+   muestra el hueco neutro, que es la misma respuesta de siempre. */
+export function ilustracionDeGrupo (grupo) {
+  const clave = claveNombre(grupo)
+  return clave ? `${BASE}/grupos/${clave}.svg` : null
+}
+
 
 /* ---------------------------------------------------------------------
    El crédito, que NO es opcional

@@ -19,6 +19,35 @@ aplicarCapacidades()
 // todo el trabajo que hace aquí.
 aplicarTema(temaActual())
 
+/* ---------------------------------------------------------------------
+   El service worker (public/sw.js)
+   ---------------------------------------------------------------------
+   Qué hace y qué NO hace está explicado dentro de ese archivo. Aquí
+   solo se decide CUÁNDO se registra, y las dos condiciones tienen
+   razón de ser:
+
+   `import.meta.env.PROD` — en desarrollo no se registra. Vite recarga
+   los módulos en caliente y un service worker en medio sirve el
+   archivo viejo: se editaría un componente, no cambiaría nada en
+   pantalla, y se perdería la tarde buscando el error en el sitio
+   equivocado.
+
+   `load` — se espera a que la página termine de cargar. Registrarlo
+   antes lo pone a competir por la red con los archivos que el usuario
+   está esperando para ver algo. El service worker no aporta nada en la
+   PRIMERA visita: sirve a partir de la segunda, así que puede esperar.
+
+   El `catch` vacío no es descuido. Esto falla de formas que no son
+   culpa de nadie —modo incógnito, permisos de almacenamiento
+   apagados— y en todas la app funciona igual de bien sin él. Un error
+   en rojo en la consola haría pensar que algo se rompió.
+   --------------------------------------------------------------------- */
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
 createRoot(document.getElementById('raiz')).render(
   <StrictMode>
     <App />

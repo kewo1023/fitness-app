@@ -24,7 +24,7 @@
    creer que se probó algo que no se probó.
    ===================================================================== */
 
-export const VERSION = 'v0.3.1'
+export const VERSION = 'v0.3.2'
 
 /* El año del aviso de derechos.
  *

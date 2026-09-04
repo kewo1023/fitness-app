@@ -1087,6 +1087,236 @@ público no lo despublica; solo lo rompe para quien lo haya clonado. La
 regla existe para que no vuelva a pasar, no para deshacer lo que pasó.
 Es la regla 3 de PARAR aplicada a quien escribe en vez de a los clientes.
 
+## 3 de septiembre de 2026 — la app no era instalable, y nadie lo sabía
+
+### El bug que el iPhone escondió
+
+La primera prueba en un **Android real** —el pendiente #1, abierto desde
+el 1/09— destapó algo que la documentación daba por hecho desde el
+principio. `CLAUDE.md` decía "PWA instalable" en la sección de Stack.
+Era falso: **no existía ningún manifest.** Ni el archivo, ni el
+`<link rel="manifest">`, ni un service worker. Cero referencias en todo
+el proyecto.
+
+Sin manifest, Chrome en Android no ofrece instalar: ofrece "agregar a
+pantalla de inicio", que crea un **marcador**. Un marcador abre el
+navegador con su barra de direcciones. Es exactamente lo que se vio.
+
+**Lo que hace interesante este bug es por qué tardó en aparecer.** En el
+iPhone la app se sentía como una app de verdad, y eso apuntaba en la
+dirección equivocada: parecía que el código estaba bien y que Android
+era el raro. Es al revés. Safari abre los atajos de pantalla de inicio
+sin barra de navegador **tenga o no manifest** — no es mérito de la app,
+es cómo funciona iOS. Android es el que dice la verdad sobre si hay
+manifest o no.
+
+Es la regla 8 de `CLAUDE.md` ("verifica antes de afirmar") cobrada con
+intereses, y la razón exacta por la que esa regla dice **Android** y no
+"un celular": el iPhone es el dispositivo que oculta este fallo, y es el
+16% del público.
+
+### Lo que se verificó en la documentación oficial
+
+No de memoria, porque los criterios cambiaron:
+
+- **Chrome 108+ en Android ya no exige service worker para instalar.**
+  Con manifest basta. (`developer.chrome.com/blog/update-install-criteria`)
+- **Pero el prompt automático de instalación sí sigue exigiendo un
+  `fetch` handler.** Sin service worker, la opción existe pero hay que ir
+  a buscarla al menú de los tres puntos, y ese menú no lo abre nadie que
+  no lo esté buscando.
+- Iconos obligatorios: 192 y 512. (`web.dev/articles/install-criteria`)
+
+Por eso se hicieron las dos cosas y no solo el manifest.
+
+### El service worker, y lo que NO hace
+
+Está escrito corto y con las prohibiciones arriba del todo, porque el
+riesgo de un service worker no es que falle: es que funcione demasiado.
+
+- **No cachea nada de Supabase.** Por ahí viajan datos de salud de
+  terceros, y la Ley 1581 le da al titular derecho a que se supriman.
+  Una copia en el disco de un celular queda **fuera** de ese borrado y
+  nadie sabría que existe. El filtro está escrito como lista de lo que
+  SÍ se guarda, no de lo que no: una lista de exclusiones se olvida de
+  lo que todavía no existe.
+- **No cachea el HTML.** Es la forma más común de que alguien se quede
+  pegado en una versión vieja después de un despliegue.
+- **No sirve para usar la app sin internet.** Eso sigue siendo la Fase 8
+  y es un diseño aparte.
+
+La segunda razón para tenerlo pesa más que la primera: **las
+notificaciones push lo exigen, sin excepción.** `CLAUDE.md` las llama "la
+palanca de retención más grande del proyecto" desde el 31/08, y hasta hoy
+no podían existir.
+
+### El icono: una pesa, no una letra
+
+Se descartó la "E" de "Entrena" por una razón concreta: **el nombre
+todavía no está decidido** y lo decide el entrenador. Un icono con una
+letra hay que rehacerlo el día que cambie el nombre; un dibujo de lo que
+la app hace, no. Costaba lo mismo hoy.
+
+Los cuatro PNG los dibuja `herramientas/generar-iconos.py` y **no se
+editan a mano**. Es la respuesta a un problema real de la regla 1: un PNG
+no lee variables de CSS, así que el oliva queda escrito literal en algún
+lado. Guardado solo como PNG sería un color sin origen; en un script es
+un color con su nombre de `theme.css` al lado y la razón de estar ahí.
+Ver la regla 1, que ahora tiene dos excepciones en vez de una.
+
+El primer intento salió mal y vale la pena dejarlo escrito: el asa tenía
+radio 115 y el cuerpo empezaba 60 puntos más abajo, así que el óvalo se
+comía el asa y **el icono se leía como una cebolla**. Lo que hace legible
+la silueta de una pesa rusa es el HUECO del asa, no el asa.
+
+---
+
+## 3 de septiembre de 2026 — la carga masiva, y por qué se destrabó
+
+### Se cambió una decisión registrada, a propósito
+
+El 2/09 quedó escrito que la carga masiva estaba **"BLOQUEADA POR UNA
+SOLA COSA: la hoja de cálculo del entrenador"**, y que probar con datos
+inventados sería probar el código contra sí mismo. Esa decisión se
+cambió hoy, con el visto bueno de Kev, y conviene que quede la razón.
+
+**El bloqueo estaba mal planteado.** Lo que se le pedía al entrenador era
+que construyera una hoja desde cero: dos horas de trabajo sin ninguna
+recompensa visible para él. Eso no vuelve.
+
+**La inversión:** en vez de pedirle una hoja vacía, se le manda una
+**hoja ya llena** (`plantilla-ejercicios.csv`) con los 30 ejercicios de
+ejemplo clasificados y la columna `indicaciones` en blanco. Su trabajo
+pasa de "arma una hoja" a "borra los que no usas, agrega los tuyos y
+llena una columna".
+
+Los 30 nombres son **exactamente los que tienen dibujo** en
+`ilustraciones.js`, así que lo que él conserve se ve completo desde el
+primer día, sin una sola foto.
+
+**Lo que NO cambió:** la plantilla es el entregable para él, no los datos
+de prueba. La Fase 3 se cierra cuando él pegue SU hoja de vuelta. La
+lección del 2/09 sigue en pie.
+
+### Por qué las indicaciones van vacías en la plantilla
+
+Al armarla se encontró algo que no es de la plantilla sino de
+producción: **los 30 ejercicios que están hoy en la base tienen
+indicaciones inventadas.** `04-ejemplo.sql` las marca como contenido de
+prueba, pero están en la base real y **un visitante las lee ahora
+mismo** — son consejos de técnica física que no escribió ningún
+entrenador y que la app presenta como si fueran de él.
+
+No es un error de código y por eso no se "arregló" en silencio: es
+contenido, y el contenido es dominio del entrenador. Queda anotado en
+los pendientes.
+
+### Las tres decisiones de la pantalla
+
+1. **Se revisa antes de guardar, siempre.** La vista previa es lo que
+   convierte "tu hoja tiene un error" en "la fila 47 dice 'pesas' y eso
+   no existe". La primera frase no la puede arreglar él solo; la segunda
+   sí.
+
+2. **Solo agrega. Nunca modifica ni borra.** Es la decisión que más se va
+   a querer cambiar, así que la razón queda escrita: actualizar desde la
+   hoja significa REEMPLAZAR la fila entera, y eso tiene dos
+   consecuencias feas. Una columna que él dejó vacía **borraría** lo que
+   hay en la app —cargar dos veces la misma hoja le vaciaría sus propias
+   indicaciones—. Y la hoja no lleva la foto, así que reemplazar la fila
+   **borraría la imagen que ya subió**. Un ejercicio que ya existe se
+   edita desde "Tu biblioteca", uno por uno, que es donde se ve qué se
+   está cambiando.
+
+   Efecto secundario bueno: volver a pegar la hoja completa es seguro y
+   se puede repetir cuantas veces sea.
+
+3. **Lo que no se puede guardar no detiene lo que sí.** De 150 filas con
+   3 errores se guardan 147 y se dice cuáles tres faltaron y por qué.
+
+### El caso raro que costó la mitad del trabajo
+
+**El separador no siempre es una coma**, y esto habría hecho fracasar la
+primera carga real:
+
+- Al copiar celdas de Excel o Google Sheets y pegarlas, el portapapeles
+  entrega **TABULADORES**, no comas.
+- Un CSV exportado desde un Excel configurado **en español** usa **punto
+  y coma**, porque allá la coma es el separador decimal.
+
+Un lector que solo entienda comas ve la fila entera como una celda y
+responde "te falta el grupo muscular". El separador se **detecta**, y el
+empate lo gana el tabulador porque es el camino que más se va a usar.
+
+`src/lib/hoja.js` tiene **30 pruebas** y ninguna está para demostrar que
+funciona con una hoja bonita. La que manda sobre las demás: **ninguna
+fila se pierde en silencio.** Los cuatro estados —nuevo, existe,
+repetido, error— tienen que sumar siempre el total. Si la app se come una
+fila sin decir nada, él se entera meses después, cuando un cliente le
+pregunte por un ejercicio que no aparece.
+
+Detalle relacionado: la plantilla lleva **BOM** (tres bytes invisibles al
+principio) porque sin él Excel en Windows rompe las tildes y "Jalón" se
+ve "JalÃ³n". Ese BOM cuenta como carácter, así que el primer encabezado
+no sería `nombre` sino `﻿nombre` y no coincidiría con nada. Se quita al
+leer, y hay una prueba para eso: es el caso NORMAL, no la excepción.
+
+---
+
+## 3 de septiembre de 2026 — la portada por grupo muscular
+
+Pedida por Kev como "más un capricho de tener una vista diferente". Se
+evaluó y **sí vale la pena, pero no por la razón por la que se pidió.**
+
+**Hoy no hacía falta.** Con 30 ejercicios, el buscador más las píldoras
+de filtro resolvían el problema mejor que un paso extra. Si la app se
+quedara en 30, sería un capricho y así había que decirlo.
+
+**Pero la app no se queda en 30.** Con los ~150 que apunta a tener el
+entrenador cambian tres cosas:
+
+- Una fila de píldoras que se desliza de lado **se descubre mal** en un
+  celular: nada indica que hay más filtros a la derecha.
+- 150 tarjetas en una rejilla plana no son una biblioteca, son un muro.
+- **Es la pantalla que ve un desconocido**, o sea el gancho de la app.
+  Siete tarjetas con un dibujo se leen como un producto; una lista larga
+  con dos filas de filtros se lee como una base de datos.
+
+### El argumento en contra, que decidió la forma final
+
+Los dos ejes son `grupo` y `movimiento`, pero el comentario del propio
+código dice que la pregunta que de verdad se hace un cliente es la del
+**equipo**: "¿qué puedo hacer hoy con lo que tengo en la casa?". Una
+vista que arranca por grupo muscular entierra esa pregunta.
+
+Por eso: **el buscador queda siempre arriba** —escribir se salta la
+portada, así que quien ya sabe qué quiere no paga el paso extra— y **el
+filtro de equipo sigue vivo dentro del grupo**. La píldora "Todos" del
+filtro de grupo es la vuelta atrás, y así se puede saltar de un grupo a
+otro sin pasar por la portada.
+
+### Los dibujos son propios, y eso importa
+
+Las 7 siluetas las dibuja `herramientas/generar-laminas-grupos.py`. **No
+se buscaron en una biblioteca libre**, y no fue por gusto: los 30 dibujos
+de ejercicios son de Everkinetic bajo CC BY-SA 4.0 y por eso existe la
+pantalla de Créditos. Sumar 7 láminas de otra fuente significaba revisar
+otra licencia, sumar otra atribución y arriesgarse a mezclar dos estilos.
+Son óvalos y rectángulos redondeados: salió más barato dibujarlos.
+
+**El truco que las hace funcionar**, que es lo único no obvio: se pintan
+con `mask-image` (regla 15), y una plantilla no tiene colores — pero sí
+admite **grados** de transparencia. El cuerpo va al 24% de opacidad y la
+zona del grupo al 100%. Eso da la figura pálida con una sola zona
+resaltada **usando un único color**, así que el mismo archivo sirve en
+tema claro y en oscuro. Verificado en los dos.
+
+Nota de diseño que costó un intento: el pecho eran dos óvalos y, con la
+cabeza justo encima, **la lámina entera se leía como una cara**. Son dos
+losas con el borde inferior en diagonal hacia el esternón.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -1140,13 +1370,16 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ### Pendientes que vienen de atrás
 
-1. **Nadie ha visto la app en un Android real.** El público es 83%
-   Android y todo se ha verificado en navegador y en un iPhone. Ahora hay
-   más que mirar que antes: los formularios, el teclado tapando el botón
-   de entrar, y si el vidrio de la barra va a tirones. Si va mal, se sube
-   el umbral de `nivelDetectado()` en `src/lib/dispositivo.js`.
-   **Sigue sin hacerse, y ahora hay más que mirar:** el catálogo con dos
-   filas de filtros que se deslizan de lado y una rejilla de tarjetas.
+1. **CERRADO EL 3/09 a medias.** La app ya se vio en un Android real y
+   funciona. Esa prueba destapó el bug del manifest (entrada del 3/09),
+   que ya está arreglado.
+
+   **Lo que sigue sin mirarse en ese Android:** si el vidrio de la barra
+   de abajo va a tirones, y si el teclado tapa el botón de entrar. Si el
+   vidrio va mal, se sube el umbral de `nivelDetectado()` en
+   `src/lib/dispositivo.js`. Y hay dos pantallas nuevas que nadie ha
+   visto en un celular de verdad: la carga masiva y la portada por
+   grupo muscular.
 
 2. **La puerta de edad.** El artículo 7 de la Ley 1581 prohíbe tratar
    datos de niños, niñas y adolescentes salvo los de naturaleza pública.
@@ -1160,43 +1393,59 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
    gratuita que funciona como embudo hacia un servicio pago es zona gris.
    Sin verificar.
 
+4. **Los 30 ejercicios de producción tienen indicaciones INVENTADAS.**
+   Encontrado el 3/09 al armar la plantilla. `04-ejemplo.sql` las marca
+   como contenido de prueba, pero están en la base real y un visitante
+   las lee: son consejos de técnica física que no escribió ningún
+   entrenador y que la app presenta como si fueran de él.
+
+   No se tocó desde el código a propósito — el contenido es dominio del
+   entrenador (regla del 1/09). Se resuelve de una de dos formas y las
+   dos las decide él: que las reemplace con las suyas al devolver la
+   hoja, o que se vacíen hasta que las tenga. **Lo segundo es la opción
+   segura si la URL va a circular antes de que él responda.**
+
 ---
 
-## Siguiente paso — terminar la Fase 3
+## Siguiente paso — la Fase 3 depende de UNA respuesta
 
-**BLOQUEADA POR UNA SOLA COSA: la hoja de cálculo del entrenador.** Sin
-datos que cargar, la carga masiva no se puede probar de verdad, y probar
-con datos inventados es probar el código contra sí mismo.
+**Ya no está bloqueada por construir nada.** La carga masiva existe y
+está probada. Lo que falta es que el entrenador devuelva la hoja.
 
-Lo que Kev tiene que conseguir está en `PASOS-FASE-3.md`, con las
-columnas y con lo que hay que decirle a él sobre las fotos.
+### Hecho y en producción
 
-### Hecho y en producción (2/09)
+**2/09:** catálogo con buscador y filtros, panel del entrenador
+(crear/editar/archivar), bucket `ejercicios` con sus políticas, versión
+visible y `LICENSE`, ilustraciones en ejercicios y recetas.
 
-- Catálogo de ejercicios, con buscador y filtros por grupo y equipo.
-- Panel del entrenador: crear, editar, archivar. Entra desde Perfil.
-- Bucket `ejercicios` con políticas corridas y verificadas.
-- Versión visible (`v0.3.0`), aviso de derechos y `LICENSE`.
-- 59 pruebas.
+**3/09:**
+- **Manifest, iconos y service worker.** La app ya se instala de verdad
+  en Android. Era el bug que el iPhone escondía.
+- **Carga masiva** desde hoja de cálculo, con vista previa por fila.
+  Detecta el separador, así que sirve pegando desde Excel o Sheets.
+- **`plantilla-ejercicios.csv`**, la hoja ya llena para mandarle a él.
+- **Portada por grupo muscular** en Ejercicios, con 7 láminas propias.
+- **101 pruebas** (eran 71). Las 30 nuevas son de `hoja.js`.
+- `v0.3.2`.
 
-### Lo que queda de la fase (~4,5 h)
+### Lo que hay que hacer, y no es código
 
-1. **Carga masiva** (~2,5 h). Pegar CSV → vista previa con los errores
-   señalados por fila → guardar. La validación YA está escrita y probada
-   en `src/lib/ejercicios.js`; la carga la reusa, así que el formulario
-   y la hoja no pueden aceptar cosas distintas. El índice único
-   `ux_ejercicios_nombre` permite volver a correr la carga entera sin
-   duplicar.
-2. **Compresión y subida de imágenes** (~2 h). A ~150 KB en el navegador
-   antes de mandarlas, y emparejado por nombre de archivo.
+**Mandarle `plantilla-ejercicios.csv` al entrenador**, con estas tres
+cosas dichas (están largas en `PASOS-FASE-3.md`):
 
-### Decisión pendiente antes de tocar las imágenes
+1. Que borre los que no usa y agregue los suyos.
+2. **Que llene la columna `indicaciones`.** Es la única que no puede
+   llenar nadie más y es lo que hace la app distinta de YouTube. Además
+   resuelve el pendiente 4: hoy esas indicaciones son inventadas.
+3. Que las fotos sean de él, de alguien que le dio permiso, o
+   ilustraciones. **Nunca la foto de un cliente** — el bucket es público
+   y la dirección se adivina.
 
-Si se usan ilustraciones libres (Everkinetic, CC-BY-SA 4.0) como relleno
-o se espera a las fotos del entrenador. Ver la entrada "Imágenes libres"
-del 2/09. **Lo decide Kev con el entrenador, es contenido.** Si la
-respuesta es que sí, hay que sumar la pantalla de créditos y la sección
-de terceros en el `LICENSE`.
+### Lo que queda de la fase (~2 h)
+
+**Compresión y subida de imágenes** (~2 h). A ~150 KB en el navegador
+antes de mandarlas, emparejadas por nombre de archivo. Bloqueada por
+tener imágenes.
 
 ### La prueba que cierra la fase
 
@@ -1205,6 +1454,9 @@ los ve, un visitante también, y ninguno de los dos puede editarlos.
 Verificado suplantando los tres roles en el SQL Editor **y entrando a la
 app con cada uno** — esa segunda mitad es la lección del 2/09: contar
 filas dice que las políticas están bien, no que el código sepa usarlas.
+
+Y una cuarta comprobación que ahora sí se puede hacer: **correr la carga
+completa dos veces y que no se duplique nada.**
 
 ## Preguntas abiertas
 

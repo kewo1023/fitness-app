@@ -44,6 +44,33 @@
     <meta name="theme-color" content="#FFFFFF" />
 
     <!-- ===============================================================
+         LO QUE CONVIERTE ESTO EN UNA APP INSTALABLE.
+
+         Hasta el 3/09 no existía ninguna de estas tres líneas, y esa
+         era la razón de un bug que solo se veía en Android: al
+         "agregar a pantalla de inicio", Chrome creaba un MARCADOR —un
+         atajo que abre el navegador con su barra de direcciones— en
+         vez de instalar la app. En el iPhone no pasaba, y eso despistó:
+         Safari abre sus atajos sin barra tenga o no manifest, así que
+         parecía que la app estaba bien y el problema era de Android.
+         Era al revés. El público de esta app es 83% Android.
+
+         El manifest es lo que le dice al sistema el nombre, el icono,
+         el color y que se abra SIN navegador (display: standalone).
+         =============================================================== -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- iOS no lee los iconos del manifest para la pantalla de inicio:
+         usa esta etiqueta suya. Y el título de aquí es el que sale
+         debajo del icono, que si no sería el <title> entero. -->
+    <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Entrena" />
+
+    <!-- El de la pestaña del navegador. Sin esto el navegador pide
+         /favicon.ico, no lo encuentra, y deja un 404 en cada carga. -->
+    <link rel="icon" href="/iconos/icono-192.png" type="image/png" />
+
+    <!-- ===============================================================
          POR QUÉ ESTE SCRIPT ESTÁ AQUÍ SUELTO Y NO EN UN ARCHIVO.
 
          Tiene que correr ANTES de que el navegador pinte el primer

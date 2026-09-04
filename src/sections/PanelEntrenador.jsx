@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase.js'
 import {
   GRUPOS, MOVIMIENTOS, EQUIPOS, NIVELES, etiqueta, validarEjercicio
 } from '../lib/ejercicios.js'
+import CargaMasiva from './CargaMasiva.jsx'
 
 /* =====================================================================
    El panel del entrenador. La primera pantalla que existe solo para él.
@@ -43,6 +44,7 @@ export default function PanelEntrenador ({ alVolver }) {
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [editando, setEditando] = useState(null)   // null = no hay formulario
+  const [cargandoHoja, setCargandoHoja] = useState(false)
   const [aviso, setAviso] = useState(null)
 
   async function cargar () {
@@ -110,6 +112,29 @@ export default function PanelEntrenador ({ alVolver }) {
     )
   }
 
+  /* La carga masiva vive en su propia pantalla y no en un cuadro
+   * dentro de esta. Es un proceso de dos pasos —revisar y guardar— con
+   * una lista larga en el medio, y meterlo aquí obligaría a
+   * desplazarse por la biblioteca entera para llegar al botón de
+   * guardar. */
+  if (cargandoHoja) {
+    return (
+      <CargaMasiva
+        alVolver={() => setCargandoHoja(false)}
+        alTerminar={(cuantos) => {
+          setCargandoHoja(false)
+          setAviso({
+            tipo: 'ok',
+            texto: cuantos === 0
+              ? 'No se agregó nada: ya tenías todos esos ejercicios.'
+              : `Se agregaron ${cuantos} ejercicios. Tus clientes ya los ven.`
+          })
+          cargar()
+        }}
+      />
+    )
+  }
+
   const activos = ejercicios.filter(e => e.activo).length
 
   return (
@@ -138,12 +163,17 @@ export default function PanelEntrenador ({ alVolver }) {
       </button>
 
       <ul className="lista">
-        <li className="fila es-proxima">
+        <li className="fila">
           <span className="fila-datos">
             <strong>Cargar desde una hoja de cálculo</strong>
             <small>Pegar toda tu lista de una vez, en vez de uno por uno</small>
           </span>
-          <span className="estado">Pronto</span>
+          <span className="fila-acciones">
+            <button type="button" className="enlace enlace-fila"
+                    onClick={() => setCargandoHoja(true)}>
+              Abrir
+            </button>
+          </span>
         </li>
       </ul>
 

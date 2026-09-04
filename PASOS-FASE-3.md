@@ -1,47 +1,52 @@
 # Fase 3 — La biblioteca de ejercicios
 
-**Estado al 2 de septiembre de 2026.** La mitad de la fase está hecha y
-en producción. Lo que falta está bloqueado por una sola cosa: la hoja de
-cálculo del entrenador.
+**Estado al 3 de septiembre de 2026.** Ya no falta construir nada para
+cargar la biblioteca. Falta que el entrenador devuelva la hoja.
 
 ## Lo que YA está hecho
 
-- El catálogo de ejercicios (pestaña **Ejercicios**), con buscador y
-  filtros por grupo y por equipo. Se ve bien sin imagen.
+- El catálogo (pestaña **Ejercicios**), que desde el 3/09 abre en una
+  **portada de 7 grupos musculares** con su dibujo. El buscador queda
+  arriba: escribir se salta la portada.
 - El panel del entrenador (Perfil → **Tu biblioteca**): crear, editar y
   archivar.
-- El bucket `ejercicios` de Storage, creado y con sus políticas
-  (`05-storage.sql`) corridas y verificadas: el admin sube, un cliente
-  recibe `42501` si lo intenta.
-- La versión visible y el aviso de derechos.
+- **La carga masiva** (Tu biblioteca → *Cargar desde una hoja de
+  cálculo*). Pega la hoja, ve una vista previa con los errores señalados
+  por número de fila, y solo entonces se guarda. Sirve pegando desde
+  Excel o Google Sheets, y también con el contenido de un `.csv`.
+- El bucket `ejercicios` con sus políticas verificadas.
+- **La app ya se instala de verdad en Android** (manifest + iconos +
+  service worker). Antes creaba un marcador que abría el navegador.
+- 101 pruebas.
 
-## Lo que FALTA, y qué lo desbloquea
+## Lo que FALTA
 
 | Falta | Bloqueado por | Estimado |
 |---|---|---|
-| Carga masiva desde hoja de cálculo | la hoja del entrenador | ~2,5 h |
 | Compresión y subida de imágenes | tener imágenes | ~2 h |
-
-**Las ilustraciones ya entraron (2/09).** El entrenador las aprobó, así
-que los 30 ejercicios de ejemplo y las recetas ya se ven con dibujo en
-vez de un hueco gris. Eso NO reemplaza sus fotos: **la foto que él suba
-siempre gana**, y el día que suba la de un ejercicio el dibujo
-desaparece solo. Sirve para que la app no se vea vacía mientras él
-arma su biblioteca, y para quitarle la presión de tener 150 fotos
-listas el primer día. Está contado en `BITACORA.md`.
-
-Ojo con una consecuencia: los ejercicios que él CREE desde el panel no
-van a tener dibujo hasta que se agreguen a mano a
-`src/lib/ilustraciones.js`. No es un error, es el caso normal, y la
-tarjeta se ve como se veía antes.
 
 ---
 
 ## LO ÚNICO QUE TIENES QUE HACER TÚ
 
-Pedirle al entrenador **una hoja de cálculo con sus ejercicios**, una
-fila por ejercicio, con estas columnas. Los nombres exactos no importan;
-el orden y el contenido sí:
+**Mandarle `plantilla-ejercicios.csv`** (está en la raíz del proyecto) y
+pedirle que la devuelva editada.
+
+Se le manda una hoja YA LLENA y no una vacía a propósito: armar una hoja
+desde cero son dos horas de trabajo sin recompensa visible para él, y eso
+no vuelve. Editar una llena, sí. Trae los 30 ejercicios de ejemplo ya
+clasificados, y son justo los que tienen dibujo en la app, así que lo que
+él conserve se ve completo desde el primer día sin una sola foto.
+
+**Lo que tiene que hacer él, en este orden:**
+
+1. Borrar los que no usa.
+2. Agregar los suyos.
+3. **Llenar la columna `indicaciones`**, que va vacía. Ver más abajo por
+   qué esa columna es la importante.
+
+Las columnas son estas. Los nombres exactos no importan —la app reconoce
+"Ejercicio", "Músculo", "Dificultad" y varios más—; el contenido sí:
 
 | Columna | Obligatoria | Qué va | Valores posibles |
 |---|---|---|---|
@@ -72,6 +77,17 @@ son los dos *empuje* de *pecho*, pero una sentadilla es *sentadilla* de
 catálogo de ejercicios lo tiene cualquiera. Lo que no tiene nadie es lo
 que él le corrige a la gente. Si esa columna llega vacía, la app queda
 igual a todas.
+
+**Y hay una razón más urgente que esa.** Los 30 ejercicios que están hoy
+en la app tienen indicaciones **inventadas** — se escribieron como
+contenido de prueba y quedaron en la base real, donde un visitante las
+lee. Son consejos de técnica física que no escribió ningún entrenador y
+que la app muestra como si fueran de él.
+
+No se borraron desde el código a propósito: el contenido es dominio de
+él. Pero si la URL va a circular antes de que devuelva la hoja, la
+opción segura es vaciarlas hasta que tenga las suyas. Vale la pena
+decírselo tal cual, sin adornos.
 
 ### Y las imágenes
 
@@ -108,24 +124,31 @@ no es la foto de nadie.
 
 ---
 
-## Lo que hago yo cuando llegue la hoja
+## Lo que pasa cuando pegue la hoja
 
-1. La carga masiva: pegas el CSV, ves una vista previa con los errores
-   señalados por fila, y solo entonces se guarda. El índice único
-   `ux_ejercicios_nombre` ya existe justo para esto: si la carga se cae a
-   la mitad, se vuelve a correr entera y las filas que ya estaban se
-   ignoran.
-2. La compresión de imágenes en el navegador antes de subir (~150 KB por
-   foto; una de celular pesa 3 a 5 MB y tu público abre esto con datos
-   móviles).
-3. El emparejado automático entre el nombre del archivo y el nombre del
-   ejercicio.
+Ya está construido, así que esto es lo que va a ver:
 
-La validación ya está escrita y probada (`src/lib/ejercicios.js`, 21
-pruebas). La carga masiva la reusa, así que el formulario y la hoja no
-pueden aceptar cosas distintas.
+1. **Se detecta cómo está separada la hoja.** Al copiar celdas de Excel
+   el portapapeles entrega tabulaciones, y un CSV exportado desde un
+   Excel en español usa punto y coma. La app lo dice en pantalla: si
+   pegó 80 filas y le dice "1 fila leída", el separador que detectó no
+   era el suyo.
+2. **Una vista previa antes de guardar nada**, con cuántos entran,
+   cuántos ya tenía, cuántos están repetidos dentro de su propia hoja y
+   cuáles no se pueden guardar — estos últimos con el número de fila y
+   la razón ("la fila 47 dice 'pesas' y eso no existe").
+3. **Solo agrega.** Nunca modifica ni borra lo que ya está. Por eso
+   puede volver a pegar la hoja entera las veces que quiera sin duplicar
+   nada, y por eso si quiere cambiar un ejercicio que ya existe lo edita
+   desde *Tu biblioteca*, uno por uno.
+4. **Tres filas malas no detienen las otras 147.**
 
----
+Lo que todavía NO está: la compresión y subida de imágenes (~2 h), que
+espera a que haya imágenes.
+
+La validación es la MISMA función que usa el formulario del panel
+(`src/lib/ejercicios.js`), así que la hoja y el formulario no pueden
+aceptar cosas distintas.
 
 ## La prueba que cierra la Fase 3
 
