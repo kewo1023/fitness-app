@@ -45,17 +45,63 @@ button {
 
 /* --- Estructura general ---------------------------------------------- */
 
+/* =====================================================================
+   EL ARMAZÓN: columna de alto fijo con el scroll ADENTRO
+   =====================================================================
+
+   Hasta el 4/09 esto era una página normal que se desplazaba entera,
+   con la barra de abajo en `position: fixed`. Es lo que hace todo el
+   mundo y funcionaba bien en Android.
+
+   Se cambió por un bug de Safari en iOS 26: los elementos fijos se
+   mueven solos al cambiar la dirección del scroll (bug 297779 de
+   WebKit), y Safari se niega a pintar contenido fijo por debajo de sus
+   controles flotantes del fondo. En la práctica la barra de la app
+   aparecía a media pantalla con contenido debajo. No se podía reproducir
+   a voluntad porque depende de hacia dónde se venía desplazando.
+
+   LA DEFENSA ES NO TENER NADA FIJO. Aquí `.app` mide exactamente la
+   pantalla, `.pantalla` se lleva el espacio que sobra y se desplaza por
+   dentro, y la barra es un elemento normal de la columna. Safari no
+   puede descolocar algo que no está flotando.
+
+   `100dvh` y no `100vh`: `vh` en un móvil es el alto CON las barras del
+   navegador escondidas, así que en `vh` la barra quedaría siempre un
+   poco más abajo del borde visible. `dvh` es el alto que de verdad se
+   ve en cada momento. El `100%` de la línea de antes es el respaldo
+   para un navegador viejo que no entienda `dvh`.
+
+   LO QUE SE PIERDE Y HAY QUE ACEPTAR: con el scroll dentro de un
+   contenedor, la barra de direcciones de Safari ya no se esconde sola
+   al bajar. Se gana un poco menos de pantalla a cambio de que la
+   navegación no se rompa, y ese cambio vale la pena: la barra es cómo
+   se usa la app.
+   ===================================================================== */
 .app {
-  min-height: 100%;
-  /* Espacio abajo para que la barra de navegación no tape el contenido.
-     Se suma el área segura del celular: la rayita de gestos de Android
-     mide distinto en cada modelo, por eso no puede ser un número fijo. */
-  padding-bottom: calc(var(--barra-alto) + var(--sab));
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* Ya no hace falta el hueco de abajo: la barra ocupa su sitio en la
+     columna en vez de flotar encima del contenido. */
 }
 
 .pantalla {
+  /* Se lleva todo el alto que sobre después de la barra, y se desplaza
+     por dentro. `min-height: 0` es obligatorio y no es adorno: un hijo
+     de flex tiene `min-height: auto` de fábrica, así que sin esta línea
+     el contenido largo estira la columna en vez de desplazarse, y la
+     barra se va fuera de la pantalla — que es justo lo que se está
+     arreglando. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* El rebote del final no arrastra la página entera detrás. */
+  overscroll-behavior-y: contain;
+
   max-width: 560px;
   margin: 0 auto;
+  width: 100%;
   padding: calc(var(--sat) + 20px) 18px 28px;
   display: flex;
   flex-direction: column;
@@ -422,11 +468,12 @@ button {
    gama alta, 8 px en media, y en baja no hay filtro del todo (ver
    src/lib/dispositivo.js). Sin vidrio queda una barra sólida, que se ve
    bien igual. */
+/* SIN `position: fixed`. Ver el comentario largo de `.app`: es un
+   elemento normal al final de la columna, y por eso Safari no lo puede
+   descolocar. `flex: none` lo protege de encogerse cuando el contenido
+   de arriba aprieta. */
 .nav {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  flex: none;
   display: flex;
   background: var(--vidrio);
   border-top: 1px solid var(--vidrio-linea);
@@ -1263,3 +1310,14 @@ button {
 }
 
 .pasos strong { color: var(--tinta); font-weight: 650; }
+
+/* El código de invitación en la lista. Monoespaciado y con las letras
+   separadas: son 10 caracteres que alguien va a leer en voz alta o a
+   comparar contra un WhatsApp, y en una tipografía normal la I y la l
+   se confunden. (El alfabeto ya evita O/0 e I/1, pero eso protege al
+   que lo escribe, no al que lo lee de una pantalla.) */
+.codigo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+  font-size: 15px;
+}

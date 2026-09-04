@@ -8,6 +8,7 @@ import CargaMasiva from './CargaMasiva.jsx'
 import AsignarPlan from './AsignarPlan.jsx'
 import Rutinas from './Rutinas.jsx'
 import Plantillas from './Plantillas.jsx'
+import Invitaciones from './Invitaciones.jsx'
 
 /* =====================================================================
    El panel del entrenador. La primera pantalla que existe solo para él.
@@ -141,6 +142,9 @@ export default function PanelEntrenador ({ alVolver }) {
   if (seccion === 'plantillas') {
     return <Plantillas alVolver={() => setSeccion(null)} />
   }
+  if (seccion === 'codigos') {
+    return <Invitaciones alVolver={() => setSeccion(null)} />
+  }
 
   if (cargandoHoja) {
     return (
@@ -236,6 +240,23 @@ export default function PanelEntrenador ({ alVolver }) {
           <span className="fila-acciones">
             <button type="button" className="enlace enlace-fila"
                     onClick={() => setCargandoHoja(true)}>
+              Abrir
+            </button>
+          </span>
+        </li>
+        {/* Va AL FINAL aunque sea el primer paso de todos, y es a
+            propósito: el orden de esta lista es el del trabajo de armar
+            contenido, y los códigos no son contenido. Son la puerta por
+            la que entra la gente, y se usan de a ratos —cuando llega un
+            cliente nuevo— no mientras se programa. */}
+        <li className="fila">
+          <span className="fila-datos">
+            <strong>Códigos para tus clientes</strong>
+            <small>Lo que necesita alguien nuevo para entrar</small>
+          </span>
+          <span className="fila-acciones">
+            <button type="button" className="enlace enlace-fila"
+                    onClick={() => setSeccion('codigos')}>
               Abrir
             </button>
           </span>

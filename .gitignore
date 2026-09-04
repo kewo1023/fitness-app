@@ -4,6 +4,17 @@
 .env.local
 .env.*.local
 
+# Las llaves VAPID de las notificaciones (Fase 7). La privada firma cada
+# envío: quien la tenga puede mandarle notificaciones a los clientes
+# haciéndose pasar por la app. Va aquí ANTES de que el archivo exista,
+# porque después de un commit ya no hay forma de sacarlo del historial.
+vapid.json
+
+# Lo que crea la CLI de Supabase al enlazar el proyecto. `config.toml`
+# sí se versiona —describe el proyecto—; esto es estado de esta máquina.
+supabase/.temp/
+supabase/.branches/
+
 node_modules/
 dist/
 .DS_Store

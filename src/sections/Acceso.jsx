@@ -40,13 +40,52 @@ export default function Acceso () {
     setOcupado(true)
     const credenciales = { email: correo.trim(), password: clave }
 
-    const { error: err } = creando
+    const { data, error: err } = creando
       ? await supabase.auth.signUp(credenciales)
       : await supabase.auth.signInWithPassword(credenciales)
 
-    // Si salió bien no se hace nada más: useSesion está escuchando el
-    // cambio de sesión y la app se mueve sola a la pantalla siguiente.
-    if (err) { setError(mensajeDeError(err)); setOcupado(false) }
+    if (err) { setError(mensajeDeError(err)); setOcupado(false); return }
+
+    /* =================================================================
+       CREAR CUENTA PUEDE "SALIR BIEN" Y NO HABER CREADO NADA
+       =================================================================
+
+       Es el caso que faltaba y que dejaba el botón pegado en "Un
+       momento…" para siempre: sin error, sin mensaje y sin avanzar.
+
+       `signUp` no devuelve error cuando el correo YA existe. Es a
+       propósito y es lo correcto: si devolviera "ese correo ya está
+       registrado", cualquiera podría averiguar quién tiene cuenta en la
+       app probando correos. Devuelve un usuario falso y ninguna sesión.
+
+       La forma de distinguirlo es `identities`: en una cuenta nueva
+       trae una identidad, y en una que ya existía viene VACÍA. No es un
+       truco nuestro, es lo que hay.
+
+       Y hay un segundo caso que cae aquí: si algún día se enciende la
+       confirmación por correo, `signUp` tampoco abre sesión. Los dos
+       terminan igual —la persona se queda mirando el botón— así que los
+       dos necesitan que alguien lo diga.
+       ================================================================= */
+    if (creando) {
+      if (data?.user && data.user.identities?.length === 0) {
+        setError('Ya hay una cuenta con ese correo. Entra en vez de crear una.')
+        setOcupado(false)
+        setModo('entrar')
+        return
+      }
+
+      if (!data?.session) {
+        setError('Te mandamos un correo para confirmar la cuenta. Ábrelo y vuelve a entrar.')
+        setOcupado(false)
+        return
+      }
+    }
+
+    /* Si llegó aquí hay sesión: no se hace nada más. `useSesion` está
+     * escuchando el cambio y la app se mueve sola a la pantalla
+     * siguiente. `ocupado` se queda en true a propósito hasta que eso
+     * pase, para que no se pueda tocar el botón dos veces. */
   }
 
   return (

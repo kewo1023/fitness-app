@@ -5,6 +5,7 @@ import PanelEntrenador from './PanelEntrenador.jsx'
 import PanelClientes from './PanelClientes.jsx'
 import Creditos from './Creditos.jsx'
 import Notificaciones from './Notificaciones.jsx'
+import Canjear from './Canjear.jsx'
 import { supabase } from '../lib/supabase.js'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
 import { VERSION, avisoDerechos } from '../lib/version.js'
@@ -28,12 +29,13 @@ const NOMBRE_DEL_ROL = {
   visitante: 'Invitado'
 }
 
-export default function Perfil ({ perfil, alSalir }) {
+export default function Perfil ({ perfil, alSalir, recargarPerfil }) {
   const [viendoDatos, setViendoDatos] = useState(false)
   const [viendoPanel, setViendoPanel] = useState(false)
   const [viendoClientes, setViendoClientes] = useState(false)
   const [viendoCreditos, setViendoCreditos] = useState(false)
   const [viendoAvisos, setViendoAvisos] = useState(false)
+  const [canjeando, setCanjeando] = useState(false)
   const [logros, setLogros] = useState([])
 
   /* El catálogo y lo conseguido se piden por separado y se cruzan aquí.
@@ -81,6 +83,12 @@ export default function Perfil ({ perfil, alSalir }) {
   if (viendoAvisos) {
     return <Notificaciones perfil={perfil}
                            alVolver={() => setViendoAvisos(false)} />
+  }
+
+  if (canjeando) {
+    return <Canjear perfil={perfil}
+                    alVolver={() => setCanjeando(false)}
+                    recargarPerfil={recargarPerfil} />
   }
 
   if (viendoDatos) {
@@ -131,6 +139,14 @@ export default function Perfil ({ perfil, alSalir }) {
             de tu entrenador se abren tu plan de entrenamiento, tu progreso
             y la posibilidad de escribirle directo.
           </p>
+          {/* HASTA EL 4/09 ESTE BOTÓN NO EXISTÍA, y ese era el problema:
+              el texto de arriba prometía un código y no había dónde
+              escribirlo. `vincular_con_codigo` sabe ascender a un
+              visitante desde el 1/09; lo que faltaba era la puerta. */}
+          <button type="button" className="boton-principal"
+                  onClick={() => setCanjeando(true)}>
+            Tengo un código
+          </button>
         </section>
       )}
 

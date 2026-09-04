@@ -2448,6 +2448,220 @@ encargo, pero está anotado.
 
 ---
 
+## 4 de septiembre de 2026 — tres cosas que aparecieron al usar la app
+
+Kev instaló la app en un iPhone y probó como lo haría un cliente. Salió
+más de lo esperado: dos de los tres hallazgos no eran bugs, eran
+**funciones a medio construir que no daban ningún error**.
+
+**250 pruebas, `v0.5.3`.**
+
+### 1. El botón que se quedaba pegado en "Un momento…"
+
+`Acceso.jsx` solo miraba el error de `signUp`:
+
+```js
+if (err) { setError(...); setOcupado(false) }
+```
+
+`signUp` **no devuelve error cuando el correo ya existe**, y eso es
+correcto: si lo devolviera, cualquiera podría averiguar quién tiene
+cuenta probando correos. Devuelve un usuario falso y ninguna sesión. Sin
+error no entraba al `if`, así que `ocupado` se quedaba en true para
+siempre: sin mensaje, sin avanzar y sin poder volver a intentar.
+
+Se distingue con `data.user.identities.length === 0` — en una cuenta
+nueva viene una identidad, en una que ya existía viene vacía. Verificado
+en la documentación, no de memoria. El mismo arreglo cubre el día que se
+encienda la confirmación por correo, que también deja a la persona sin
+sesión y sin explicación.
+
+**Y lo que Kev creía que había pasado, no pasó.** Su hipótesis era que
+la app le dejó duplicar una cuenta de cliente. Lo más probable es que
+esa cuenta ya no existiera —una prueba anterior con "Borrar mi cuenta"
+borra `auth.users` en cascada y libera el correo—, así que registrarse
+creó una cuenta nueva de verdad. Queda la consulta en el hilo para
+confirmarlo contra `auth.users`. **El iPhone no tenía nada que ver:
+todo esto pasa en el servidor.**
+
+### 2. El callejón sin salida: un invitado no podía volverse cliente
+
+El hallazgo grande, y el que más tiempo llevaba ahí sin que nada fallara.
+
+`vincular_con_codigo` sabe ascender a un visitante desde el 1/09 —lo
+dice su propio comentario— pero **la única pantalla que la llamaba era
+`Activar`, y `Activar` solo se muestra cuando la persona NO tiene
+perfil**. Un visitante sí tiene. O sea que Perfil le decía "con un
+código de tu entrenador se abren tu plan" y no había dónde escribirlo.
+
+La función de la base llevaba semanas lista para algo que la interfaz
+nunca ofreció. Cada mitad funcionaba perfecto por su lado.
+
+**Y el entrenador tampoco tenía cómo crear códigos.** `crear_invitacion`
+existe desde la Fase 2 y no la llamaba nadie: los códigos solo salían
+del SQL Editor. Eso contradecía de frente la decisión del 31/08 de que
+él no dependa del desarrollo para nada de lo suyo — la puerta de entrada
+de TODOS sus clientes dependía de que alguien abriera el panel de
+Supabase.
+
+Entran dos pantallas: `Canjear.jsx` (Perfil → "Tengo un código") e
+`Invitaciones.jsx` (Tu biblioteca → "Códigos para tus clientes", con
+copiar al portapapeles y el estado de cada uno).
+
+Al canjear **no se vuelve a pedir la fecha de nacimiento ni las
+autorizaciones**, y no es un atajo: la puerta de edad se aplica a los
+dos caminos de `Activar`, así que un visitante ya está confirmado como
+mayor; y `datos_personales` ya dice "para que mi entrenador vea mi
+progreso", que es exactamente esta finalidad y no una nueva.
+
+**La lección, que es la que hay que llevarse:** una función SQL sin
+pantalla no falla, no aparece en ninguna prueba y no sale en ningún
+registro. Se descubre cuando alguien intenta usar la app de verdad. Vale
+la pena revisar si queda alguna otra función de la base sin puerta.
+
+### 3. La barra de abajo se subía: es un bug de Safari en iOS 26
+
+No era del código. Está reportado en WebKit (bug 297779, *"Fixed
+elements move up and down when the scroll direction changes"*) y en los
+foros de Apple: Safari 26 no pinta bien `position: fixed` cerca de sus
+controles flotantes del fondo. Que dependa de la dirección del scroll
+explica por qué Kev no lo podía reproducir a voluntad.
+
+**La defensa es no tener nada fijo.** `.app` pasa a ser una columna de
+`100dvh`, `.pantalla` se lleva el espacio que sobra y se desplaza por
+dentro, y `.nav` es un elemento normal al final de la columna. Safari no
+puede descolocar algo que no está flotando.
+
+Dos detalles del cambio que no son obvios:
+
+- **`min-height: 0` en `.pantalla` es obligatorio.** Un hijo de flex
+  trae `min-height: auto`, así que sin esa línea el contenido largo
+  estira la columna en vez de desplazarse y la barra se va fuera de la
+  pantalla — exactamente lo que se está arreglando.
+- **`100dvh` y no `100vh`.** `vh` en un móvil es el alto con las barras
+  del navegador escondidas, así que la barra quedaría siempre un poco
+  más abajo del borde visible.
+
+**Lo que se pierde y hay que aceptar:** con el scroll dentro de un
+contenedor, la barra de direcciones de Safari ya no se esconde sola al
+bajar. Se gana un poco menos de pantalla a cambio de que la navegación
+no se rompa.
+
+Se verificó la mecánica midiendo en el navegador: la barra queda pegada
+al borde inferior, el documento no se desplaza, `.pantalla` sí, y al
+llegar al final la última tarjeta queda completa por encima de la barra
+—antes eso lo compensaba un `padding-bottom` que ya no hace falta—.
+**Lo que NO se pudo verificar es el bug de iOS 26 en sí**, que necesita
+ese teléfono.
+
+### El estado de un código, en una librería probada
+
+`estadoDeCodigo` salió a `src/lib/invitaciones.js` en vez de quedarse
+dentro de la pantalla, por la regla 10: es aritmética de fechas y
+equivocarse tiene una consecuencia concreta. Un código **vencido**
+mostrado como disponible es uno que el entrenador manda por WhatsApp, y
+que falla en la cara de alguien en su primer minuto en la app, sin
+saber qué hizo mal.
+
+Tres estados y no dos: usado y vencido se ven igual desde afuera
+—ninguno funciona— y no son lo mismo. Uno significa que ganaste un
+cliente y el otro que perdiste un código.
+
+---
+
+## 4 de septiembre de 2026 — la Fase 7, montada de verdad
+
+La infraestructura de las notificaciones quedó andando: llaves VAPID
+generadas, `10-notificaciones.sql` corrido, los tres secretos guardados,
+la Edge Function desplegada y el cron programado `0 * * * *`.
+Comprobado con un disparo manual que devolvió **200**.
+
+Falta lo único que no se puede hacer desde un computador: probarlo con
+un teléfono.
+
+### Cuatro cosas que el documento daba por hechas y no lo estaban
+
+Las cuatro salieron al ejecutarlo de verdad, y las cuatro están
+corregidas en `PASOS-FASE-7.md`. Vale la pena tenerlas juntas porque
+todas son del mismo tipo: **pasos que quien escribe la guía ya tiene
+resueltos y no ve.**
+
+**La CLI no estaba instalada.** El documento arrancaba en el paso 1
+dando por hecho el comando `supabase`. Entra un paso 0: instalar por
+Homebrew —npm global no está soportado— más `login`, `init` y `link`.
+
+**`supabase init` se corrió en la carpeta equivocada**, la que contiene
+todos los proyectos en vez de la del proyecto. El síntoma fue confuso:
+`secrets set` funcionaba (solo necesita el enlace remoto) pero
+`functions deploy` fallaba con "Entrypoint path does not exist", porque
+busca el archivo relativo a donde está `supabase/config.toml`.
+
+**`pg_cron` y `pg_net` estaban apagados.** `schema "cron" does not
+exist`. Vienen preinstaladas en todos los proyectos pero hay que
+encenderlas con `create extension`.
+
+**Los marcadores `<...>` se prestaban a dos lecturas.** Se reemplazó el
+contenido pero se dejaron los signos, así que la URL quedó
+`https://<ref>.supabase.co`. Ahora dicen `PON_AQUI_...`, que solo se
+puede reemplazar entero.
+
+### El hallazgo técnico: las llaves nuevas de Supabase no son JWT
+
+El 401 más difícil de la sesión decía `UNAUTHORIZED_NO_AUTH_HEADER`, y
+la pista era que **venía en JSON**: la función responde texto plano, así
+que ese error era de la plataforma, no del código.
+
+Antes de ejecutar la función, Supabase exige una cabecera
+`Authorization` con un JWT válido. Quien llama aquí es `pg_cron` a
+través de `pg_net`: no hay sesión de nadie, así que no hay JWT. Y las
+llaves nuevas (`sb_publishable_…`) **no son JWT**, así que ponerlas ahí
+tampoco sirve.
+
+La salida es la que la propia documentación recomienda para un cron:
+apagar la comprobación de la plataforma y autenticar dentro de la
+función. Queda escrito en `supabase/config.toml`:
+
+```toml
+[functions.enviar-recordatorios]
+verify_jwt = false
+```
+
+**Va ahí y no como `--no-verify-jwt` a propósito:** un flag hay que
+acordarse de escribirlo en cada despliegue, y el día que se olvide la
+función deja de responder sin que nada explique por qué.
+
+**Consecuencia que cambia el peso del `CRON_SECRETO`.** Con la puerta de
+la plataforma abierta, ese secreto pasa de ser la segunda cerradura a
+ser la única. El documento decía "una cadena larga y aleatoria", que
+bastaba cuando había dos; ahora dice que se genere con `openssl rand
+-base64 32`. Y de paso el cron dejó de mandar la `apikey`, que ya no
+sirve para nada.
+
+### Una llave privada pasó por un chat
+
+Kev pegó el contenido de su gestor de contraseñas para que se lo
+ordenaran, y ahí iba el JSON completo de un par VAPID, con su `d`.
+
+**Salió sin daño, y por una razón concreta:** ese era el par VIEJO, el
+que se abandonó al regenerar las llaves. Se comprobó calculando la llave
+de servidor a partir de `vapid.json` y comparándola contra
+`VITE_VAPID_PUBLICA` y contra las dos que aparecían en el texto.
+
+De paso se verificó lo que sí podía estar mal y no habría avisado: que
+el secreto `VAPID_KEYS` guardado en Supabase fuera del par viejo
+mientras la app publica el público del nuevo. Habría fallado solo al
+mandar la primera notificación real. El sha256 que devuelve `supabase
+secrets list` coincide con el par actual, así que los tres sitios
+—archivo, `.env.local` y secreto— están alineados.
+
+**La regla que queda:** una llave privada no se pega en un chat, ni en
+un issue, ni en un mensaje. Se copia del archivo al gestor de
+contraseñas y no pasa por ningún sitio más. Un par comprometido no se
+"limpia": se regenera, y regenerar más adelante obliga a que cada
+cliente vuelva a activar los avisos.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -2540,59 +2754,63 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ---
 
-## Siguiente paso — al cerrar la cuarta sesión del 4 de septiembre de 2026
+## Siguiente paso — al cerrar el 4 de septiembre de 2026
 
-**Fase 7 construida.** Falta la infraestructura, y es la primera vez que
-es más que correr un SQL. **242 pruebas. `v0.5.2`.**
+**Las fases 1 a 5 y la 7 están construidas Y montadas.** La app funciona
+de punta a punta: el entrenador arma contenido, crea códigos, asigna
+planes y ve quién entrena; el cliente entra con un código, entrena,
+anota sus series, ve su progreso y puede recibir recordatorios.
+**250 pruebas. `v0.5.3`.**
 
-### LO PRIMERO: los cinco pasos de `PASOS-FASE-7.md`
+### LO PRIMERO, y ya no es código: un teléfono
 
-Ninguno se puede hacer desde aquí: necesitan la cuenta de Supabase y
-llaves que no deben existir en este repositorio.
+Todo lo que queda por verificar necesita un dispositivo real. Es la
+única forma de saber si lo de hoy sirve.
 
-1. Generar las llaves VAPID con Deno.
-2. Correr `supabase/10-notificaciones.sql`.
-3. Guardar tres secretos y desplegar la Edge Function.
-4. Poner `VITE_VAPID_PUBLICA` en `.env.local` **y en Vercel**.
-5. Programar el cron con `cron.schedule`.
+1. **Instalar la app en el Android** y hacer el camino completo de un
+   cliente nuevo: crear cuenta, entrar como invitado, canjear un código
+   desde Perfil, ver su plan en Hoy.
+2. **Un entrenamiento entero**: empezar, anotar cuatro series, salir de
+   la app a la mitad, volver y comprobar que lo anotado sigue, terminar.
+3. **Activar los avisos** y disparar la función a mano para ver llegar
+   la notificación. Es lo único de la Fase 7 que no se ha probado.
+4. **El iPhone**, que tiene dos cosas suyas: que la barra de abajo ya no
+   se suba (el cambio de layout del 4/09, sin verificar en iOS), y que
+   los avisos solo funcionan con la app agregada a la pantalla de
+   inicio.
 
-Y después, la parte que **solo se puede hacer con un teléfono en la
-mano**: instalar la app en un Android, activar los avisos, disparar la
-función a mano y ver si llega. No hay prueba automática que cubra esto y
-no la va a haber.
+Son ocho pantallas que nunca se han tocado en un celular. **Ese es el
+trabajo, no construir más.**
 
-### Las tres comprobaciones de permisos
+### Lo que quedó pendiente de higiene
 
-Están al final de `10-notificaciones.sql`. La que no se puede saltar es
-la primera: que un cliente NO pueda llamar `destinatarios_push`. Esa
-función devuelve las direcciones de los teléfonos de todos.
-
-### La cola de pruebas, que ya viene larga
-
-Se acumula de tres sesiones y conviene bajarla antes de construir más:
-
-- **Nada de la Fase 5 se ha visto contra la base con una cuenta.**
-  `Progreso`, el panel de clientes y el entrenamiento entero.
-- **Siete pantallas sin tocar en un Android real**: carga masiva,
-  portada por grupo muscular, Progreso, panel de clientes,
-  entrenamiento, avisos y la instalación en iPhone.
-- **La puerta de edad** con una fecha de menor.
+- **El par VAPID viejo quedó expuesto en un chat.** No está en uso y no
+  hay daño, pero no se debe reutilizar nunca. El par en uso está en
+  `vapid.json`, que git ignora.
+- La franja horaria se elige desde Perfil → Avisos. La pantalla de
+  configuración inicial sigue pendiente y **no necesita migración**: la
+  columna existe y el cuerpo de la pantalla ya es un componente aparte.
 
 ### Las opciones, por orden de valor
 
 | Qué | Estimado | Qué aporta |
 |---|---|---|
-| **La configuración inicial** | ~3 h | Cierra la idea del 4/09; el código ya está preparado y no necesita migración |
-| Fase 6 — Recetas y hábitos | 8 h (hoja de ruta) | La única fase de la 1 a la 8 que falta entera |
-| Fase 8 — Instalación y offline | por estimar | Subió de importancia: en iPhone no hay avisos sin instalar |
+| **Probarlo todo en un celular** | 1-2 h | Es lo único que puede decir si lo construido sirve |
+| Revisar si queda otra función de la base sin pantalla | ~1 h | La lección del 4/09; ese día salieron dos de golpe |
+| La configuración inicial (franja al entrar) | ~3 h | El código ya está preparado |
+| Fase 6 — Recetas y hábitos | 8 h | La única fase de la 1 a la 8 que falta entera |
+| Fase 8 — Instalación y offline | por estimar | Subió: en iPhone no hay avisos sin instalar |
 | `.enlace-fila` a 44 px | ~1 h | Accesibilidad, toca todas las pantallas |
 
-**La recomendación no ha cambiado en cuatro sesiones: ponerle la app al
-entrenador.** Y ahora pesa más que antes, porque lo que se construyó hoy
-solo se puede probar de verdad con gente usándola: un recordatorio que
-nadie recibe no se sabe si funciona.
+**Y la de siempre, que hoy dejó de ser una recomendación y pasó a ser lo
+único que falta: ponerle la app al entrenador.** Ya no hay ninguna pieza
+del camino de un cliente que dependa del desarrollo. Lo único que sigue
+faltando de su lado es que devuelva `plantilla-ejercicios.csv`.
 
-Lo único que falta de su lado sigue siendo `plantilla-ejercicios.csv`.
+Los dos huecos más grandes que aparecieron hoy —el invitado sin salida y
+el entrenador sin códigos— no los encontraron 250 pruebas ni seis
+sesiones de código. Los encontró Kev usando la app veinte minutos como
+si fuera un cliente.
 
 
 ## Preguntas abiertas

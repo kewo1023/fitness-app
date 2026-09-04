@@ -1,11 +1,18 @@
 # Fase 7 — Las notificaciones
 
-**Estado: el código está completo. Falta la infraestructura, y esta vez
-es más que correr un SQL.**
+**Estado (4/09): la infraestructura quedó montada.** Los seis pasos
+están hechos: llaves generadas, SQL corrido, secretos guardados, función
+desplegada y el cron programado cada hora en punto. Verificado con un
+disparo manual que devolvió 200.
 
-Son cinco pasos y **ninguno lo pude hacer yo**: necesitan tu cuenta de
-Supabase y llaves que no deben existir en este repositorio. Léelos
-seguidos antes de empezar; el orden importa.
+**Lo único que falta es probarlo con un teléfono**, que es lo que no se
+puede hacer desde un computador. Está al final, en "Lo que solo se
+comprueba con un teléfono".
+
+Los seis pasos (del 0 al 5) se dejan escritos porque hay que repetirlos
+el día que se monte otro entorno, y porque cada uno explica por qué está
+ahí. **Ninguno lo pude hacer yo**: necesitan la cuenta de Supabase y
+llaves que no deben existir en este repositorio.
 
 ---
 
@@ -25,6 +32,45 @@ para siempre. Quien no elija franja recibe a las 7 a.m.
 
 ---
 
+## Paso 0 — La CLI de Supabase, enlazada al proyecto
+
+**Esto faltaba en la primera versión de este documento** y es lo primero
+con lo que uno se choca: `supabase: command not found`.
+
+La CLI **no se instala con npm** —no está soportado— y en macOS va por
+Homebrew:
+
+```bash
+brew install supabase/tap/supabase
+```
+
+Después hay que decirle con qué proyecto trabaja. **Todos los comandos
+de aquí en adelante se corren desde la carpeta del proyecto**, no desde
+la carpeta que la contiene: la CLI busca su configuración en `supabase/`
+y desde afuera no la encuentra.
+
+```bash
+supabase login
+```
+
+```bash
+supabase init
+```
+
+Si responde que ya está inicializado, sáltalo. Va a preguntar si quiere
+generar ajustes de VS Code o IntelliJ para Deno: puedes decir que no.
+
+```bash
+supabase link --project-ref TU-REF
+```
+
+**Dónde sale `TU-REF`:** es el subdominio de tu `VITE_SUPABASE_URL` en
+`.env.local`. Si dice `https://abcdefgh.supabase.co`, tu ref es
+`abcdefgh`. También está en la dirección del panel de Supabase, después
+de `/project/`.
+
+---
+
 ## Paso 1 — Generar las llaves VAPID
 
 Son el par de llaves con el que el servidor firma cada envío. La pública
@@ -38,21 +84,27 @@ Necesitas Deno. Si no lo tienes:
 brew install deno
 ```
 
-Y luego:
+Y luego, **desde la carpeta del proyecto**:
 
 ```bash
-deno run https://raw.githubusercontent.com/negrel/webpush/master/cmd/generate-vapid-keys.ts
+deno run https://raw.githubusercontent.com/negrel/webpush/master/cmd/generate-vapid-keys.ts > vapid.json
 ```
 
-Imprime dos cosas:
+El `> vapid.json` no es un adorno: el generador manda el JSON a la
+salida normal y la llave pública a la de errores, así que el archivo
+queda **solo con el JSON** y la línea *"your application server key
+is:"* igual se ve en pantalla. Esa línea es la **llave pública**, la que
+va en la app en el paso 4.
 
-- Un **JSON** con las dos llaves. Ese bloque completo es `VAPID_KEYS`.
-- Una línea que empieza con *"your application server key is:"*. Ese
-  texto es la **llave pública**, la que va en la app.
+**`vapid.json` está en `.gitignore` desde antes de que exista**, y esa
+es la única forma de que sirva: la llave privada en un commit de un repo
+público no se puede sacar del historial después. Si algún día la mueves,
+que sea a donde guardas tus contraseñas — nunca dentro del repositorio
+sin ignorar.
 
-Guárdalas donde guardas tus contraseñas. **Si las pierdes y generas
-otras, todas las suscripciones existentes dejan de funcionar** y cada
-cliente tiene que volver a activar los avisos.
+**Si pierdes las llaves y generas otras, todas las suscripciones
+existentes dejan de funcionar** y cada cliente tiene que volver a
+activar los avisos.
 
 ---
 
@@ -66,10 +118,14 @@ funciones que deciden a quién se le manda.
 
 ## Paso 3 — Los secretos y la Edge Function
 
-Con la CLI de Supabase, desde la carpeta del proyecto:
+Desde la carpeta del proyecto, ya enlazado (paso 0).
+
+El JSON de las llaves **no se pega a mano**: son varias líneas y el
+riesgo de que se corte una es alto. Se lee del archivo y se compacta de
+una:
 
 ```bash
-supabase secrets set VAPID_KEYS='{"publicKey":{...},"privateKey":{...}}'
+supabase secrets set VAPID_KEYS="$(python3 -c 'import json,sys;print(json.dumps(json.load(sys.stdin)))' < vapid.json)"
 ```
 
 ```bash
@@ -80,11 +136,22 @@ El `CONTACTO_PUSH` lo exige el estándar: es para que Google o Mozilla
 puedan avisarte si tu servidor está haciendo algo mal. Usa un correo que
 revises.
 
-Y un secreto más, que te inventas tú — una cadena larga y aleatoria:
+Y un secreto más. **No lo inventes de cabeza: genéralo**, porque es lo
+único que separa a la función de que cualquiera la dispare (ver
+`verify_jwt` más abajo).
 
 ```bash
-supabase secrets set CRON_SECRETO='pon-aqui-algo-largo-y-aleatorio'
+supabase secrets set CRON_SECRETO="$(openssl rand -base64 32)"
 ```
+
+Ese comando no te lo muestra, así que para poder pegarlo en el paso 5
+genéralo antes y guárdalo a la vista:
+
+```bash
+openssl rand -base64 32
+```
+
+y usa esa misma cadena en los dos sitios.
 
 **Para qué es ese tercero, que parece de más y no lo es.** Una Edge
 Function se invoca con la llave publicable, y esa llave vive dentro del
@@ -98,6 +165,26 @@ Luego despliegas la función:
 ```bash
 supabase functions deploy enviar-recordatorios
 ```
+
+**Sobre `verify_jwt`, que ya está resuelto pero conviene entenderlo.**
+Antes de que corra nuestro código, Supabase comprueba por su cuenta que
+la petición traiga una cabecera `Authorization` con un JWT válido. Quien
+llama a esta función es el cron, no una persona: no hay sesión de nadie,
+así que no hay JWT que mandar. Y las llaves nuevas (`sb_publishable_…`)
+**no son JWT**, así que ponerlas ahí tampoco funciona — devuelve 401
+`UNAUTHORIZED_NO_AUTH_HEADER` sin llegar nunca a la función.
+
+Por eso `supabase/config.toml` trae:
+
+```toml
+[functions.enviar-recordatorios]
+verify_jwt = false
+```
+
+Lo que protege la función es su propia puerta, el `CRON_SECRETO`. Es la
+forma que la documentación de Supabase recomienda para un cron. **La
+consecuencia: la dirección queda alcanzable por cualquiera, así que ese
+secreto tiene que ser largo y aleatorio de verdad.**
 
 ---
 
@@ -122,7 +209,46 @@ para viajar. La que nunca sale de los secretos es la privada.
 
 ## Paso 5 — Programar el envío
 
-En el SQL Editor. Reemplaza las tres cosas entre `<>` por lo tuyo:
+### 5.1 Encender las dos extensiones
+
+**Esto faltaba en la primera versión de este documento.** Sin ellas el
+paso siguiente falla con `schema "cron" does not exist`. En el SQL
+Editor:
+
+```sql
+create extension if not exists pg_net;
+create extension if not exists pg_cron;
+```
+
+`pg_cron` es el reloj —crea el esquema `cron`— y `pg_net` es lo que
+deja a la base hacer una llamada HTTP, que es como dispara la función.
+Vienen preinstaladas en todos los proyectos, solo hay que encenderlas.
+También se pueden encender desde Database → Extensions.
+
+### 5.2 Programar el trabajo
+
+**LEE ESTO ANTES DE PEGAR NADA.** Hay tres valores que tienes que
+cambiar, y están escritos como `PON_AQUI_...`. Se reemplaza **la
+palabra entera**, sin dejar nada alrededor:
+
+| Qué | De dónde sale |
+|---|---|
+| `PON_AQUI_TU_REF` | El subdominio de tu `VITE_SUPABASE_URL` |
+| `PON_AQUI_TU_CRON_SECRETO` | **Exactamente** lo que pusiste en `supabase secrets set CRON_SECRETO=…` |
+
+**No va ninguna `apikey`.** Con `verify_jwt = false` la plataforma no la
+mira, así que mandarla sería dejar una llave escrita en la definición
+del cron sin que sirva para nada.
+
+⚠️ **El tercero es el que falla en silencio.** La función compara esa
+cabecera contra el secreto que guardaste en el paso 3. Si no son la
+misma cadena, carácter por carácter, responde 401 y **no manda nada
+nunca** — sin error visible en ningún lado, porque desde afuera parece
+que el cron corrió bien.
+
+Si no te acuerdas de qué pusiste, no lo adivines: los secretos se
+sobrescriben. Vuelve a fijarlo con un valor que sí tengas a la mano y
+usa ese mismo aquí.
 
 ```sql
 select cron.schedule(
@@ -130,17 +256,28 @@ select cron.schedule(
   '0 * * * *',
   $$
   select net.http_post(
-    url := 'https://<tu-ref>.supabase.co/functions/v1/enviar-recordatorios',
+    url := 'https://PON_AQUI_TU_REF.supabase.co/functions/v1/enviar-recordatorios',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'apikey', '<tu-llave-publicable>',
-      'x-cron-secreto', '<el-CRON_SECRETO-del-paso-3>'
+      'x-cron-secreto', 'PON_AQUI_TU_CRON_SECRETO'
     ),
     body := '{}'::jsonb
   );
   $$
 );
 ```
+
+Si te equivocaste y quieres rehacerlo, primero quita el trabajo viejo —
+si no, quedan dos programados y se pisan:
+
+```sql
+select cron.unschedule(jobname) from cron.job
+ where jobname = 'recordatorios-cada-hora';
+```
+
+Escrito así y no como `cron.unschedule('recordatorios-cada-hora')` a
+propósito: la forma corta lanza un error si el trabajo no existe, y esta
+simplemente no hace nada. Se puede correr sin miedo antes de programar.
 
 **Corre cada hora en punto y eso es a propósito.** La función pregunta
 qué hora es en Bogotá y le manda solo a quien le toca en esa hora. Así
@@ -189,14 +326,19 @@ Y esto **no lo puede hacer nadie desde un computador**:
 
 ```sql
 select net.http_post(
-  url := 'https://<tu-ref>.supabase.co/functions/v1/enviar-recordatorios',
+  url := 'https://PON_AQUI_TU_REF.supabase.co/functions/v1/enviar-recordatorios',
   headers := jsonb_build_object(
     'Content-Type', 'application/json',
-    'apikey', '<tu-llave-publicable>',
-    'x-cron-secreto', '<tu-CRON_SECRETO>'
+    'x-cron-secreto', 'PON_AQUI_TU_CRON_SECRETO'
   ),
   body := '{}'::jsonb
 );
+```
+
+**Cómo saber si respondió 401** (o sea, si el secreto no coincide):
+
+```sql
+select status_code, content from net._http_response order by created desc limit 5;
 ```
 
 Ojo: solo va a mandar algo si es **la hora de esa persona** y si hoy le

@@ -310,6 +310,33 @@ No son preferencias. Son las que sostienen el proyecto:
     Esta regla es lo único que se puede decir en público sin filtrar
     nada: describe una política, no a una persona.
 
+17. **Una función de la base sin pantalla no existe.** Es la lección del
+    4/09 y costó dos huecos a la vez: `vincular_con_codigo` sabía
+    ascender a un visitante desde el 1/09 y `crear_invitacion` existía
+    desde la Fase 2, y **ninguna de las dos tenía dónde tocarse**. Un
+    invitado no podía volverse cliente y el entrenador no podía crear
+    códigos, o sea que la puerta de entrada de todos sus clientes
+    dependía del SQL Editor.
+
+    Por qué es peligroso y no solo incómodo: **no falla nada.** Cada
+    mitad funciona perfecto por su lado, no aparece en ninguna prueba y
+    no sale en ningún registro. Solo se descubre cuando alguien intenta
+    usar la app de verdad.
+
+    Al escribir una función nueva en la base, la pregunta es quién la va
+    a llamar y desde qué pantalla. Si la respuesta es "más adelante",
+    va escrito en `BITACORA.md` como pendiente, no en la cabeza.
+
+18. **Nada de `position: fixed` en el armazón.** Safari en iOS 26 mueve
+    los elementos fijos al cambiar la dirección del scroll (bug 297779
+    de WebKit) y se niega a pintarlos bajo sus controles flotantes. La
+    barra de abajo aparecía a media pantalla.
+
+    `.app` es una columna de `100dvh`, `.pantalla` se lleva el resto y
+    se desplaza por dentro con `min-height: 0`, y `.nav` es un elemento
+    normal de la columna. Se acepta a cambio que la barra de direcciones
+    de Safari ya no se esconda sola al bajar.
+
 ## Mapa del código
 
 ```
@@ -573,6 +600,16 @@ supabase/functions/enviar-recordatorios/index.ts
                          servidor. La dispara pg_cron cada hora; NO
                          decide a quién le manda —eso es SQL—, solo
                          cifra y entrega. Hay que desplegarla.
+src/sections/Canjear.jsx  Perfil -> "Tengo un código". La pantalla que
+                         faltaba para que un invitado pueda volverse
+                         cliente. No vuelve a pedir edad ni
+                         autorizaciones: ya las dio en Activar.
+src/sections/Invitaciones.jsx
+                         Tu biblioteca -> "Códigos para tus clientes".
+                         Crea de a cinco y los copia al portapapeles.
+src/lib/invitaciones.js  En qué estado está un código. Usado y vencido
+                         NO son lo mismo: uno es un cliente ganado y el
+                         otro un código perdido.
 src/lib/notificaciones.js
                          Pedir el permiso y guardar la suscripción. La
                          mitad del archivo es el iPhone: sin instalar no
@@ -707,8 +744,8 @@ Tres reglas nuevas que salieron de construirla:
 
 **Fases 1 a 5 construidas, y la 7 también** (se saltó la 6 por
 decisión del 4/09). La base existe y está protegida; hay acceso por
-cuenta, tres roles y la Ley 1581 implementada. **242 pruebas** pasan.
-`v0.5.2`.
+cuenta, tres roles y la Ley 1581 implementada. **250 pruebas** pasan.
+`v0.5.3`.
 
 **OJO CON EL NÚMERO DE VERSIÓN.** El esquema dice que el segundo número
 es "la fase de la hoja de ruta que ya está cerrada", y eso daba por
@@ -739,10 +776,23 @@ empezar el entrenamiento, **anotar peso y repeticiones serie por serie**,
 terminarlo, ganar XP y logros, y ver su historial y sus semanas
 cumplidas.
 
-**PENDIENTE DE INFRAESTRUCTURA, y la Fase 7 es la primera que necesita
-más que un SQL:** correr `10-notificaciones.sql`, generar las llaves
-VAPID, guardar tres secretos, desplegar la Edge Function y programar el
-cron. Los cinco pasos están en `PASOS-FASE-7.md`.
+**LA FASE 7 YA ESTÁ MONTADA (4/09).** Llaves VAPID generadas, SQL
+corrido, secretos guardados, Edge Function desplegada y el cron
+programado `0 * * * *`. Verificado con un disparo manual que devolvió
+200. **Falta probarlo con un teléfono**, que es lo único que no se puede
+hacer desde un computador.
+
+Tres cosas de esa infraestructura que hay que recordar antes de tocarla:
+
+- **`verify_jwt = false`** en `supabase/config.toml` para
+  `enviar-recordatorios`. No es un descuido: quien la llama es el cron,
+  no una persona, así que no hay JWT que mandar — y las llaves nuevas
+  (`sb_publishable_…`) NO son JWT. Sin eso responde 401
+  `UNAUTHORIZED_NO_AUTH_HEADER` sin llegar al código.
+- **Por eso el `CRON_SECRETO` es la ÚNICA cerradura.** Tiene que ser
+  generado, no inventado. El cron no manda `apikey`: no serviría.
+- **`pg_cron` y `pg_net` hay que encenderlos** con `create extension`.
+  Vienen preinstalados y apagados.
 
 `06`, `07`, `08` y `09` ya se corrieron.
 
