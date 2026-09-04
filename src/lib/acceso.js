@@ -120,3 +120,61 @@ export function resultadoPerfil ({ error, data }) {
   if (error) return undefined
   return data ?? null
 }
+
+
+/* ---------------------------------------------------------------------
+   Qué estado queda cuando cambia la sesión
+   ---------------------------------------------------------------------
+   TERCER Y ÚLTIMO CAMINO DEL MISMO BUG (4/09). Los dos arreglos
+   anteriores no lo tocaron porque no había ninguna respuesta
+   involucrada: el `null` era UN SOBRANTE.
+
+   La secuencia, que se repite en cada apertura de la app:
+
+     1. Supabase avisa por primera vez CON SESIÓN NULA, mientras
+        todavía está restaurando la sesión guardada. El código entra en
+        la rama "sin sesión" y deja `perfil = null` y `cargando = false`.
+        Correcto: sin sesión, null sí es una respuesta.
+
+     2. Avisa otra vez, ahora con la sesión. `setSesion` se aplica de
+        inmediato, ANTES de que la consulta del perfil empiece siquiera.
+        En ese instante el estado es: hay sesión, `perfil = null` —el
+        sobrante del paso 1— y `cargando = false`.
+
+        Eso es, exactamente, la definición de la pantalla de activación.
+
+     3. Llega el perfil y todo se arregla solo. El parpadeo dura lo que
+        tarde la consulta.
+
+   LA REGLA QUE FALTABA: `perfil` describe A LA SESIÓN ACTUAL. En cuanto
+   la sesión cambia, lo que se sabía del perfil deja de aplicar, y hay
+   que decir "no se sabe" ANTES de ir a preguntar. Un dato viejo que
+   sobrevive a su contexto miente aunque en su momento fuera cierto.
+
+   LA EXCEPCIÓN QUE HAY QUE CONSERVAR: si la sesión nueva es del MISMO
+   usuario, el perfil se conserva. Supabase refresca el token cada
+   cierto tiempo y eso dispara este mismo evento; sin la excepción, la
+   app se pondría en blanco sola cada hora mientras alguien la usa.
+   --------------------------------------------------------------------- */
+export function alCambiarSesion (nuevaSesion, perfilActual) {
+  // Sin sesión no hay a quién buscarle perfil. Aquí null SÍ es una
+  // respuesta, y es la única rama donde lo es.
+  if (!nuevaSesion) {
+    return { sesion: null, perfil: null, errorPerfil: false, cargando: false }
+  }
+
+  const mismoUsuario = Boolean(
+    perfilActual && perfilActual.id && perfilActual.id === nuevaSesion.user?.id
+  )
+
+  return {
+    sesion: nuevaSesion,
+    // undefined, nunca null: cambió la sesión, así que no sabemos.
+    perfil: mismoUsuario ? perfilActual : undefined,
+    errorPerfil: false,
+    // Solo se vuelve a "cargando" si de verdad no sabemos. Si es el
+    // mismo usuario la app sigue viéndose y el perfil se refresca por
+    // detrás.
+    cargando: !mismoUsuario
+  }
+}

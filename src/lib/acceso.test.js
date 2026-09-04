@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  pantallaPara, PANTALLAS, hayQueReintentar, resultadoPerfil
+  pantallaPara, PANTALLAS, hayQueReintentar, resultadoPerfil, alCambiarSesion
 } from './acceso.js'
 
 /* Estas pruebas existen por dos bugs reales, y las dos que más importan
@@ -118,5 +118,47 @@ describe('qué significa el resultado final', () => {
 
   it('con fila devuelve la fila', () => {
     expect(resultadoPerfil({ error: null, data: PERFIL })).toBe(PERFIL)
+  })
+})
+
+describe('el sobrante: qué pasa cuando cambia la sesión', () => {
+  it('sin sesión, perfil null y ya no cargando', () => {
+    expect(alCambiarSesion(null, PERFIL))
+      .toEqual({ sesion: null, perfil: null, errorPerfil: false, cargando: false })
+  })
+
+  it('LLEGA SESIÓN Y EL PERFIL PASA A DESCONOCIDO, NO SE QUEDA EN NULL', () => {
+    // EL BUG DE LA TERCERA VUELTA. Supabase avisa primero con sesión
+    // nula (dejando perfil=null, cargando=false) y enseguida con la
+    // sesión de verdad. Sin esto, en ese instante el estado es
+    // "hay sesión + perfil null + no cargando", que es literalmente la
+    // pantalla de activación — y ahí estaba el parpadeo.
+    const previo = alCambiarSesion(null, PERFIL)          // paso 1
+    const ahora = alCambiarSesion(SESION, previo.perfil)  // paso 2
+
+    expect(ahora.perfil).toBe(undefined)
+    expect(pantallaPara(ahora)).toBe(PANTALLAS.CARGANDO)
+    expect(pantallaPara(ahora)).not.toBe(PANTALLAS.ACTIVAR)
+  })
+
+  it('mismo usuario: se conserva el perfil y NO se pone en blanco', () => {
+    // Supabase refresca el token cada cierto tiempo y dispara este
+    // mismo evento. Sin la excepción, la app se pondría en blanco sola
+    // cada hora mientras alguien la está usando.
+    const r = alCambiarSesion(SESION, PERFIL)
+    expect(r.perfil).toBe(PERFIL)
+    expect(r.cargando).toBe(false)
+    expect(pantallaPara(r)).toBe(PANTALLAS.APP)
+  })
+
+  it('otro usuario: el perfil viejo NO se hereda', () => {
+    const otra = { user: { id: 'zzz' } }
+    const r = alCambiarSesion(otra, PERFIL)
+    expect(r.perfil).toBe(undefined)
+    expect(pantallaPara(r)).toBe(PANTALLAS.CARGANDO)
+  })
+
+  it('un error viejo no sobrevive al cambio de sesión', () => {
+    expect(alCambiarSesion(SESION, PERFIL).errorPerfil).toBe(false)
   })
 })

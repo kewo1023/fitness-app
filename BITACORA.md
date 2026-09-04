@@ -1781,6 +1781,96 @@ regla 15 promete y lo que ninguna versión de dos colores daría gratis.
 
 ---
 
+## 4 de septiembre de 2026 — el parpadeo, tercer diagnóstico y arreglo real
+
+Kev confirmó que seguía apareciendo después del segundo arreglo. Los dos
+anteriores no lo tocaron **porque no había ninguna respuesta
+involucrada: el `null` era un SOBRANTE.**
+
+### La secuencia
+
+1. Supabase avisa por primera vez **con sesión nula**, mientras todavía
+   está restaurando la sesión guardada. El código entra en la rama "sin
+   sesión" y deja `perfil = null` y `cargando = false`. Hasta ahí,
+   correcto: sin sesión, `null` sí es una respuesta.
+2. Avisa otra vez, ahora con la sesión de verdad. `setSesion` se aplica
+   **de inmediato**, antes de que la consulta del perfil empiece
+   siquiera. En ese instante el estado es: hay sesión, `perfil = null`
+   —el sobrante del paso 1— y `cargando = false`.
+
+   Eso es, exactamente, la definición de la pantalla de activación.
+3. Llega el perfil y se arregla solo. El parpadeo dura lo que tarde la
+   consulta.
+
+### La regla que faltaba
+
+**`perfil` describe A LA SESIÓN ACTUAL.** En cuanto la sesión cambia, lo
+que se sabía deja de aplicar, y hay que decir "no se sabe" ANTES de ir a
+preguntar. Un dato viejo que sobrevive a su contexto miente aunque en su
+momento fuera cierto.
+
+Se implementó en `alCambiarSesion`, que fija TODO el estado de una sola
+vez cuando cambia la sesión, en vez de tocar `sesion` primero y el resto
+después. Con una excepción que hay que conservar: **si la sesión nueva es
+del mismo usuario, el perfil se conserva.** Supabase refresca el token
+cada cierto tiempo y dispara este mismo evento; sin la excepción, la app
+se pondría en blanco sola cada hora mientras alguien la usa.
+
+### El cierre de la familia
+
+Cuatro variantes del mismo error, todas en el mismo archivo:
+
+| Fecha | Qué se confundió |
+|---|---|
+| 2/09 | un fallo con una respuesta |
+| 4/09 (1.ª) | se arregló el fallo, no la confusión |
+| 4/09 (2.ª) | una respuesta **vacía** con una respuesta |
+| 4/09 (3.ª) | un **sobrante** con una respuesta |
+
+Las tres del 4/09 comparten causa: **`null` significaba demasiadas
+cosas.** Los arreglos 1 y 2 siguen en pie —son correctos, cubren casos
+reales— pero ninguno era el que se veía.
+
+**La lección de método, que vale más que el arreglo:** después de dos
+diagnósticos fallidos, lo que faltaba no era mirar más de cerca la
+consulta. Era preguntarse de qué OTRA forma podía llegarse al estado
+malo sin pasar por la consulta. El error estaba entre dos eventos, no
+dentro de uno.
+
+`src/lib/acceso.js` tiene ahora 21 pruebas, y las cuatro variantes están
+cubiertas por una prueba que las nombra.
+
+---
+
+## 4 de septiembre de 2026 — las láminas, v4: el brazo con torso
+
+Kev pidió darle contexto al brazo, que era la única de las siete que no
+se leía. Funcionó, y confirma por tercera vez la misma regla:
+
+> Lo que hace legible un músculo NO es dibujarlo mejor: es lo que tiene
+> alrededor.
+
+Un bíceps aislado (v2) es un huso. Dos cápsulas en ángulo (v3) es un
+check. Un bíceps colgando de un hombro que sale de un pecho es un brazo.
+Las otras seis láminas ya tenían ese marco gratis porque el torso venía
+incluido; el brazo era la única que no.
+
+**Dos detalles que costaron una vuelta cada uno:**
+
+El torso va **cortado por el borde izquierdo** a propósito: se lee como
+"esto continúa" y no como un cuerpo mal dibujado al que le falta el otro
+lado.
+
+Y va **estrecho**. El primer intento le dio el ancho de un torso de
+verdad y el resultado fue una pared gris que tapaba el brazo: el bíceps
+quedaba encima del pecho en vez de sobre el brazo. Aquí el torso no es
+el tema, es la pista de que hay un cuerpo; en cuanto pide más espacio
+del necesario, estorba.
+
+Las siete quedan aprobables. Ninguna necesita que el rótulo la explique.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con

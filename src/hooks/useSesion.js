@@ -33,7 +33,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
-import { hayQueReintentar, resultadoPerfil } from '../lib/acceso.js'
+import {
+  hayQueReintentar, resultadoPerfil, alCambiarSesion
+} from '../lib/acceso.js'
 
 export function useSesion () {
   const [sesion, setSesion] = useState(null)
@@ -50,6 +52,16 @@ export function useSesion () {
    * largo dentro de onAuthStateChange: sin esto, una respuesta vieja
    * que llega tarde pisa a una nueva que ya llegó. */
   const peticion = useRef(0)
+
+  /* El perfil que hay AHORA, en una referencia además de en el estado.
+   *
+   * El callback de onAuthStateChange se registra una sola vez, así que
+   * la variable `perfil` que ve por dentro se queda congelada en la del
+   * primer render —vacía— para siempre. Una referencia sí se puede leer
+   * al día. Es el clásico "closure viejo" de React, y aquí importa
+   * porque de ese valor depende no poner la app en blanco cada vez que
+   * se refresca el token. */
+  const perfilVigente = useRef(undefined)
 
   /* Trae el perfil del usuario actual.
    *
@@ -125,6 +137,8 @@ export function useSesion () {
     return resultadoPerfil(ultimo)
   }, [])
 
+  useEffect(() => { perfilVigente.current = perfil }, [perfil])
+
   useEffect(() => {
     let vivo = true   // evita escribir estado si el componente ya murió
 
@@ -136,15 +150,27 @@ export function useSesion () {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_evento, nuevaSesion) => {
         if (!vivo) return
-        setSesion(nuevaSesion)
 
-        // Sin sesión el perfil es null de verdad: no hay a quién
-        // buscarle uno. Aquí null sí es una respuesta.
+        /* TODO EL ESTADO SE FIJA DE UNA, ANTES DE IR A LA RED.
+         *
+         * Esta línea es el arreglo del parpadeo, y lo que arregla es
+         * que antes `setSesion` se aplicaba solo: quedaba la sesión
+         * nueva junto al `perfil = null` del evento anterior, y ese
+         * par es exactamente la pantalla de activación. El detalle
+         * está contado en `alCambiarSesion`, en src/lib/acceso.js.
+         *
+         * `perfilVigente` se lee de una referencia y no del estado
+         * porque este callback lo creó React una sola vez: la variable
+         * `perfil` que ve aquí dentro es la del primer render y estaría
+         * siempre vacía. */
+        const siguiente = alCambiarSesion(nuevaSesion, perfilVigente.current)
+        setSesion(siguiente.sesion)
+        setPerfil(siguiente.perfil)
+        setErrorPerfil(siguiente.errorPerfil)
+        setCargando(siguiente.cargando)
+
         if (!nuevaSesion) {
           peticion.current++          // invalida cualquier búsqueda en vuelo
-          setPerfil(null)
-          setErrorPerfil(false)
-          setCargando(false)
           return
         }
 

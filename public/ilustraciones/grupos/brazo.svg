@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 6 172 186"><g fill="#fff" stroke="#fff" opacity=".22" stroke-linecap="round" stroke-linejoin="round">
-  <ellipse cx="66" cy="46" rx="36" ry="30"/>
-  <line x1="72" y1="52" x2="94" y2="150" stroke-width="58"/>
-  <line x1="94" y1="150" x2="150" y2="56" stroke-width="40"/></g><g fill="#fff" stroke="#fff" stroke-linecap="round"><ellipse cx="80" cy="88" rx="24" ry="42" transform="rotate(15 80 88)"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="2 8 190 196"><g fill="#fff" stroke="#fff" opacity=".22" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M6 16q24-4 36 12 7 9 8 20l3 30q1 22-4 40l-7 40q-2 12-13 12H6z"/>
+  <ellipse cx="66" cy="54" rx="25" ry="25"/>
+  <line x1="68" y1="58" x2="94" y2="138" stroke-width="46"/>
+  <line x1="94" y1="138" x2="158" y2="74" stroke-width="36"/></g><g fill="#fff" stroke="#fff" stroke-linecap="round"><ellipse cx="80" cy="96" rx="19" ry="33" transform="rotate(18 80 96)"/></g></svg>

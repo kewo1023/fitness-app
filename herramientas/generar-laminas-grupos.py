@@ -83,18 +83,31 @@ TORSO_ESPALDA = ('20 6 200 268', '''
 # como un biceps; recto seria otra vez un huso. Y se dibuja con su
 # esqueleto —dos capsulas y dos bolas— en vez de con un contorno: el
 # intento de contorno salio un gancho.
-BRAZO = ('14 6 172 186', '''
-  <ellipse cx="66" cy="46" rx="36" ry="30"/>
-  <line x1="72" y1="52" x2="94" y2="150" stroke-width="58"/>
-  <line x1="94" y1="150" x2="150" y2="56" stroke-width="40"/>''')
+BRAZO = ('2 8 190 196', """
+  <path d="M6 16q24-4 36 12 7 9 8 20l3 30q1 22-4 40l-7 40q-2 12-13 12H6z"/>
+  <ellipse cx="66" cy="54" rx="25" ry="25"/>
+  <line x1="68" y1="58" x2="94" y2="138" stroke-width="46"/>
+  <line x1="94" y1="138" x2="158" y2="74" stroke-width="36"/>""")
 
-# Nota sobre lo que se le QUITO al brazo: tenia un circulo de puno en la
-# punta de arriba, del mismo tamano que el hombro. Con un bulto igual en
-# cada extremo la figura quedaba simetrica y se leia como un CHECK, no
-# como un brazo. Ahora el unico bulto es el hombro, el antebrazo es mas
-# delgado que el brazo, y la punta redonda de la capsula ya hace de
-# puno. Lo que da el sentido de "brazo" es que los dos tramos sean
-# DISTINTOS, no que haya mas piezas.
+# EL BRAZO LLEVA UN TROZO DE TORSO, y esa es la correccion del 4/09
+# (cuarta vuelta). Sin el, la figura eran dos capsulas en angulo y se
+# leia como un CHECK: nada decia por que ese codo estaba doblado.
+#
+# Es la misma leccion de v2 aplicada una vez mas: lo que hace legible un
+# musculo NO es dibujarlo mejor, es lo que tiene alrededor. Un biceps
+# aislado es un huso; un biceps colgando de un hombro que sale de un
+# pecho es un brazo. Las otras seis laminas ya tenian ese marco gratis
+# porque el torso venia incluido.
+#
+# El torso va cortado por el borde izquierdo a proposito: se lee como
+# "esto continua" y no como un cuerpo mal dibujado al que le falta el
+# otro lado.
+#
+# Y va ESTRECHO. El primer intento le dio el ancho de un torso de
+# verdad y el resultado fue una pared gris que tapaba el brazo: el
+# biceps quedaba encima del pecho en vez de sobre el brazo. Aqui el
+# torso no es el tema, es la pista de que hay un cuerpo; en cuanto pide
+# mas espacio del necesario, estorba.
 
 PIERNAS = ('12 4 176 264', '''
   <path d="M52 10h96q9 0 10 11l3 45q2 21-3 41l-11 60q-5 29-7 59l-3 34
@@ -141,9 +154,11 @@ GRUPOS = {
     # El biceps, sobre el brazo. La elipse va girada 15 grados para
     # seguir la inclinacion del brazo: derecha se saldria del contorno
     # por un lado y dejaria hueco por el otro.
+    # El biceps, sobre el brazo. Girada para seguir la inclinacion del
+    # brazo: derecha se saldria por un lado y dejaria hueco por el otro.
     'brazo': (BRAZO,
-              '<ellipse cx="80" cy="88" rx="24" ry="42" '
-              'transform="rotate(15 80 88)"/>'),
+              '<ellipse cx="80" cy="96" rx="19" ry="33" '
+              'transform="rotate(18 80 96)"/>'),
 
     # El cuadriceps de las dos piernas, con la gota del vasto interno.
     # Los cuadriceps, uno por pierna. Antes las dos formas se
