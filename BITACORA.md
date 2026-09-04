@@ -1359,6 +1359,97 @@ losas con el borde inferior en diagonal hacia el esternón.
 
 ---
 
+## 4 de septiembre de 2026 — el Android real, verificado entero
+
+**El pendiente #1 se cierra.** Abierto desde el 1/09, era el más viejo del
+proyecto y el que más pesaba: el público es 83% Android y hasta ayer nadie
+había abierto la app en uno.
+
+Las tres cosas que había que mirar, comprobadas:
+
+| Qué | Resultado |
+|---|---|
+| ¿Abre sin la barra del navegador? | **Sí.** El manifest funcionó |
+| ¿El vidrio de la barra de abajo va a tirones? | **No, va fluido** |
+| ¿El teclado tapa el botón de entrar? | **No** |
+
+Consecuencia directa: **no hay que subir el umbral de `nivelDetectado()`**
+en `src/lib/dispositivo.js`. El nivel de decoración que detecta hoy es el
+correcto, y la apuesta de los tres niveles (1/09) queda validada en
+hardware real en vez de en teoría.
+
+Y confirma el arreglo del manifest end to end: se vio el bug en Android,
+se arregló, y se comprobó en el mismo Android. No quedó nada afirmado sin
+haberlo visto.
+
+---
+
+## 4 de septiembre de 2026 — la URL no va a circular, y eso reordena los pendientes
+
+**Decisión de Kev, explícita:** la URL no se le va a dar a nadie —ni un
+cliente, ni un usuario suelto— hasta que exista una versión más seria y
+robusta.
+
+Eso no borra ninguno de los pendientes de difusión, pero sí los
+reclasifica, y conviene tenerlo claro para no gastar sesiones en el orden
+equivocado:
+
+- **La puerta de edad** (artículo 7 de la Ley 1581, artículo 12 del
+  Decreto 1377 sin verificar) sigue siendo **obligatoria antes de la
+  difusión**, y sigue sin hacerse. Lo que cambia es que ya no aprieta:
+  no bloquea ninguna fase, bloquea el día que la URL salga. Ese día no
+  está cerca.
+- **Las indicaciones inventadas** de los 30 ejercicios de ejemplo **no se
+  vacían.** Kev lo decidió el 4/09 y el razonamiento se sostiene: el
+  riesgo de que alguien siga un consejo de técnica que no escribió el
+  entrenador existe solo si hay alguien leyéndolo, y no lo va a haber.
+  Se resuelven solas cuando él devuelva la hoja con las suyas.
+- **El plan gratis de Vercel** (uso no comercial) sigue sin verificar, y
+  por la misma razón deja de correr prisa.
+
+**Lo que NO cambia:** el repo sigue siendo público y las reglas 3 de
+PARAR y 16 siguen valiendo igual. Que no haya usuarios no vuelve privado
+el historial de git.
+
+---
+
+## 4 de septiembre de 2026 — las láminas de grupo muscular no convencen
+
+**Rechazadas por Kev.** Textual: se ven "cero profesionales y estéticos".
+No es urgente y no bloquea nada, pero queda anotado con el criterio
+concreto para que quien las rehaga no tenga que adivinar.
+
+**Lo que se hizo (3/09):** una silueta humana completa, en gris pálido,
+con la zona del grupo resaltada. O sea, un cuerpo que SEÑALA dónde está
+el músculo.
+
+**Lo que se quiere:** más minimalista, y **dibujar únicamente el grupo
+muscular en vez de señalarlo sobre un cuerpo.** El pectoral como forma,
+no un muñeco con el pecho pintado.
+
+Es un cambio de enfoque, no un retoque: la silueta compartida entre las
+7 láminas —que era la idea que hacía barato el generador— deja de tener
+sentido, porque cada lámina pasa a ser una forma distinta y propia.
+
+Lo que sí se conserva del trabajo del 3/09 y no hay que volver a
+resolver:
+
+- **La decisión de dibujarlas en vez de buscarlas.** Sigue en pie: 7
+  láminas de terceros significan otra licencia y otra atribución.
+- **El mecanismo de `mask-image`** y que el color salga de `--lamina`
+  (regla 15). Es lo que las hace funcionar en claro y en oscuro con un
+  solo archivo.
+- **La estructura de la portada.** Lo que no convence es el dibujo, no la
+  navegación por categorías.
+
+El generador está en `herramientas/generar-laminas-grupos.py` y se
+reescribe entero cuando se retome. El truco de la opacidad parcial
+—cuerpo al 24%, zona al 100%— **ya no hace falta** si no hay cuerpo de
+fondo: cada lámina sería una sola forma maciza, que además es lo que
+"minimalista" quiere decir aquí.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -1412,16 +1503,14 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ### Pendientes que vienen de atrás
 
-1. **CERRADO EL 3/09 a medias.** La app ya se vio en un Android real y
-   funciona. Esa prueba destapó el bug del manifest (entrada del 3/09),
-   que ya está arreglado.
+1. **CERRADO EL 4/09.** La app se probó en un Android real y pasó las
+   tres comprobaciones: instala sin barra del navegador, el vidrio de la
+   barra de abajo va fluido y el teclado no tapa el botón de entrar. No
+   hay que tocar `nivelDetectado()`. Ver la entrada del 4/09.
 
-   **Lo que sigue sin mirarse en ese Android:** si el vidrio de la barra
-   de abajo va a tirones, y si el teclado tapa el botón de entrar. Si el
-   vidrio va mal, se sube el umbral de `nivelDetectado()` en
-   `src/lib/dispositivo.js`. Y hay dos pantallas nuevas que nadie ha
-   visto en un celular de verdad: la carga masiva y la portada por
-   grupo muscular.
+   Queda una cola menor, sin urgencia: las dos pantallas nuevas —la
+   carga masiva y la portada por grupo muscular— todavía no se han
+   tocado en un celular de verdad.
 
 2. **La puerta de edad.** El artículo 7 de la Ley 1581 prohíbe tratar
    datos de niños, niñas y adolescentes salvo los de naturaleza pública.
@@ -1442,10 +1531,12 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
    entrenador y que la app presenta como si fueran de él.
 
    No se tocó desde el código a propósito — el contenido es dominio del
-   entrenador (regla del 1/09). Se resuelve de una de dos formas y las
-   dos las decide él: que las reemplace con las suyas al devolver la
-   hoja, o que se vacíen hasta que las tenga. **Lo segundo es la opción
-   segura si la URL va a circular antes de que él responda.**
+   entrenador (regla del 1/09).
+
+   **RESUELTO EL 4/09: no se vacían.** Kev decidió que la URL no va a
+   circular hasta que exista una versión más robusta, así que no hay
+   nadie leyéndolas. Se reemplazan solas cuando él devuelva la hoja con
+   las suyas. Ver la entrada del 4/09.
 
 ---
 
