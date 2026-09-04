@@ -2662,6 +2662,82 @@ cliente vuelva a activar los avisos.
 
 ---
 
+## 4 de septiembre de 2026 — la misma cuenta con dos perfiles distintos
+
+Kev abrió la app en un iPhone y en un Android **con el mismo correo**.
+En el Android salía "Cliente de prueba", rol cliente, 100 XP y su plan.
+En el iPhone, "Hola, Andres" y "todavía no tienes un plan".
+
+Parecían dos cuentas. No lo eran: `auth.users` tenía **una sola fila**
+para ese correo, y `perfiles.id` es su clave primaria, así que solo
+puede existir un perfil. La base decía `Cliente de prueba / cliente /
+100 XP`.
+
+**El iPhone mostraba una foto vieja.**
+
+### La causa, y es de diseño
+
+El perfil se pedía **una sola vez**, dentro de `onAuthStateChange`: al
+arrancar la app, al entrar y al salir. **Nunca al volver del segundo
+plano.**
+
+La secuencia que lo produjo:
+
+1. 06:11 — el iPhone entra. En ese momento el perfil era visitante y se
+   llamaba "Andres". La app lo guarda en su estado.
+2. Más tarde, desde el Android, se canjea un código. `vincular_con_codigo`
+   hace `on conflict do update` sobre **esa misma fila**: cambia el rol
+   a cliente y también el nombre.
+3. El iPhone, con la app suspendida en segundo plano, sigue pintando lo
+   de las 06:11.
+
+Y hay un agravante propio de esta app: `alCambiarSesion` **conserva a
+propósito** el perfil anterior entre eventos de sesión —es el arreglo
+del parpadeo del 4/09, y se queda— pero hace que lo viejo se pegue con
+más fuerza.
+
+### Por qué no lo agarró ninguna prueba
+
+Porque no es un error de cálculo: es **una lectura que nunca se
+repite**. Las 250 pruebas comprobaban qué hace la app con el perfil que
+tiene; ninguna podía comprobar que el perfil que tiene sea el de ahora.
+Solo aparece con dos dispositivos y tiempo de por medio.
+
+Es el mismo patrón de los dos huecos de esta mañana: nada falla, cada
+pieza funciona bien por su lado.
+
+### El arreglo
+
+`hayQueRecargarPerfil` en `acceso.js` —el módulo de decisiones, que ya
+estaba probado— y un `visibilitychange` en `useSesion` que la consulta.
+
+Tres detalles:
+
+- **`visibilitychange` y no `focus`.** En un celular `focus` no es
+  fiable al volver de otra app; `visibilitychange` existe justo para
+  esto.
+- **Quince segundos de espera mínima.** Ese evento se dispara cada vez
+  que se cambia de app, que en un celular es constante. Sin freno, ir a
+  WhatsApp y volver tres veces son tres consultas para traer lo mismo.
+- **La decisión vive fuera del hook**, para poder probarla sin fingir un
+  navegador. Cinco pruebas nuevas, una de ellas es literalmente el caso
+  del bug: siete horas en segundo plano.
+
+**255 pruebas, `v0.5.4`.**
+
+### La lección
+
+Un dato que se lee una vez y se guarda en memoria **es una copia, no el
+dato**. Mientras la app viva en un solo dispositivo eso no se nota; con
+dos, la copia vieja y la nueva se contradicen y parece un bug de la base
+de datos.
+
+Vale la pena revisar si hay otras lecturas de una sola vez que puedan
+quedarse viejas — el catálogo de logros, el plan del día — aunque
+ninguna tiene la consecuencia de esta, que cambia quién eres.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con

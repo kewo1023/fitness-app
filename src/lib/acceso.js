@@ -178,3 +178,51 @@ export function alCambiarSesion (nuevaSesion, perfilActual) {
     cargando: !mismoUsuario
   }
 }
+
+
+/* =====================================================================
+   ¿Hay que volver a leer el perfil al regresar a la app?
+   =====================================================================
+
+   EL BUG QUE ESTO ARREGLA, encontrado el 4/09 con dos teléfonos.
+
+   El perfil se pedía UNA sola vez, dentro de `onAuthStateChange`: al
+   arrancar la app, al entrar y al salir. Nunca al volver del segundo
+   plano.
+
+   Consecuencia: un celular que quedó con la app abierta sigue mostrando
+   el perfil que trajo cuando la abrió. Si mientras tanto esa persona
+   canjeó un código desde otro aparato —o el entrenador le asignó un
+   plan— ese celular sigue diciendo "todavía no tienes un plan" durante
+   horas. Parecen dos cuentas distintas y es una sola: la base tiene una
+   fila, y el otro aparato tiene una foto vieja de ella.
+
+   Y hay un agravante propio de esta app: `alCambiarSesion` CONSERVA el
+   perfil anterior entre eventos de sesión, a propósito, para que no
+   parpadee la pantalla de activación. Eso está bien y se queda — pero
+   hace que lo viejo se quede pegado con más fuerza.
+
+   POR QUÉ HAY UN MÍNIMO DE TIEMPO. `visibilitychange` se dispara cada
+   vez que se cambia de pestaña o de app, que en un celular es
+   constante. Sin este freno, pasar de WhatsApp a la app y volver, tres
+   veces seguidas, son tres consultas a la base para traer lo mismo.
+   Quince segundos es más de lo que dura un vistazo a otra app y menos
+   de lo que tarda alguien en hacer algo relevante en otro aparato.
+
+   Es una función aparte y no un `if` dentro del hook porque así se
+   puede probar sin fingir un navegador entero (regla 10).
+   ===================================================================== */
+
+export const ESPERA_RECARGA_MS = 15000
+
+export function hayQueRecargarPerfil ({ visible, ultimaLectura, ahora }) {
+  // Si la app no está a la vista, no se gasta una consulta: nadie está
+  // mirando, y al volver se vuelve a preguntar.
+  if (!visible) return false
+
+  // Nunca se ha leído: hay que leer. Cubre el arranque y evita que un
+  // `undefined` se cuele como "hace un instante".
+  if (!Number.isFinite(ultimaLectura)) return true
+
+  return (ahora - ultimaLectura) >= ESPERA_RECARGA_MS
+}

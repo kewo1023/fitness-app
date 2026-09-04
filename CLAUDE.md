@@ -744,8 +744,8 @@ Tres reglas nuevas que salieron de construirla:
 
 **Fases 1 a 5 construidas, y la 7 también** (se saltó la 6 por
 decisión del 4/09). La base existe y está protegida; hay acceso por
-cuenta, tres roles y la Ley 1581 implementada. **250 pruebas** pasan.
-`v0.5.3`.
+cuenta, tres roles y la Ley 1581 implementada. **255 pruebas** pasan.
+`v0.5.4`.
 
 **OJO CON EL NÚMERO DE VERSIÓN.** El esquema dice que el segundo número
 es "la fase de la hoja de ruta que ya está cerrada", y eso daba por

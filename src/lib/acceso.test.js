@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  pantallaPara, PANTALLAS, hayQueReintentar, resultadoPerfil, alCambiarSesion
+  pantallaPara, PANTALLAS, hayQueReintentar, resultadoPerfil, alCambiarSesion,
+  hayQueRecargarPerfil, ESPERA_RECARGA_MS
 } from './acceso.js'
 
 /* Estas pruebas existen por dos bugs reales, y las dos que más importan
@@ -160,5 +161,49 @@ describe('el sobrante: qué pasa cuando cambia la sesión', () => {
 
   it('un error viejo no sobrevive al cambio de sesión', () => {
     expect(alCambiarSesion(SESION, PERFIL).errorPerfil).toBe(false)
+  })
+})
+
+describe('volver a leer el perfil al regresar a la app', () => {
+  /* Es el bug del 4/09 con dos teléfonos: la base tenía UNA fila y cada
+   * aparato mostraba un perfil distinto, porque el que llevaba horas en
+   * segundo plano nunca volvía a preguntar. */
+
+  it('con la app escondida no se gasta una consulta', () => {
+    // Nadie está mirando. Al volver se pregunta.
+    expect(hayQueRecargarPerfil({
+      visible: false, ultimaLectura: 0, ahora: 999999
+    })).toBe(false)
+  })
+
+  it('si nunca se ha leído, se lee', () => {
+    // Cubre el arranque. Sin esto, un `undefined` restado daría NaN y
+    // la comparación sería falsa: no leería nunca.
+    expect(hayQueRecargarPerfil({
+      visible: true, ultimaLectura: undefined, ahora: 1000
+    })).toBe(true)
+  })
+
+  it('volver a los dos segundos NO recarga', () => {
+    // Cambiar a WhatsApp y volver tres veces seguidas no puede ser tres
+    // consultas para traer lo mismo.
+    expect(hayQueRecargarPerfil({
+      visible: true, ultimaLectura: 100000, ahora: 102000
+    })).toBe(false)
+  })
+
+  it('pasada la espera, sí recarga', () => {
+    expect(hayQueRecargarPerfil({
+      visible: true, ultimaLectura: 100000, ahora: 100000 + ESPERA_RECARGA_MS
+    })).toBe(true)
+  })
+
+  it('después de horas en segundo plano, recarga', () => {
+    // ES EL CASO DEL BUG. Siete horas con la app abierta detrás, y
+    // mientras tanto la cuenta se volvió cliente desde otro aparato.
+    const SIETE_HORAS = 7 * 60 * 60 * 1000
+    expect(hayQueRecargarPerfil({
+      visible: true, ultimaLectura: 0, ahora: SIETE_HORAS
+    })).toBe(true)
   })
 })

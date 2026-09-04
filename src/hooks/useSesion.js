@@ -34,7 +34,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
 import {
-  hayQueReintentar, resultadoPerfil, alCambiarSesion
+  hayQueReintentar, resultadoPerfil, alCambiarSesion, hayQueRecargarPerfil
 } from '../lib/acceso.js'
 
 export function useSesion () {
@@ -62,6 +62,11 @@ export function useSesion () {
    * porque de ese valor depende no poner la app en blanco cada vez que
    * se refresca el token. */
   const perfilVigente = useRef(undefined)
+
+  /* Cuándo se leyó el perfil por última vez. Lo usa el efecto de más
+   * abajo para no repetir la consulta cada vez que alguien cambia de
+   * app y vuelve. */
+  const ultimaLectura = useRef(undefined)
 
   /* Trae el perfil del usuario actual.
    *
@@ -197,6 +202,7 @@ export function useSesion () {
         const traido = await traerPerfil(nuevaSesion.user.id)
         if (!vivo || mia !== peticion.current) return
 
+        ultimaLectura.current = Date.now()
         setPerfil(traido)
         setErrorPerfil(traido === undefined)
         setCargando(false)
@@ -226,9 +232,45 @@ export function useSesion () {
     const traido = await traerPerfil(session.user.id)
     if (mia !== peticion.current) return   // mismo guardia que arriba
 
+    ultimaLectura.current = Date.now()
     setPerfil(traido)
     setErrorPerfil(traido === undefined)
   }, [traerPerfil])
+
+  /* =================================================================
+     VOLVER A LEER EL PERFIL AL REGRESAR A LA APP
+     =================================================================
+
+     Es el arreglo del bug del 4/09: hasta hoy el perfil se pedía solo
+     en `onAuthStateChange`, o sea al arrancar y al cambiar de sesión.
+     Un celular que quedaba en segundo plano seguía mostrando el perfil
+     de horas atrás, y con dos aparatos parecía que la misma cuenta
+     tuviera dos perfiles distintos. La base siempre tuvo una sola fila:
+     lo que estaba viejo era la copia en pantalla.
+
+     Se escucha `visibilitychange` y no `focus` porque en un celular
+     `focus` no es fiable: al volver de otra app puede no dispararse.
+     `visibilitychange` sí lo hace, y es el evento que existe justo para
+     esto.
+
+     Cuándo vale la pena recargar lo decide `hayQueRecargarPerfil`, que
+     está probada. Aquí solo se escucha el evento.
+     ================================================================= */
+  useEffect(() => {
+    function alVolver () {
+      const visible = typeof document !== 'undefined' &&
+                      document.visibilityState === 'visible'
+
+      if (!hayQueRecargarPerfil({
+        visible, ultimaLectura: ultimaLectura.current, ahora: Date.now()
+      })) return
+
+      recargarPerfil()
+    }
+
+    document.addEventListener('visibilitychange', alVolver)
+    return () => document.removeEventListener('visibilitychange', alVolver)
+  }, [recargarPerfil])
 
   const salir = useCallback(async () => {
     await supabase.auth.signOut()
