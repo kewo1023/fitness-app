@@ -791,6 +791,16 @@ button {
   color: var(--acento-fuerte);
 }
 
+/* "Sin conexión" no es un error ni un logro: es un estado. En verde
+   parecería que algo salió bien y en rojo que algo se rompió, y no es
+   ninguna de las dos — la app está haciendo justo lo que prometió. Va
+   en gris, con un borde que la separa del texto de al lado. */
+.aviso.es-tenue {
+  background: var(--superficie-2);
+  color: var(--tinta-media);
+  border: 1px solid var(--linea-suave);
+}
+
 /* --- Botón secundario, con pinta de enlace ---------------------------- */
 
 .enlace {

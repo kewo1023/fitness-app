@@ -7,6 +7,8 @@ import { puntoDelPlan, diaDelPlan, rachaSemanal } from '../lib/plan.js'
 import { etiqueta } from '../lib/ejercicios.js'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
 import Entrenamiento from './Entrenamiento.jsx'
+import { armarPaquete, paqueteUtil, textoDeEdad } from '../lib/paquete.js'
+import { guardarPaquete, leerPaquete } from '../lib/almacen.js'
 
 /* OJO: el XP que paga una sesión NO se escribe aquí.
  *
@@ -80,6 +82,15 @@ export default function Hoy ({ perfil, recargarPerfil }) {
   const [sesion, setSesion] = useState(null)
   const [ocupado, setOcupado] = useState(false)
   const [avisoXp, setAvisoXp] = useState(null)
+  /* Si lo que se está viendo salió del disco y no de la base. Lleva el
+   * paquete entero y no un `true` porque el aviso tiene que decir DE
+   * CUÁNDO es: sin la fecha, nadie puede saber si mira lo de esta
+   * mañana o lo de la semana pasada. */
+  const [guardado, setGuardado] = useState(null)
+  /* Sin red Y sin nada guardado. Es un estado aparte de "no tienes
+   * plan": decirle a alguien que su entrenador no le asignó nada cuando
+   * lo que pasa es que no hay señal es mentira, y de las que desaniman. */
+  const [sinRed, setSinRed] = useState(false)
   /* Si está DENTRO del entrenamiento o mirándolo desde fuera.
    *
    * Son dos pantallas y no una porque responden dos preguntas
@@ -107,7 +118,38 @@ export default function Hoy ({ perfil, recargarPerfil }) {
         .maybeSingle()
 
       if (!vivo) return
-      if (errPlan) console.error('No se pudo leer el plan:', errPlan)
+
+      /* SIN SEÑAL, ESTE ES EL PRIMER FALLO, y hasta hoy la pantalla
+       * seguía de largo y pintaba "tu entrenador todavía no te asignó
+       * un plan". Mentira, y de las que desaniman: quien la lee en el
+       * gimnasio cree que el entrenador no hizo su parte.
+       *
+       * Supabase no lanza cuando no hay red: devuelve un error dentro
+       * de la respuesta. Por eso el caso hay que preguntarlo, no
+       * atraparlo. */
+      if (errPlan) {
+        console.error('No se pudo leer el plan:', errPlan)
+        const disco = await leerPaquete()
+        if (!vivo) return
+
+        // `paqueteUtil` comprueba DE QUIÉN es antes de pintarlo. Ver el
+        // comentario largo de paquete.js: es lo único que impide que el
+        // plan de una persona salga en la pantalla de otra.
+        if (paqueteUtil(disco, perfil.id)) {
+          const c = disco.contenido
+          setPlan(c.plan)
+          setDias(c.dias || [])
+          setFechasHechas(c.fechasHechas || [])
+          setSesion(c.sesion || null)
+          setRutina(c.rutina || null)
+          setEjercicios(c.ejercicios || [])
+          setGuardado(disco)
+        } else {
+          setSinRed(true)
+        }
+        setCargando(false)
+        return
+      }
 
       if (!p) { setCargando(false); return }
       setPlan(p)
@@ -152,9 +194,10 @@ export default function Hoy ({ perfil, recargarPerfil }) {
       if (!vivo) return
       // Una sesión cuenta el día que se TERMINÓ. Si terminada_en está
       // vacío se usa cuándo empezó, que es lo más cercano a la verdad.
-      setFechasHechas(
-        (ses || []).map(s => diaEnBogota(s.terminada_en || s.iniciada_en))
+      const fechas = (ses || []).map(
+        s => diaEnBogota(s.terminada_en || s.iniciada_en)
       )
+      setFechasHechas(fechas)
 
       /* 4. La rutina de hoy, solo si hoy toca alguna. */
       const punto = puntoDelPlan(p, hoy)
@@ -166,6 +209,14 @@ export default function Hoy ({ perfil, recargarPerfil }) {
        * identidad de "este entrenamiento". Y el `.eq('cliente_id')` va
        * otra vez por la regla 13 — sin él, al entrenador le saldría la
        * sesión de otro y creería que ya entrenó. */
+      /* Las tres se declaran aquí y no dentro de su `if` porque al
+       * final del efecto hay que empaquetarlas para el disco. Declaradas
+       * dentro, el paquete se guardaría vacío los días que sí hay
+       * rutina, que son justo los que importan. */
+      let sesionDeHoy = null
+      let rutinaDeHoy = null
+      let ejerciciosDeHoy = []
+
       if (delDia) {
         const { data: hecha } = await supabase
           .from('sesiones')
@@ -181,7 +232,8 @@ export default function Hoy ({ perfil, recargarPerfil }) {
           .order('iniciada_en', { ascending: false })
           .limit(1)
         if (!vivo) return
-        setSesion(hecha?.[0] || null)
+        sesionDeHoy = hecha?.[0] || null
+        setSesion(sesionDeHoy)
       }
 
       if (delDia?.rutina_id) {
@@ -200,9 +252,29 @@ export default function Hoy ({ perfil, recargarPerfil }) {
             .order('orden')
         ])
         if (!vivo) return
-        setRutina(r || null)
-        setEjercicios(re || [])
+        rutinaDeHoy = r || null
+        ejerciciosDeHoy = re || []
+        setRutina(rutinaDeHoy)
+        setEjercicios(ejerciciosDeHoy)
       }
+
+      /* AL DISCO, para el día que no haya señal.
+       *
+       * Va al final y solo si TODO salió bien: guardar a medias dejaría
+       * un paquete con el plan y sin la rutina, que sin señal se vería
+       * como un día de descanso que no lo es.
+       *
+       * Sin `await`: que nadie espere a que se escriba el disco para
+       * ver su rutina, y si el disco falla —modo privado, memoria
+       * llena— la app sigue igual. Ver almacen.js. */
+      guardarPaquete(armarPaquete(perfil.id, {
+        plan: p,
+        dias: pd || [],
+        fechasHechas: fechas,
+        sesion: sesionDeHoy,
+        rutina: rutinaDeHoy,
+        ejercicios: ejerciciosDeHoy
+      }))
 
       setCargando(false)
     })()
@@ -331,6 +403,25 @@ export default function Hoy ({ perfil, recargarPerfil }) {
     )
   }
 
+  /* --- Sin señal y sin nada en el disco -----------------------------
+      VA ANTES QUE "SIN PLAN", y el orden es la decisión: son dos
+      situaciones que se parecen en la pantalla y no tienen nada que ver.
+      Una la arregla el entrenador; la otra, caminar diez metros. */
+  if (sinRed) {
+    return (
+      <Pantalla {...encabezado}>
+        <section className="tarjeta">
+          <h2>Sin conexión</h2>
+          <p className="meta">
+            No pudimos traer tu rutina y todavía no hay nada guardado en
+            este teléfono. Abre la app una vez con señal y desde entonces
+            la vas a poder ver aunque el gimnasio no tenga.
+          </p>
+        </section>
+      </Pantalla>
+    )
+  }
+
   /* --- Sin plan: tres mensajes distintos, uno por rol --------------- */
   if (!plan) {
     return (
@@ -372,6 +463,18 @@ export default function Hoy ({ perfil, recargarPerfil }) {
 
   return (
     <Pantalla {...encabezado}>
+      {/* LO GUARDADO, Y DE CUÁNDO ES.
+          La fecha no es un adorno: sin ella nadie puede saber si mira lo
+          de esta mañana o lo de la semana pasada, y la app estaría
+          pidiéndole que confíe en algo que no puede comprobar. */}
+      {guardado && (
+        <p className="aviso es-tenue" role="status">
+          <strong>Sin conexión.</strong> Esto es tu rutina{' '}
+          {textoDeEdad(guardado)}. Puedes verla y seguirla; para anotar
+          las series hace falta señal.
+        </p>
+      )}
+
       {/* La racha. Único lugar de la app donde aparece el cobre de
           señal, y por eso sigue arriba: si apareciera en tres sitios
           dejaría de significar algo. Es SEMANAL, no diaria — decisión
@@ -463,7 +566,20 @@ export default function Hoy ({ perfil, recargarPerfil }) {
                 lee peor: aquí el estado "ya lo hiciste" no es un botón,
                 porque no hay nada más que hacer y ofrecer una acción
                 que no existe invita a tocarla. */}
-            {sesion?.completada ? (
+            {/* SIN SEÑAL NO SE OFRECE EMPEZAR, y se dice por qué.
+                Empezar escribe una fila en la base, así que el botón
+                fallaría con "revisa la conexión" DESPUÉS de haberlo
+                tocado. Un botón que se ve disponible y no lo está se
+                siente como que la app está rota; uno que explica antes,
+                no. (La cola para entrenar sin señal es el paso 2 de
+                esta fase.) */}
+            {guardado ? (
+              <p className="pista">
+                Para empezar y anotar tus series hace falta señal. La
+                rutina de aquí abajo es la de hoy: puedes seguirla y
+                anotarla cuando vuelvas a tener.
+              </p>
+            ) : sesion?.completada ? (
               <p className="estado es-ok">Hecho por hoy ✓</p>
             ) : sesion ? (
               /* Ya empezó y no terminó. El botón lleva DE VUELTA al

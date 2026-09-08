@@ -355,12 +355,27 @@ public/manifest.webmanifest
                          notaba: Safari abre sus atajos sin barra tenga
                          o no manifest, así que la app parecía bien y el
                          problema parecía de Android. Era al revés.
+src/lib/paquete.js       Qué se guarda en el celular para entrenar sin
+                         señal y cuándo deja de servir. La comprobación
+                         que sostiene todo es DE QUIÉN es lo guardado:
+                         dos personas comparten un celular más seguido
+                         de lo que parece. 11 pruebas. NO toca la base.
+src/lib/almacen.js       El disco (IndexedDB). Fontanería y nada más:
+                         no decide, y falla en silencio a propósito —
+                         guardar es una comodidad, no el camino
+                         principal. `olvidarTodo()` lo llama el `salir`
+                         de useSesion, y es lo que hace defendible
+                         guardar el plan en el disco.
 public/sw.js             El service worker. Corto y con un NO grande:
                          no cachea nada de Supabase (van datos de salud
                          de terceros) ni el HTML (se queda pegado en una
                          versión vieja). Está para que Chrome OFREZCA
                          instalar, y porque el push lo va a exigir.
-                         El caché offline de verdad es la Fase 8.
+                         Su NO sigue en pie: el caché offline de la
+                         Fase 8 NO se hizo aquí. Un caché de HTTP es
+                         opaco; lo de la Fase 8 es un almacén escrito,
+                         solo con tus propios datos y que se borra al
+                         cerrar sesión. Ver paquete.js.
 public/iconos/           Los cuatro PNG de la app instalada. NO se
                          editan a mano: los dibuja
                          herramientas/generar-iconos.py.

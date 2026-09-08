@@ -33,6 +33,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { olvidarTodo } from '../lib/almacen.js'
 import {
   hayQueReintentar, resultadoPerfil, alCambiarSesion, hayQueRecargarPerfil
 } from '../lib/acceso.js'
@@ -274,6 +275,17 @@ export function useSesion () {
 
   const salir = useCallback(async () => {
     await supabase.auth.signOut()
+    /* Y SE BORRA LO GUARDADO EN EL APARATO. Va aquí, en el único sitio
+     * por donde pasan todas las salidas, y no en cada pantalla.
+     *
+     * Es lo que hace defendible guardar el plan en el disco: sin este
+     * borrado sería un caché escondido, que es justo lo que `sw.js` se
+     * niega a hacer. Y como eliminar la cuenta también cierra sesión, el
+     * derecho de supresión de la Ley 1581 pasa por esta línea.
+     *
+     * Después del signOut y no antes: si el borrado falla, la sesión ya
+     * quedó cerrada, que es lo que la persona pidió. */
+    await olvidarTodo()
   }, [])
 
   return {

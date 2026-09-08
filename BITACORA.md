@@ -3152,6 +3152,99 @@ es un hecho. Se dice en la pantalla en vez de esconderlos.
 
 ---
 
+## 8 de septiembre de 2026 — la Fase 8, primer paso: ver tu rutina sin señal
+
+El gimnasio es el peor sitio de la semana en cobertura y es justo donde
+hace falta la app. Compite contra un PDF, que abre sin señal y nunca
+falla.
+
+### La decisión de arquitectura: esto NO va en el service worker
+
+Parecía lo obvio y está mal. `sw.js` tiene una regla escrita —no cachea
+NADA de Supabase— y no es una optimización: un caché de HTTP es opaco,
+guarda lo que pase por ahí sin que nadie sepa qué quedó dentro, y por
+ahí viajan datos de salud. La Ley 1581 da derecho a que los datos se
+supriman, y una copia escondida en el disco de un celular queda fuera de
+ese borrado.
+
+**Esa regla no se tocó.** Lo que se hizo es lo contrario de un caché
+opaco, y por eso sí se puede defender:
+
+1. Es una **lista escrita** de qué se guarda. Lo que la app pida mañana
+   no entra solo: hay que agregarlo a mano.
+2. Son **solo tus propios datos**. Tu plan y tus rutinas. Nunca los de
+   otro cliente, nunca `perfil_salud`, nunca el panel del entrenador.
+3. **Se borra.** `olvidarTodo()` en el `salir` de `useSesion`, que es el
+   único sitio por donde pasan todas las salidas. Y como eliminar la
+   cuenta cierra sesión, el derecho de supresión pasa por esa línea.
+
+### El bug que ya existía y nadie había visto
+
+Sin señal, `Hoy` no fallaba: **pintaba "tu entrenador todavía no te
+asignó un plan"**. Mentira, y de las que desaniman — quien la lee en el
+gimnasio cree que el entrenador no hizo su parte.
+
+La causa es que Supabase **no lanza** cuando no hay red: devuelve el
+error dentro de la respuesta, y el código miraba `if (!p)` sin mirar
+`errPlan`. El caso hay que preguntarlo, no atraparlo. Ahora son tres
+pantallas distintas: sin plan, sin señal con algo guardado, y sin señal
+sin nada.
+
+### Lo que sostiene la privacidad es una comprobación, no el borrado
+
+`paqueteUtil` mira **de quién es** lo guardado antes de pintarlo, y lo
+mira ANTES que la fecha: lo de otro no sirve ni recién guardado.
+
+Porque el borrado al cerrar sesión puede no haber corrido nunca — la app
+se cerró de golpe, el sistema mató el proceso, la persona simplemente no
+cerró sesión. Dos personas comparten un celular más seguido de lo que
+parece, y sin esa comprobación el plan de una saldría en la pantalla de
+la otra. Es el error del 2/09 otra vez, con otra ropa.
+
+De paso, el almacén guarda bajo **una sola llave**: entrar con otra
+cuenta pisa lo anterior, así que en el aparato nunca hay más de una
+persona. Guardando por cliente, el celular acabaría con el plan de todo
+el que haya entrado alguna vez.
+
+### Dos semanas, y por qué no "para siempre"
+
+Después de 14 días lo guardado se descarta y la pantalla dice que no hay
+nada. Un plan cambia: el entrenador lo ajusta, lo reemplaza o lo
+termina. **Enseñar la rutina de hace un mes con cara de rutina de hoy es
+peor que no enseñar nada** — quien la sigue hace el entrenamiento
+equivocado y ni se entera. Un plan típico dura cuatro semanas.
+
+Y el aviso dice **de cuándo es** lo que se está viendo. Sin la fecha,
+nadie puede saber si mira lo de esta mañana o lo de la semana pasada, y
+la app estaría pidiendo que confíe en algo que no puede comprobar.
+
+### Las imágenes salieron gratis
+
+Los dibujos viven en `/ilustraciones/`, mismo dominio, así que el service
+worker **ya los guardaba** desde la Fase 3 sin que nadie lo hubiera
+pensado como offline. Las fotos del entrenador están en Supabase Storage
+y quedan fuera, pero la cadena `foto → dibujo → hueco` ya existía. Sin
+señal se ve el dibujo y nadie ve nada roto. Cero trabajo.
+
+### Lo que todavía no se puede sin señal
+
+Empezar y anotar. El botón no se ofrece y **se dice por qué antes de
+tocarlo**: un botón que se ve disponible y falla al pulsarlo se siente
+como que la app está rota. La cola es el paso 2.
+
+### Verificado y no verificado
+
+La fontanería de IndexedDB se probó en un navegador de verdad, no solo
+con Vitest: guarda, lee, rechaza el paquete de otra persona, lo pisa al
+entrar con otra cuenta, y `olvidarTodo` deja la base vacía. **Lo que no
+se pudo probar es el camino entero** —cargar con señal, quitarla y
+volver a abrir— porque hace falta una cuenta. Va con la ronda del
+celular, y ahí es donde de verdad se demuestra.
+
+**291 pruebas, `v0.5.7`.**
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -3289,7 +3382,7 @@ trabajo, no construir más.**
 | ~~Revisar si queda otra función de la base sin pantalla~~ | — | **HECHO EL 8/09.** Ninguna función quedó sin puerta; lo que salió fueron columnas y tablas. Ver la entrada del 8/09 |
 | ~~Decidir `logros_obtenidos.visto`~~ | — | **HECHO EL 8/09.** Se usa: insignia de "nuevo" en Perfil, que se apaga sola a los dos segundos. `v0.5.5` |
 | ~~Decidir `retos` y `perfiles.alias`~~ | — | **HECHO EL 8/09.** Retirados. El SQL está en `11-retiro-retos.sql`, **falta correrlo** |
-| ~~Cerrar `07-constructores.sql`~~ | — | **HECHO EL 8/09.** Bloque agregado; **hay que volver a correr el archivo** |
+| ~~Cerrar `07-constructores.sql`~~ | — | **HECHO Y CORRIDO EL 8/09.** Los cinco archivos con funciones ya tienen su bloque de permisos |
 | La configuración inicial (franja al entrar) | ~3 h | El código ya está preparado |
 | Fase 6 — Recetas y hábitos | 8 h | La única fase de la 1 a la 8 que falta entera |
 | Fase 8 — Instalación y offline | por estimar | Subió: en iPhone no hay avisos sin instalar |
