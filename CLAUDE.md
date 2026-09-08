@@ -577,7 +577,7 @@ README.md                La cara pública del repo. Cuenta el problema (un
                          entrenador que manda PDFs y no sabe quién entrenó),
                          no la lista de funciones.
 src/styles/app.css       Todos los estilos.
-supabase/01-esquema.sql  Las 19 tablas del esquema original (la 20 es
+supabase/01-esquema.sql  El esquema original (la tabla 20 es
                          `logros_catalogo`, en el archivo 08).
 supabase/02-politicas.sql RLS + los índices que la sostienen. Sin esto
                          la base está abierta.
@@ -801,47 +801,51 @@ Tres reglas nuevas que salieron de construirla:
   cada uno al gimnasio es su rutina de vida y no ayuda a programar a
   nadie. Agregado sirve igual.
 
-## Estado (4 de septiembre de 2026)
+## Estado (8 de septiembre de 2026)
 
-**Fases 1 a 5 construidas, y la 7 también** (se saltó la 6 por
-decisión del 4/09). La base existe y está protegida; hay acceso por
-cuenta, tres roles y la Ley 1581 implementada. **255 pruebas** pasan.
-`v0.5.4`.
+**Fases 1 a 5, la 7, y el caché offline de la 8.** La base existe y está
+protegida; hay acceso por cuenta, tres roles y la Ley 1581 implementada.
+**313 pruebas** pasan. `v0.5.8`. Publicada y al día en Vercel.
+
+**Falta entera la Fase 6** (Recetas y hábitos, 8 h) y de la Fase 8 falta
+lo que no es caché: la política de tratamiento publicada y
+`PASOS-FASE-8.md`. La 9 está aparcada.
 
 **OJO CON EL NÚMERO DE VERSIÓN.** El esquema dice que el segundo número
 es "la fase de la hoja de ruta que ya está cerrada", y eso daba por
-hecho que las fases se hacen en orden. Ya no. Mientras la Fase 6 no
-exista, el segundo número se queda en 5 aunque la 7 esté construida —
-que es lo honesto, pero deja de describir bien el estado. Está señalado
-como pregunta abierta en `BITACORA.md`.
+hecho que las fases se hacen en orden. Ya no: con la 7 y media 8
+construidas y la 6 sin empezar, el número se queda en 5. Es lo honesto
+y ya no describe bien el estado. Sigue como pregunta abierta en
+`BITACORA.md` — la decide Kev.
 
-**Lo que el entrenador YA puede hacer sin pedirle nada a nadie:** llenar
+**Lo que el ENTRENADOR ya puede hacer sin pedirle nada a nadie:** llenar
 su biblioteca de ejercicios (uno por uno o pegando una hoja de cálculo),
-archivar, y **asignarle un plan a un cliente** copiando una plantilla.
+archivar, armar rutinas, armar plantillas de varias semanas,
+**asignarle un plan a un cliente**, y **crear los códigos** con los que
+entran. Ya no depende del desarrollo ni del SQL Editor para nada de eso.
 
-**Lo que el CLIENTE ya puede hacer:** ver su rutina del día en `Hoy`,
-empezar el entrenamiento, terminarlo y ganar XP. La racha es real.
+**Lo que ve del otro lado (Fase 5):** Perfil → *Cómo van tus clientes*.
+Quién entrena, quién lleva días sin aparecer, cuánta gente vino cada
+semana y en qué franjas horarias. Es la respuesta a lo que él dijo en el
+cuestionario: que pregunta dos o tres veces por semana porque no se
+entera.
 
-**El entrenador ya trabaja solo (4/09).** Arma sus rutinas, arma sus
-plantillas de varias semanas y se las asigna a un cliente. Ya no depende
-del seed de ejemplo ni del desarrollo para nada de eso.
+**Lo que el CLIENTE ya puede hacer, completo:** entrar con un código,
+ver su rutina del día, empezar el entrenamiento, anotar peso y
+repeticiones serie por serie, terminarlo, ganar XP y logros —con aviso
+de logro nuevo—, ver su historial y sus semanas cumplidas, recibir
+recordatorios, y **actualizar todo lo que escribió**: nombre, correo,
+contraseña y datos de salud.
 
-**Lo que el entrenador ve del otro lado (4/09, Fase 5):** Perfil →
-*Cómo van tus clientes*. Quién entrena, quién lleva días sin aparecer,
-cuánta gente vino cada semana y en qué franjas horarias. Es la respuesta
-a lo que él dijo en el cuestionario: que pregunta dos o tres veces por
-semana porque no se entera.
+**Y todo eso SIN SEÑAL (8/09, Fase 8).** Ver su rutina, empezar, anotar
+sus series y terminar con el celular en modo avión. Se guarda en el
+teléfono y se sube solo cuando vuelve la cobertura. El XP no se inventa:
+lo suma un trigger, así que sin señal la app dice que entra después.
 
-**Lo que el CLIENTE ya puede hacer, completo:** ver su rutina del día,
-empezar el entrenamiento, **anotar peso y repeticiones serie por serie**,
-terminarlo, ganar XP y logros, y ver su historial y sus semanas
-cumplidas.
-
-**LA FASE 7 YA ESTÁ MONTADA (4/09).** Llaves VAPID generadas, SQL
-corrido, secretos guardados, Edge Function desplegada y el cron
-programado `0 * * * *`. Verificado con un disparo manual que devolvió
-200. **Falta probarlo con un teléfono**, que es lo único que no se puede
-hacer desde un computador.
+**LA FASE 7 ESTÁ MONTADA (4/09).** Llaves VAPID generadas, SQL corrido,
+secretos guardados, Edge Function desplegada y el cron programado
+`0 * * * *`. Verificado con un disparo manual que devolvió 200.
+**Falta probarlo con un teléfono.**
 
 Tres cosas de esa infraestructura que hay que recordar antes de tocarla:
 
@@ -855,34 +859,42 @@ Tres cosas de esa infraestructura que hay que recordar antes de tocarla:
 - **`pg_cron` y `pg_net` hay que encenderlos** con `create extension`.
   Vienen preinstalados y apagados.
 
-`06`, `07`, `08` y `09` ya se corrieron.
-
-**Y hay una parte que NO se puede verificar sin un teléfono.** Una
-notificación push necesita HTTPS, un servicio de push real y un
-dispositivo: no hay forma de probarla desde un computador ni con una
-prueba automática. Lo que sí está cubierto con pruebas es lo que se
-rompe en silencio — el iPhone sin instalar, la conversión de la llave, y
-que las horas que la app promete sean las mismas que la base manda.
+**Todos los SQL están corridos**, del `01` al `11`. El `11` retiró
+`retos`, `reto_participantes` y `perfiles.alias` — dos tablas y una
+columna que nunca tuvieron pantalla. El diseño quedó comentado en
+`01-esquema.sql`, no borrado.
 
 **Qué está conectado a la base y qué no: TODO.** `mock.js` se borró el
-4/09 al conectar `Progreso` y los logros. No queda una sola pantalla de
-la app mostrando algo inventado.
+4/09. No queda una sola pantalla mostrando algo inventado.
 
-**Tres pendientes que no bloquean construir, pero sí difundir:**
+=====================================================================
+LO ÚNICO QUE FALTA Y NO ES CÓDIGO: LA RONDA DEL CELULAR
+=====================================================================
 
-1. **HECHA EL 4/09.** El artículo 12 del Decreto 1377 quedó verificado
-   y la puerta de edad está en `Activar`: bloquea menores de 18, no
-   guarda la fecha y ofrece borrar la cuenta. Ya no bloquea difundir.
-2. **Los 30 ejercicios de ejemplo tienen indicaciones inventadas.** Kev
+**Es el trabajo, no construir más.** Está escrita paso a paso y en
+orden en `PASOS-RONDA-CELULAR.md`: nueve rondas, 2-3 horas, más las
+ocho pantallas que nunca se han tocado en un teléfono.
+
+Nada de lo construido el 8/09 se ha visto en un dispositivo real, y hay
+tres cosas que **solo un teléfono puede decir**: si el campo de fecha
+dejó de salirse en iPhone, si el caché offline funciona de verdad, y si
+llega una notificación push.
+
+Los dos huecos más grandes de este proyecto —el invitado sin salida y
+el entrenador sin códigos— no los encontraron 250 pruebas ni seis
+sesiones de código. Los encontró Kev usando la app veinte minutos.
+
+**Dos pendientes que no bloquean construir, pero sí difundir:**
+
+1. **Los 30 ejercicios de ejemplo tienen indicaciones inventadas.** Kev
    decidió el 4/09 no vaciarlas: la URL no va a circular hasta que haya
    una versión más robusta. Se reemplazan cuando el entrenador devuelva
-   su hoja.
-3. **Vercel y el uso no comercial.** Sin verificar.
+   su hoja (`plantilla-ejercicios.csv`).
+2. **Vercel y el uso no comercial.** Sin verificar.
 
-**Decisión del 4/09 que reordena todo lo anterior:** la URL no se le da
-a nadie hasta que exista una versión más seria. Los tres pendientes
-siguen siendo obligatorios antes de difundir, pero ninguno bloquea
-ninguna fase.
+**Decisión del 4/09 que los ordena:** la URL no se le da a nadie hasta
+que exista una versión más seria. Siguen siendo obligatorios antes de
+difundir, pero ninguno bloquea ninguna fase.
 
 **No se publica en tiendas por ahora** (decisión del 1/09): la instalación
 es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
@@ -890,8 +902,9 @@ es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 ## Cómo retomar
 
 1. Leer `BITACORA.md` (el estado y el siguiente paso están al final) y
-   `CONTEXTO-LOCAL.md`.
-2. `npm install && npm run dev`. Verificar con `npm run test` que las **264
+   `CONTEXTO-LOCAL.md`. Si lo que sigue es probar en un teléfono, la
+   lista en orden está en `PASOS-RONDA-CELULAR.md`.
+2. `npm install && npm run dev`. Verificar con `npm run test` que las **313
    pruebas** siguen pasando antes de tocar nada.
 3. **Comprobar que `.env.local` existe.** No está en git y sin él la app
    no arranca: lanza un error explícito en la consola. Las dos variables

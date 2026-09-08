@@ -16,6 +16,12 @@ prueba.
 
 ---
 
+> **También existe como página con casillas**, para marcarla desde el
+> teléfono en vez de leer este archivo. El enlace está en
+> `CONTEXTO-LOCAL.md`, que git ignora: es privado de la cuenta de
+> claude.ai. **Este archivo es la fuente**; si la lista cambia, cambia
+> aquí primero.
+
 ## Antes de empezar
 
 - [ ] **Perfil, abajo del todo, tiene que decir `v0.5.8`.** Si dice otra

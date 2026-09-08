@@ -3462,33 +3462,51 @@ se borró: describía un modelo descartado). Faltan `RUTINA_DE_HOY` (Fase
 
 ---
 
-## Siguiente paso — al cerrar el 4 de septiembre de 2026
+## Siguiente paso — al cerrar el 8 de septiembre de 2026
 
-**Las fases 1 a 5 y la 7 están construidas Y montadas.** La app funciona
-de punta a punta: el entrenador arma contenido, crea códigos, asigna
-planes y ve quién entrena; el cliente entra con un código, entrena,
-anota sus series, ve su progreso y puede recibir recordatorios.
-**250 pruebas. `v0.5.3`.**
+Reemplaza al del 4/09. Ese decía que lo único que faltaba era un
+teléfono; sigue siendo verdad, y ahora hay bastante más que probar.
 
-### LO PRIMERO, y ya no es código: un teléfono
+**Fases 1 a 5, la 7, y el caché offline de la 8.** La app funciona de
+punta a punta y **también sin señal**: el entrenador arma contenido,
+crea códigos, asigna planes y ve quién entrena; el cliente entra con un
+código, entrena, anota sus series —con el celular en modo avión si hace
+falta—, ve su progreso y recibe recordatorios. **313 pruebas. `v0.5.8`.**
 
-Todo lo que queda por verificar necesita un dispositivo real. Es la
-única forma de saber si lo de hoy sirve.
+### LO PRIMERO, y sigue sin ser código: la ronda del celular
 
-1. **Instalar la app en el Android** y hacer el camino completo de un
-   cliente nuevo: crear cuenta, entrar como invitado, canjear un código
-   desde Perfil, ver su plan en Hoy.
-2. **Un entrenamiento entero**: empezar, anotar cuatro series, salir de
-   la app a la mitad, volver y comprobar que lo anotado sigue, terminar.
-3. **Activar los avisos** y disparar la función a mano para ver llegar
-   la notificación. Es lo único de la Fase 7 que no se ha probado.
-4. **El iPhone**, que tiene dos cosas suyas: que la barra de abajo ya no
-   se suba (el cambio de layout del 4/09, sin verificar en iOS), y que
-   los avisos solo funcionan con la app agregada a la pantalla de
-   inicio.
+Ya está escrita, en orden, en **`PASOS-RONDA-CELULAR.md`**. Nueve
+rondas, 2-3 horas, más las ocho pantallas que nunca se han tocado en un
+teléfono. También existe como página con casillas que se marcan desde el
+celular; el enlace está en `CONTEXTO-LOCAL.md`.
 
-Son ocho pantallas que nunca se han tocado en un celular. **Ese es el
-trabajo, no construir más.**
+**Tres cosas solo las puede decir un dispositivo**, y las tres son de
+esta semana:
+
+1. Si el campo de fecha de `Activar` dejó de salirse en **iPhone**. El
+   navegador de un computador no reproduce ese control.
+2. Si el **caché offline** funciona de verdad: la ronda E, con su orden
+   exacto, es la única forma de saberlo.
+3. Si llega una **notificación push**. Es lo único de la Fase 7 que
+   nunca se ha probado de punta a punta.
+
+**El orden de la ronda no es cosmético.** La E se invalida si se saltan
+pasos, y su paso 7 —cerrar la app del todo, todavía en avión, y volver a
+abrirla— es el caso que casi se queda fuera del diseño.
+
+### Lo que se construyó el 8/09, para saber qué se está probando
+
+- **La insignia de "nuevo"** en los logros. La columna, su permiso y su
+  índice llevaban desde la Fase 2 sin pantalla.
+- **La cerradura que faltaba** en `07-constructores.sql`, el único de
+  los cinco SQL con funciones que no tenía bloque de permisos.
+- **El retiro de `retos`, `reto_participantes` y `perfiles.alias`.** Dos
+  tablas y una columna sin pantalla. El diseño quedó comentado.
+- **El campo de fecha de `Activar`**, que se salía solo en iPhone, y la
+  densidad de esa pantalla.
+- **"Tu registro"** en Mis datos: nombre, correo y contraseña, que hasta
+  ese día no se podían cambiar desde ninguna pantalla.
+- **La Fase 8, sus dos pasos**: ver la rutina sin señal, y entrenarla.
 
 ### Lo que quedó pendiente de higiene
 
@@ -3496,33 +3514,24 @@ trabajo, no construir más.**
   hay daño, pero no se debe reutilizar nunca. El par en uso está en
   `vapid.json`, que git ignora.
 - La franja horaria se elige desde Perfil → Avisos. La pantalla de
-  configuración inicial sigue pendiente y **no necesita migración**: la
-  columna existe y el cuerpo de la pantalla ya es un componente aparte.
+  configuración inicial sigue pendiente y **no necesita migración**.
 
 ### Las opciones, por orden de valor
 
 | Qué | Estimado | Qué aporta |
 |---|---|---|
-| **Probarlo todo en un celular** | 2-3 h | Es lo único que puede decir si lo construido sirve. La lista, en orden, está en `PASOS-RONDA-CELULAR.md` (8/09). Subió de 1-2 h: la Fase 8 agregó las rondas del modo avión |
-| ~~Revisar si queda otra función de la base sin pantalla~~ | — | **HECHO EL 8/09.** Ninguna función quedó sin puerta; lo que salió fueron columnas y tablas. Ver la entrada del 8/09 |
-| ~~Decidir `logros_obtenidos.visto`~~ | — | **HECHO EL 8/09.** Se usa: insignia de "nuevo" en Perfil, que se apaga sola a los dos segundos. `v0.5.5` |
-| ~~Decidir `retos` y `perfiles.alias`~~ | — | **HECHO EL 8/09.** Retirados. El SQL está en `11-retiro-retos.sql`, **falta correrlo** |
-| ~~Cerrar `07-constructores.sql`~~ | — | **HECHO Y CORRIDO EL 8/09.** Los cinco archivos con funciones ya tienen su bloque de permisos |
-| La configuración inicial (franja al entrar) | ~3 h | El código ya está preparado |
-| Fase 6 — Recetas y hábitos | 8 h | La única fase de la 1 a la 8 que falta entera |
-| ~~Fase 8 — el caché offline~~ | — | **HECHO EL 8/09**, los dos pasos. Falta de esa fase la política de tratamiento publicada y `PASOS-FASE-8.md` |
+| **La ronda del celular** | 2-3 h | Lo único que puede decir si algo de esto sirve. `PASOS-RONDA-CELULAR.md` |
 | Un punto de aviso en la pestaña de Perfil | ~1 h | La otra mitad de la insignia: hoy solo se ve si abres Perfil. Toca `App.jsx` |
+| La configuración inicial (franja al entrar) | ~3 h | El código ya está preparado |
+| **Fase 6 — Recetas y hábitos** | 8 h | La única fase de la 1 a la 8 que falta entera |
+| Fase 8 — lo que no es caché | por estimar | Política de tratamiento publicada y `PASOS-FASE-8.md` |
 | `.enlace-fila` a 44 px | ~1 h | Accesibilidad, toca todas las pantallas |
+| Verificar Vercel y el uso no comercial | ~30 min | No bloquea construir; sí difundir |
 
-**Y la de siempre, que hoy dejó de ser una recomendación y pasó a ser lo
-único que falta: ponerle la app al entrenador.** Ya no hay ninguna pieza
-del camino de un cliente que dependa del desarrollo. Lo único que sigue
-faltando de su lado es que devuelva `plantilla-ejercicios.csv`.
-
-Los dos huecos más grandes que aparecieron hoy —el invitado sin salida y
-el entrenador sin códigos— no los encontraron 250 pruebas ni seis
-sesiones de código. Los encontró Kev usando la app veinte minutos como
-si fuera un cliente.
+**Y la de siempre, que sigue siendo lo único que falta de verdad:
+ponerle la app al entrenador.** Ya no hay ninguna pieza del camino de un
+cliente que dependa del desarrollo. Lo único que falta de su lado es que
+devuelva `plantilla-ejercicios.csv`.
 
 
 ## Preguntas abiertas
@@ -3536,7 +3545,6 @@ si fuera un cliente.
   contador suelto.
 - **Nombre de la app.** Provisional: "Entrena". El repo va como `fitness-app`
   y renombrarlo después en GitHub no rompe nada.
-- **El artículo 12 del Decreto 1377** (datos de menores). Sin verificar.
 - **Vercel y el uso no comercial.** Sin verificar.
 - ¿El PDF del cuestionario entra al repo público o no? Recomendación: no.
 - Cobertura de los nodos de Bunny en Colombia — se mide cuando llegue el
@@ -3549,4 +3557,6 @@ si fuera un cliente.
 Resueltas: clientes (6 a 15 para arrancar, sin techo), videos (arranca con
 imágenes), certificación de entrenador (en regla), alojar en EE. UU.
 (legal, Circular 005 de 2017), **ilustraciones libres (sí, como relleno —
-aprobadas por el entrenador el 2/09)**.
+aprobadas por el entrenador el 2/09)**, el artículo 12 del Decreto 1377
+(verificado el 4/09: la app bloquea a los menores en vez de intentar el
+flujo del representante legal).
