@@ -224,3 +224,38 @@ $$;
 --
 --   select guardar_rutina(null, 'Prueba', null, null, null, false, '[]');
 --   -- debe fallar con "Solo un administrador puede guardar una rutina."
+
+
+-- ---------------------------------------------------------------------
+-- 3. QUIÉN PUEDE LLAMARLAS
+-- ---------------------------------------------------------------------
+--
+-- ESTE BLOQUE FALTABA HASTA EL 8/09, y era el único de los cinco
+-- archivos con funciones que no lo tenía. Lo encontró el barrido de la
+-- regla 17.
+--
+-- Postgres, por defecto, deja que CUALQUIERA ejecute una función nueva,
+-- y "cualquiera" incluye al rol `anon`: quien abre la app sin haber
+-- iniciado sesión. Así que estas dos llevaban desde la Fase 4
+-- concedidas a todo el mundo sin que nadie lo hubiera escrito.
+--
+-- NO ERA UN HUECO, y conviene decirlo con precisión para no exagerar el
+-- hallazgo: las dos arrancan con `if not es_admin() then raise`, y para
+-- un anónimo eso es falso en la primera línea. Nadie pudo guardar nada.
+--
+-- Lo que sí era es una cerradura de menos. En 03-funciones.sql está
+-- escrito el porqué de las dos: la comprobación de adentro es la
+-- primera, esto es la segunda, y dos cerraduras es justo lo que se
+-- quiere en la puerta que da a los datos de otras personas. El día que
+-- alguien le quite el `es_admin()` a una de las dos pensando que RLS ya
+-- lo cubre, sin esto no queda nada.
+
+revoke all on function guardar_rutina(bigint, text, text, integer, text, boolean, jsonb)
+  from public, anon;
+revoke all on function guardar_plantilla(bigint, text, integer, text, integer, text, jsonb)
+  from public, anon;
+
+grant execute on function guardar_rutina(bigint, text, text, integer, text, boolean, jsonb)
+  to authenticated;
+grant execute on function guardar_plantilla(bigint, text, integer, text, integer, text, jsonb)
+  to authenticated;

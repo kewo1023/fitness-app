@@ -74,7 +74,8 @@ alter table perfiles
 -- SIN ESTO LA PANTALLA DE AJUSTES NO PUEDE GUARDAR NADA.
 --
 -- El archivo 02 hizo `revoke update on perfiles` y devolvió solo dos
--- columnas (`nombre`, `alias`), para que nadie se escriba el XP desde
+-- columnas (`nombre`; el `alias` se retiró el 8/09), para que nadie se
+-- escriba el XP desde
 -- la consola. Una columna nueva nace SIN permiso de escritura: hay que
 -- concederla a mano, una por una, y esa es justamente la gracia del
 -- mecanismo.

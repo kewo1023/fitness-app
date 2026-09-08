@@ -120,8 +120,7 @@ alter table recetas              enable row level security;
 alter table planes_comida        enable row level security;
 alter table plan_comida_dias     enable row level security;
 alter table logros_obtenidos     enable row level security;
-alter table retos                enable row level security;
-alter table reto_participantes   enable row level security;
+-- retos y reto_participantes: retiradas el 8/09, ver 11-retiro-retos.sql
 
 
 -- ---------------------------------------------------------------------
@@ -174,9 +173,10 @@ create policy perfiles_delete_admin on perfiles for delete to authenticated
 -- política de arriba deja al cliente actualizar su propia fila, y eso
 -- incluiría "xp = 999999" escrito desde la consola del navegador. Los
 -- permisos por columna son otra capa distinta, y esta es la que cierra
--- el hueco: de perfiles solo puede escribir nombre y alias.
+-- el hueco: de perfiles solo puede escribir el nombre. (Hasta el 8/09
+-- eran dos columnas; el alias se retiró con los retos.)
 revoke update on perfiles from authenticated;
-grant  update (nombre, alias) on perfiles to authenticated;
+grant  update (nombre) on perfiles to authenticated;
 -- (el XP lo sube el trigger del archivo 03, que corre por fuera de esto)
 --
 -- CONSECUENCIA QUE HAY QUE TENER PRESENTE: esto aplica también al
@@ -491,6 +491,15 @@ revoke update on logros_obtenidos from authenticated;
 grant  update (visto) on logros_obtenidos to authenticated;
 
 -- RETOS ---------------------------------------------------------------
+/* RETIRADO EL 8/09 — barrido de la regla 17.
+   Dos tablas con sus políticas y su índice que ninguna pantalla tocó
+   nunca. Se dejan comentadas y no borradas: son la forma correcta de
+   un reto (participar es opt-in, y aparecer en la tabla de posiciones
+   es OTRO opt-in) y ese diseño costó pensarlo. El día que haya retos
+   se descomenta.
+   Lo que las retiró de la base que ya estaba corriendo es
+   11-retiro-retos.sql; esto es para que un proyecto NUEVO no las cree.
+
 drop policy if exists retos_select on retos;
 create policy retos_select on retos for select to authenticated
   using ((select es_cliente()));   -- un reto sin plan no significa nada
@@ -521,6 +530,7 @@ create policy reto_part_dueno on reto_participantes for all to authenticated
 drop policy if exists reto_part_admin on reto_participantes;
 create policy reto_part_admin on reto_participantes for all to authenticated
   using ((select es_admin())) with check ((select es_admin()));
+*/
 
 
 -- ---------------------------------------------------------------------
@@ -545,8 +555,7 @@ create index if not exists ix_consentimientos_perfil
   on consentimientos (perfil_id, fecha desc);
 create index if not exists ix_logros_cliente
   on logros_obtenidos (cliente_id) where not visto;
-create index if not exists ix_reto_part_cliente
-  on reto_participantes (cliente_id);
+-- (ix_reto_part_cliente se fue con reto_participantes el 8/09)
 create index if not exists ix_invitaciones_sin_usar
   on invitaciones (expira_en) where usada_por is null;
 create index if not exists ix_perfiles_entrenador
@@ -582,8 +591,8 @@ create index if not exists ix_series_ejercicio
 --
 -- SON TRES ROLES, ASÍ QUE LA PRUEBA VA TRES VECES. La misma consulta
 -- con el uuid de un visitante tiene que dar números MENORES que la del
--- cliente: 1 rutina (la pública) contra 4, 2 recetas contra 6, 0 retos,
--- 0 planes. Si el visitante ve lo mismo que el cliente, la app es
+-- cliente: 1 rutina (la pública) contra 4, 2 recetas contra 6, 0 planes.
+-- (Los retos salían de esta cuenta hasta el 8/09; ya no existen.) Si el visitante ve lo mismo que el cliente, la app es
 -- gratis sin querer. Y si el cliente ve menos de lo que debe, pagó por
 -- nada. Los dos errores se ven en el mismo sitio.
 -- Está detallado en PASOS-FASE-2.md, paso 8.

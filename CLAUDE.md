@@ -550,7 +550,10 @@ supabase/07-constructores.sql
                          clonar_plantilla NO son security definer —el
                          admin ya tiene permiso por política, así que RLS
                          sigue siendo el guardia y el es_admin() interno
-                         solo da un mensaje claro. HAY QUE CORRERLO.
+                         solo da un mensaje claro. Desde el 8/09 tiene su
+                         bloque de permisos al final, como los otros
+                         cuatro archivos con funciones: era el único que
+                         no lo tenía. HAY QUE CORRERLO.
 supabase/06-sesiones.sql UN día del plan, UNA sesión completada. Sin este
                          índice el trigger del XP se puede cobrar veinte
                          veces repitiendo el insert: el XP estaba
@@ -619,11 +622,19 @@ src/sections/Notificaciones.jsx
                          Perfil → Avisos. El cuerpo es `Ajustes`, un
                          componente aparte, porque la configuración
                          inicial lo va a reusar tal cual.
+supabase/11-retiro-retos.sql
+                         El retiro de `retos`, `reto_participantes` y
+                         `perfiles.alias`, del barrido del 8/09. SOLO
+                         hace falta en la base que ya está corriendo: los
+                         archivos 01 a 04 ya quedaron sin ellos, con los
+                         bloques comentados para que se vea qué había.
+                         Cambia la firma de `vincular_con_codigo` de tres
+                         argumentos a dos. HAY QUE CORRERLO A MANO.
 herramientas/validar-sql.py
                          Pasa supabase/*.sql por el parser real de
                          Postgres antes de pegarlo. Trae el rodeo para
                          las funciones de trigger, que libpg_query
-                         serializa mal.
+                         serializa mal. Necesita `pip install pglast`.
 ```
 
 Dónde va a entrar lo que sigue: la pantalla de registrar peso y
@@ -635,8 +646,10 @@ aplazado.
 ## La base de datos
 
 Esquema cerrado en `supabase/01-esquema.sql`, con las respuestas del
-entrenador del 1/09. 19 tablas, más `logros_catalogo` que agregó la
-Fase 5 en `08-analitica.sql`: 20.
+entrenador del 1/09. Eran 19 tablas más `logros_catalogo` (Fase 5): 20.
+**Desde el 8/09 son 18**: el barrido de la regla 17 retiró `retos` y
+`reto_participantes`, que nunca tuvieron pantalla. Ver
+`supabase/11-retiro-retos.sql`.
 
 **La decisión que manda sobre todo el modelo: cada cliente tiene su propia
 rutina.** No hay catálogo de programas al que la gente se inscribe. El plan
@@ -830,7 +843,7 @@ es desde el navegador. La Fase 9 se aparca, pero la puerta sigue abierta.
 
 1. Leer `BITACORA.md` (el estado y el siguiente paso están al final) y
    `CONTEXTO-LOCAL.md`.
-2. `npm install && npm run dev`. Verificar con `npm run test` que las **202
+2. `npm install && npm run dev`. Verificar con `npm run test` que las **264
    pruebas** siguen pasando antes de tocar nada.
 3. **Comprobar que `.env.local` existe.** No está en git y sin él la app
    no arranca: lanza un error explícito en la consola. Las dos variables
@@ -899,7 +912,10 @@ Están en `BITACORA.md` con su razón. Las que más se tienden a reproponer:
   terceros cruzándose).
 - Racha diaria (castiga el descanso, que es lo contrario de lo que un
   entrenador quiere; va semanal).
-- Tabla de posiciones obligatoria con nombres reales.
+- Tabla de posiciones obligatoria con nombres reales. (Las tablas de
+  retos existieron en el esquema, sin pantalla, hasta el 8/09. El
+  diseño quedó comentado en `01-esquema.sql` para el día que haya
+  retos de verdad.)
 - Fotos de progreso en la v1.
 - Registro abierto con correo. (El registro en Supabase sí queda abierto,
   pero no da acceso a nada: el acceso lo da el código de invitación.)

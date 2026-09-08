@@ -45,7 +45,9 @@ create table if not exists perfiles (
   rol           text not null default 'visitante'
                   check (rol in ('admin', 'cliente', 'visitante')),
   nombre        text not null,
-  alias         text,          -- lo único que ven los demás en un reto
+  -- alias      text,          RETIRADA EL 8/09 con los retos: era lo
+  --                           único que los demás veían de ti dentro de
+  --                           uno, y nunca tuvo un campo donde escribirse.
   xp            integer not null default 0,
 
   -- SEMILLA PARA CRECER. Hoy hay UN entrenador y dos admin que comparten
@@ -346,6 +348,15 @@ create table if not exists logros_obtenidos (
   unique (cliente_id, logro)
 );
 
+/* RETIRADO EL 8/09 — barrido de la regla 17.
+   Dos tablas con sus políticas y su índice que ninguna pantalla tocó
+   nunca. Se dejan comentadas y no borradas: son la forma correcta de
+   un reto (participar es opt-in, y aparecer en la tabla de posiciones
+   es OTRO opt-in) y ese diseño costó pensarlo. El día que haya retos
+   se descomenta.
+   Lo que las retiró de la base que ya estaba corriendo es
+   11-retiro-retos.sql; esto es para que un proyecto NUEVO no las cree.
+
 create table if not exists retos (
   id            bigint generated always as identity primary key,
   nombre        text not null,
@@ -364,6 +375,7 @@ create table if not exists reto_participantes (
   visible       boolean not null default false,
   primary key (reto_id, cliente_id)
 );
+*/
 
 
 -- ---------------------------------------------------------------------

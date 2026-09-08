@@ -178,10 +178,13 @@ $$;
 -- hay que LEER la tabla de invitaciones, y si el cliente pudiera
 -- leerla, podría listar los códigos sin usar de los demás. Aquí lee la
 -- función, no él.
+-- FIRMA CAMBIADA EL 8/09: llevaba un tercer argumento, `p_alias`, que se
+-- retiró junto con los retos — ninguna pantalla lo mandó nunca. La base
+-- que ya estaba corriendo se actualiza con 11-retiro-retos.sql, que borra
+-- la función de tres argumentos antes de crear esta.
 create or replace function vincular_con_codigo(
   p_codigo text,
-  p_nombre text,
-  p_alias  text default null
+  p_nombre text
 )
 returns perfiles
 language plpgsql
@@ -234,14 +237,11 @@ begin
   -- existía, lo crea. Es el equivalente a "pegar sobre la fila si ya
   -- está, y agregarla si no".
   --
-  -- Ojo con el coalesce del alias: al ascender no se pisa el alias que
-  -- el visitante ya se había puesto, salvo que mande uno nuevo.
-  insert into perfiles (id, rol, nombre, alias, entrenador_id)
+  insert into perfiles (id, rol, nombre, entrenador_id)
   values (
     v_uid,
     'cliente',
     trim(p_nombre),
-    nullif(trim(coalesce(p_alias, '')), ''),
     v_inv.creada_por        -- queda registrado quién lo invitó. Hoy no
                             -- lo usa ninguna política; el día que haya
                             -- un segundo entrenador, es el dato que
@@ -250,7 +250,6 @@ begin
   on conflict (id) do update
      set rol           = 'cliente',
          nombre        = excluded.nombre,
-         alias         = coalesce(excluded.alias, perfiles.alias),
          entrenador_id = excluded.entrenador_id
   returning * into v_perfil;
 
@@ -503,14 +502,14 @@ $$;
 revoke all on function codigo_aleatorio(int)                        from public, anon;
 revoke all on function crear_invitacion(int, int)                   from public, anon;
 revoke all on function crear_perfil_visitante(text)                  from public, anon;
-revoke all on function vincular_con_codigo(text, text, text)        from public, anon;
+revoke all on function vincular_con_codigo(text, text)              from public, anon;
 revoke all on function clonar_plantilla(bigint, uuid, date, int, text) from public, anon;
 revoke all on function mis_datos()                                  from public, anon;
 revoke all on function eliminar_mi_cuenta()                         from public, anon;
 
 grant execute on function crear_invitacion(int, int)                   to authenticated;
 grant execute on function crear_perfil_visitante(text)                  to authenticated;
-grant execute on function vincular_con_codigo(text, text, text)        to authenticated;
+grant execute on function vincular_con_codigo(text, text)              to authenticated;
 grant execute on function clonar_plantilla(bigint, uuid, date, int, text) to authenticated;
 grant execute on function mis_datos()                                  to authenticated;
 grant execute on function eliminar_mi_cuenta()                         to authenticated;

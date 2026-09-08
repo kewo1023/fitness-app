@@ -36,3 +36,48 @@ export function avanceEnElNivel (xp) {
   if (!Number.isFinite(n) || n < 0) return 0
   return (n % XP_POR_NIVEL) / XP_POR_NIVEL
 }
+
+/* ---------------------------------------------------------------------
+   LOS LOGROS: cruzar el catálogo con lo que la persona ya tiene
+   ---------------------------------------------------------------------
+
+   Igual que el XP: aquí NO se otorga nada. Los logros los da un trigger
+   (`otorgar_logros`, en 08-analitica.sql) cuando una sesión pasa a
+   completada. Esto solo junta dos listas para pintarlas.
+
+   POR QUÉ ESTÁ AQUÍ Y NO DENTRO DE `Perfil.jsx`. Porque decide si a
+   alguien se le avisa o no de algo, y eso se prueba sin fingir un
+   navegador. Es la misma razón por la que `hayQueRecargarPerfil` vive
+   en `acceso.js` y no dentro del hook. */
+
+/** Junta el catálogo con lo conseguido. Devuelve el catálogo COMPLETO,
+ *  en su orden, con dos banderas por logro: si lo tiene, y si es la
+ *  primera vez que lo va a ver. */
+export function cruzarLogros (catalogo, obtenidos) {
+  // Un Map y no un Set, que es lo que había antes: de cada logro
+  // conseguido hacen falta DOS datos, que lo tiene y si ya lo vio.
+  const mios = new Map()
+  for (const l of obtenidos || []) mios.set(l.logro, l)
+
+  return (catalogo || []).map(l => {
+    const mio = mios.get(l.clave)
+    return {
+      ...l,
+      obtenido: Boolean(mio),
+      // `visto === false` EXACTO, y no `!mio.visto`. Si algún día una
+      // consulta se deja la columna por fuera, `visto` llega
+      // `undefined` y `!undefined` es `true`: saldrían TODOS como
+      // nuevos, y además para siempre, porque la marca solo se escribe
+      // sobre las filas que la base ve sin ver. Preguntando por el
+      // `false` exacto, el error se cae del lado de no avisar de más,
+      // que es el lado barato.
+      nuevo: Boolean(mio) && mio.visto === false
+    }
+  })
+}
+
+/** ¿Hay algo que la persona todavía no ha visto? Sirve para no mandar
+ *  una escritura a la base cada vez que alguien abre su perfil. */
+export function hayLogrosNuevos (lista) {
+  return (lista || []).some(l => l.nuevo)
+}

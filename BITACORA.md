@@ -2738,6 +2738,298 @@ ninguna tiene la consecuencia de esta, que cambia quién eres.
 
 ---
 
+## 8 de septiembre de 2026 — el barrido de la regla 17
+
+La regla 17 nació el 4/09, cuando aparecieron dos funciones de la base
+sin ninguna pantalla desde donde tocarlas: `vincular_con_codigo`, que
+sabía ascender a un visitante desde el 1/09, y `crear_invitacion`, que
+existía desde la Fase 2. Ese día la bitácora dejó escrito revisar si
+quedaba alguna más. Son cuatro días (bitácora del 4/09, hoy 8/09).
+
+Se cruzaron **20 funciones, 4 vistas, 22 tablas y sus columnas** contra
+todo lo que llaman `src/` y la Edge Function.
+
+### La buena: no quedó ninguna función sin puerta
+
+Las 16 funciones que la app o el cron deberían llamar tienen todas quien
+las llame. `crear_invitacion` desde `Invitaciones`, `vincular_con_codigo`
+desde `Activar` y `Canjear`, `clonar_plantilla` desde `AsignarPlan`, los
+dos constructores desde `Rutinas` y `Plantillas`, `mis_datos` y
+`eliminar_mi_cuenta` desde `MisDatos`, las cuatro métricas desde
+`PanelClientes`, `destinatarios_push` y `sumar_fallo_push` desde la Edge
+Function, y `otorgar_xp` y `otorgar_logros` desde sus dos triggers, que
+existen. Las cuatro que no se llaman desde el navegador —`es_admin`,
+`es_cliente`, `codigo_aleatorio` y `hora_recordatorio`— tienen su
+llamador dentro del propio SQL.
+
+Las cuatro vistas se leen todas. Y al revés tampoco hay huérfanos:
+ningún `.rpc()` de la app apunta a algo que no exista.
+
+### Lo que sí apareció, y es la misma regla un nivel más abajo
+
+La regla se escribió pensando en funciones. Lo que quedó sin pantalla no
+son funciones: son **columnas y tablas con toda su infraestructura
+montada**. Cuesta más verlo, porque una columna sin usar no se lista en
+ningún sitio; hay que cruzar el esquema contra el código a mano.
+
+**1. `logros_obtenidos.visto`.** Tiene las tres piezas y cero
+escritores: la columna, un `grant update (visto)` para que el navegador
+pueda marcarla, y un índice parcial `(cliente_id) where not visto`
+construido a la medida de una consulta que nadie escribe. `Perfil` solo
+hace `.select('logro')`.
+
+Es el caso puro de la regla 17: no falla nada, y a la vez **la app no
+puede avisar "ganaste un logro"**. Los muestra todos iguales, para
+siempre. Un logro que se entera igual que los de hace tres semanas no
+premia nada. Y el índice se mantiene en cada escritura sin servir a
+ninguna consulta.
+
+**2. `retos`, `reto_participantes` y `perfiles.alias`.** Dos tablas, sus
+cuatro políticas de RLS, un índice, y la columna `alias` con permiso de
+escritura desde el navegador y ni un campo donde escribirla. Hasta el
+ritual de suplantación las cuenta: dice "0 retos".
+
+No están en ninguna fase de la hoja de ruta. La bitácora descartó la
+tabla de posiciones obligatoria con nombres reales, pero estas tablas
+son la versión buena de esa idea —participar es opt-in y lo que se ve es
+el alias, no el nombre— y quedaron sin dueño: ni construidas ni
+descartadas.
+
+**3. `planes_comida` y `plan_comida_dias`.** Es la Fase 6, sin empezar.
+No es un hallazgo; se anota para que el barrido quede completo y para
+que nadie las vuelva a "descubrir" dentro de un mes.
+
+### La nota menor: el único SQL sin bloque de permisos
+
+`07-constructores.sql` es el único de los cinco archivos con funciones
+que no termina con su `revoke`/`grant`. En Postgres `create function`
+concede `execute` a `public` por defecto, así que `anon` puede llamar
+`guardar_rutina` y `guardar_plantilla`.
+
+**No es un hueco.** Las dos arrancan con `if not es_admin() then raise`,
+y para un anónimo eso es falso en la primera línea. Pero rompe el patrón
+de los otros cuatro archivos, y el patrón es justamente lo que hace que
+se note cuando falta. Si algún día alguien le quita el `es_admin()` a
+una de las dos pensando que RLS lo cubre, no queda nada.
+
+### La lección, que corrige la regla 17 sin contradecirla
+
+**Una función sin pantalla se encuentra buscando; una columna sin
+pantalla solo se encuentra barriendo.** La función tiene nombre propio y
+un `grant` que la delata. La columna vive dentro de un `create table` de
+veinte líneas y no aparece en ninguna lista.
+
+Por eso la pregunta de la regla 17 —quién la va a llamar y desde qué
+pantalla— hay que hacérsela también a cada columna que se agrega, y muy
+en especial a las **banderas**: `visto`, `publicado`, `visible`. Una
+bandera es una columna que existe solo para que una pantalla la cambie.
+Sin esa pantalla no es un dato incompleto, es un dato que miente: dice
+que ningún logro se ha visto nunca.
+
+### Qué queda decidido y qué no
+
+- **RESUELTO EL MISMO DÍA: se usa.** La insignia de "nuevo" está en
+  `Perfil` y se apaga sola. Ver la entrada de abajo. Cero SQL: la
+  columna, la política `logros_marcar_visto`, el permiso por columna y
+  el índice parcial estaban todos puestos desde la Fase 2. Solo faltaba
+  la pantalla, que es literalmente el enunciado de la regla 17.
+- **RESUELTO EL MISMO DÍA: se borran.** El diseño queda comentado en
+  `01-esquema.sql`, no eliminado. Ver la entrada de abajo — hubo que
+  tocar cuatro archivos más de los previstos.
+- **HECHO EL MISMO DÍA.** El bloque está al final del 07. Ver la entrada
+  de abajo.
+
+Ninguna de las tres bloquea nada. Van aquí y no en la cabeza, que es lo
+que pide la regla 17.
+
+---
+
+## 8 de septiembre de 2026 — la insignia de "nuevo", que la base esperaba desde la Fase 2
+
+Primer hallazgo del barrido, cerrado el mismo día. **No se escribió ni
+una línea de SQL**, y eso es lo que hay que quedarse de esta entrada: la
+columna `visto`, la política `logros_marcar_visto`, el `grant update
+(visto)` y el índice parcial `(cliente_id) where not visto` llevaban
+desde la Fase 2 en la base, montados y correctos. Faltaba la pantalla.
+
+### Qué hace
+
+Un logro recién ganado sale con una píldora verde que dice "nuevo".
+Sigue ahí mientras la persona esté mirando, y a la siguiente visita ya
+no. Lo demás no se movió: "listo" y "pendiente" siguen igual.
+
+### Las cuatro decisiones
+
+**1. Dos segundos, no cero.** Marcar al cargar habría sido más simple y
+está mal: Perfil no es solo Perfil, es la puerta a Mis datos, a Avisos,
+a Créditos y —para el entrenador— a su biblioteca y a *Cómo van tus
+clientes*. Quien pasa por aquí de camino a otra cosa se gastaría la
+insignia sin haberla visto, y al entrenador le pasaría todos los días.
+
+**2. El reloj solo corre en la portada.** Abrir una subpantalla **no
+desmonta `Perfil`**: el componente sigue vivo y solo devuelve otra cosa.
+Sin comprobarlo, el reloj seguiría contando con la lista de logros fuera
+de la vista y marcaría como visto algo que en ese momento no está en
+ninguna pantalla. Es la misma trampa de los `return` tempranos que ya
+tiene este archivo, vista desde el otro lado.
+
+**3. Guardar la marca NO apaga la insignia.** El efecto escribe en la
+base y deja `logros` intacto a propósito. Apagarla en el momento de
+guardarla sería quitársela de delante de los ojos, que es lo mismo que
+no habérsela mostrado nunca.
+
+**4. `visto === false` exacto, no `!visto`.** Si alguna vez una consulta
+se deja la columna por fuera, `visto` llega `undefined` y `!undefined`
+es `true`: saldrían todos como nuevos, **y para siempre**, porque la
+marca solo se escribe sobre las filas que la base ve sin ver. Con la
+comparación exacta el error se cae del lado de no avisar de más, que es
+el lado barato. Tiene su prueba.
+
+### El naranja que no se usó
+
+La insignia es verde (`--acento`) con relleno, no naranja. Era la
+tentación obvia —un aviso pide color de aviso— y habría roto la decisión
+del 1/09: `--senal` es solo para la racha, y en cuanto el naranja
+aparece en dos sitios deja de significar uno. El relleno es lo que hace
+el trabajo que iba a hacer el color: dentro de una lista donde "listo"
+ya va en verde, una palabra más en verde no destaca; una píldora sí.
+
+### Dónde vive la lógica
+
+`cruzarLogros` y `hayLogrosNuevos`, en `gamificacion.js`, con **9
+pruebas**. Van ahí y no dentro de la pantalla por la razón de siempre en
+este proyecto: deciden si a alguien se le avisa o no de algo, y eso se
+prueba sin fingir un navegador. `hayLogrosNuevos` existe para que abrir
+el perfil no mande una escritura a la base cada vez.
+
+**264 pruebas, `v0.5.5`.**
+
+### Lo que NO se pudo verificar
+
+Se comprobó la píldora en claro y en oscuro a 375 px, y que la app carga
+sin errores en consola. **El camino completo no**: para verlo hay que
+entrar con una cuenta que tenga un logro sin ver, y eso va en la ronda
+del celular. Lo que puede fallar ahí es la escritura —que la política
+acepte el `update`—, no el dibujo.
+
+### Lo que sigue faltando, y es la mitad grande
+
+La insignia solo se ve **si la persona abre Perfil**. Nada le avisa de
+que hay algo nuevo desde la barra de abajo o desde `Hoy`. Un punto en la
+pestaña de Perfil sería lo que cierra el círculo, y no es gratis: hay
+que subir la consulta a `App.jsx` para que el armazón sepa el número, y
+el armazón hoy no sabe nada de logros. Va como pendiente, no como
+decisión tomada.
+
+---
+
+## 8 de septiembre de 2026 — la cerradura que faltaba y los retos que se fueron
+
+Los otros dos hallazgos del barrido, cerrados el mismo día. Ninguno de
+los dos se pudo hacer donde parecía.
+
+### La cerradura de `07-constructores.sql`
+
+Era el único de los cinco archivos con funciones que no terminaba con su
+`revoke`/`grant`. Postgres, por defecto, concede `execute` a `public` en
+cada función nueva, y `public` incluye a `anon`: quien abre la app sin
+haber iniciado sesión. O sea que `guardar_rutina` y `guardar_plantilla`
+llevaban desde la Fase 4 concedidas a todo el mundo.
+
+**No era un hueco, y decirlo con precisión importa.** Las dos arrancan
+con `if not es_admin() then raise`, que para un anónimo es falso en la
+primera línea. Nadie pudo guardar nunca nada. Lo que faltaba era la
+segunda cerradura, que es la que el propio `03-funciones.sql` explica
+por qué existe: la comprobación de adentro es la primera, el permiso es
+la segunda, y el día que alguien le quite el `es_admin()` a una de las
+dos pensando que RLS ya lo cubre, sin la segunda no queda nada.
+
+El bloque se agregó al final del 07, con la misma forma que los otros
+cuatro. **Hay que volver a correr el archivo**; es repetible.
+
+### Los retos, y por qué no bastó con un archivo nuevo
+
+La decisión era borrar: dos tablas, cuatro políticas, un índice y la
+columna `alias`, todo montado y sin una sola pantalla. Un reto vive de
+que haya gente compitiendo, y el entrenador arranca con 6 a 15 clientes
+que todavía no han entrado. Mientras tanto no son gratis: cada tabla con
+RLS entra en el ritual de suplantación, o sea que hay que volver a
+comprobarlas cada vez que se toca la seguridad, para siempre, por una
+función que no existe.
+
+Lo que se creía un archivo `11` y ya, resultó tocar cuatro archivos más.
+
+**Lo que apareció al tirar del hilo:**
+
+- `02-politicas.sql` le activa RLS a `retos`. Sobre una tabla borrada,
+  eso es un error.
+- `04-ejemplo.sql` le **inserta una fila**. Misma historia.
+- `03-funciones.sql` menciona `alias` dentro de `vincular_con_codigo`,
+  que es **la única puerta por la que alguien se vuelve cliente**.
+- Y el `alias` no se puede borrar sin retirar antes esa función, porque
+  la columna no se deja borrar mientras algo la nombre.
+
+### La regla que hubo que doblar, y por qué
+
+La regla dice que un cambio nuevo va en un archivo nuevo, nunca editando
+los que ya se corrieron. Aquí se editaron el 01, el 02, el 03 y el 04.
+
+**La razón es que esto no agrega: quita.** Un archivo `11` que borre las
+tablas deja al 02 activando RLS sobre algo que no existe y al 04
+insertándole filas, así que la serie completa deja de poder correrse — y
+que sea repetible es exactamente lo que la regla protege. Cumplir la
+letra habría roto el propósito.
+
+Lo que sí se respetó: **no se borró el diseño, se comentó.** El bloque
+de `retos` sigue entero en `01-esquema.sql` dentro de un comentario, con
+sus dos opt-in separados y la explicación de por qué mostrar "Ana hizo
+12 entrenamientos" a otras personas es publicar un dato de salud de Ana.
+Eso costó pensarlo y el día que haya retos se descomenta.
+
+Y el reparto quedó así: **los archivos 01 a 04 son para un proyecto
+nuevo, y el 11 es para la base que ya está corriendo.** El 11 va con
+`if exists` y `create or replace` de punta a punta, así que correrlo
+sobre una base nueva no hace nada.
+
+### `alias` se fue; `entrenador_id` se queda
+
+Se parecen —las dos son columnas que ninguna política usa— y la
+diferencia es la que decide: **`entrenador_id` SE LLENA.**
+`vincular_con_codigo` la escribe en cada canje desde el 1/09, así que
+borrarla perdería datos reales que hoy existen. `alias` siempre llegó
+nula: ninguna pantalla la mandó nunca. Una es una semilla, la otra era
+un hueco.
+
+De paso: quitar el `alias` quitó también el `grant update (alias) on
+perfiles`, que le daba al navegador permiso de escribir una columna sin
+ningún sitio donde escribirla.
+
+### Lo que NO se pudo verificar
+
+Los diez archivos pasan por el parser real de Postgres
+(`herramientas/validar-sql.py`, que necesitaba `pip install pglast` y
+ahora está instalado). **Eso dice que la sintaxis está bien y nada más.**
+
+Lo que hay que mirar al correrlo, y va con la ronda del celular:
+
+1. Crear cuenta sin código → visitante. Canjear uno desde Perfil →
+   cliente, con su plan en Hoy. Es lo único que este cambio pudo romper.
+2. `select proname, pronargs from pg_proc where proname =
+   'vincular_con_codigo';` tiene que dar **una** fila, con 2. Si da dos,
+   el `drop` de la firma vieja no corrió y PostgREST tiene que adivinar.
+
+**264 pruebas. La versión no sube: `src/` no cambió en esta parte, y el
+número está para saber qué bundle está corriendo.**
+
+### Lo que queda del barrido
+
+Nada. Los tres hallazgos cerrados el mismo día: la insignia de "nuevo",
+la cerradura del 07 y el retiro de los retos. Sigue pendiente la mitad
+que se anotó aparte —el punto de aviso en la pestaña de Perfil— y esa no
+es deuda vieja: es función nueva.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -2872,10 +3164,14 @@ trabajo, no construir más.**
 | Qué | Estimado | Qué aporta |
 |---|---|---|
 | **Probarlo todo en un celular** | 1-2 h | Es lo único que puede decir si lo construido sirve |
-| Revisar si queda otra función de la base sin pantalla | ~1 h | La lección del 4/09; ese día salieron dos de golpe |
+| ~~Revisar si queda otra función de la base sin pantalla~~ | — | **HECHO EL 8/09.** Ninguna función quedó sin puerta; lo que salió fueron columnas y tablas. Ver la entrada del 8/09 |
+| ~~Decidir `logros_obtenidos.visto`~~ | — | **HECHO EL 8/09.** Se usa: insignia de "nuevo" en Perfil, que se apaga sola a los dos segundos. `v0.5.5` |
+| ~~Decidir `retos` y `perfiles.alias`~~ | — | **HECHO EL 8/09.** Retirados. El SQL está en `11-retiro-retos.sql`, **falta correrlo** |
+| ~~Cerrar `07-constructores.sql`~~ | — | **HECHO EL 8/09.** Bloque agregado; **hay que volver a correr el archivo** |
 | La configuración inicial (franja al entrar) | ~3 h | El código ya está preparado |
 | Fase 6 — Recetas y hábitos | 8 h | La única fase de la 1 a la 8 que falta entera |
 | Fase 8 — Instalación y offline | por estimar | Subió: en iPhone no hay avisos sin instalar |
+| Un punto de aviso en la pestaña de Perfil | ~1 h | La otra mitad de la insignia: hoy solo se ve si abres Perfil. Toca `App.jsx` |
 | `.enlace-fila` a 44 px | ~1 h | Accesibilidad, toca todas las pantallas |
 
 **Y la de siempre, que hoy dejó de ser una recomendación y pasó a ser lo

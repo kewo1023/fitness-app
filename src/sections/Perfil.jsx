@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Pantalla from '../components/Pantalla.jsx'
 import MisDatos from './MisDatos.jsx'
 import PanelEntrenador from './PanelEntrenador.jsx'
@@ -7,7 +7,7 @@ import Creditos from './Creditos.jsx'
 import Notificaciones from './Notificaciones.jsx'
 import Canjear from './Canjear.jsx'
 import { supabase } from '../lib/supabase.js'
-import { nivelDesdeXp } from '../lib/gamificacion.js'
+import { nivelDesdeXp, cruzarLogros, hayLogrosNuevos } from '../lib/gamificacion.js'
 import { VERSION, avisoDerechos } from '../lib/version.js'
 
 /* El perfil. Ya con el usuario REAL de la base.
@@ -21,12 +21,36 @@ import { VERSION, avisoDerechos } from '../lib/version.js'
  * `08-analitica.sql`). Esta pantalla solo pregunta cuáles tiene. Si se
  * dieran desde el navegador, cualquiera con la consola abierta se los
  * regalaría todos.
+ *
+ * LO QUE SÍ ESCRIBE ESTA PANTALLA ES `visto`, y es lo único. Un permiso
+ * por columna en la base (`grant update (visto)`) hace que sea lo único
+ * que PUEDE escribir, aunque alguien cambie este archivo.
  */
 
 const NOMBRE_DEL_ROL = {
   admin:     'Entrenador',
   cliente:   'Cliente',
   visitante: 'Invitado'
+}
+
+/* Cuánto tiene que estar la lista en pantalla antes de dar un logro por
+   visto.
+
+   POR QUÉ NO ES CERO. Perfil no es solo Perfil: es la puerta a Mis
+   datos, a Avisos, a Créditos y —para el entrenador— a su biblioteca y
+   al panel de clientes. Marcando al cargar, quien pasa por aquí de
+   camino a otra cosa se gasta la insignia sin haberla visto, y eso le
+   pasa al entrenador TODOS LOS DÍAS. Dos segundos es tiempo de sobra
+   para leer una fila y poquísimo para molestar a quien sí se quedó. */
+const SEGUNDOS_PARA_DARLO_POR_VISTO = 2
+
+/* Los tres estados de una fila de logro. Va aparte porque dentro del
+   JSX serían dos ternarios anidados, que es justo la clase de línea que
+   se lee mal el día que haya que cambiarla. */
+function estadoDelLogro (l) {
+  if (l.nuevo)    return { clase: 'estado es-nuevo', texto: 'nuevo' }
+  if (l.obtenido) return { clase: 'estado es-ok',    texto: 'listo' }
+  return { clase: 'estado', texto: 'pendiente' }
 }
 
 export default function Perfil ({ perfil, alSalir, recargarPerfil }) {
@@ -37,6 +61,10 @@ export default function Perfil ({ perfil, alSalir, recargarPerfil }) {
   const [viendoAvisos, setViendoAvisos] = useState(false)
   const [canjeando, setCanjeando] = useState(false)
   const [logros, setLogros] = useState([])
+  // Si ya se marcaron en esta visita. Es un ref y no un estado porque
+  // cambiarlo NO tiene que repintar nada: la insignia se queda puesta
+  // hasta que la persona se vaya. Ver el comentario del efecto.
+  const yaMarcados = useRef(false)
 
   /* El catálogo y lo conseguido se piden por separado y se cruzan aquí.
    *
@@ -57,7 +85,7 @@ export default function Perfil ({ perfil, alSalir, recargarPerfil }) {
           .select('clave, nombre, descripcion, orden')
           .order('orden'),
         supabase.from('logros_obtenidos')
-          .select('logro')
+          .select('logro, visto')
           .eq('cliente_id', perfil.id)     // regla 13: la política dice
                                            // lo mismo, el filtro se
                                            // escribe igual
@@ -70,11 +98,55 @@ export default function Perfil ({ perfil, alSalir, recargarPerfil }) {
       }
       if (mios.error) console.error('No se pudieron leer tus logros:', mios.error)
 
-      const tiene = new Set((mios.data || []).map(l => l.logro))
-      setLogros((cat.data || []).map(l => ({ ...l, obtenido: tiene.has(l.clave) })))
+      setLogros(cruzarLogros(cat.data, mios.data))
     })()
     return () => { vivo = false }
   }, [perfil.id, perfil.rol])
+
+  /* La portada de Perfil, o sea: ninguna subpantalla abierta.
+   *
+   * Hace falta saberlo porque abrir Mis datos o la biblioteca NO
+   * desmonta esta pantalla — solo hace que devuelva otra cosa. Sin esta
+   * condición, el reloj de abajo seguiría corriendo con la lista de
+   * logros fuera de la vista, y marcaría como visto algo que en ese
+   * momento no está en ninguna pantalla. */
+  const enPortada = !viendoDatos && !viendoPanel && !viendoClientes &&
+                    !viendoCreditos && !viendoAvisos && !canjeando
+
+  /* DAR LOS LOGROS POR VISTOS. Es la segunda mitad de la insignia, y la
+   * que decide si sirve de algo: una marca que nadie apaga convierte
+   * "nuevo" en una palabra decorativa que sale siempre.
+   *
+   * Hasta hoy esta escritura no existía en ninguna parte de la app. La
+   * columna, su permiso y hasta un índice hecho a la medida de esta
+   * consulta llevaban desde la Fase 2 en la base, sin nadie que los
+   * usara: es el hallazgo del barrido del 8/09.
+   *
+   * LO QUE NO HACE, Y ES A PROPÓSITO: no toca `logros`. La insignia se
+   * queda puesta hasta que la persona salga de la pantalla. Apagarla en
+   * el momento de guardarla sería quitársela delante de los ojos, que
+   * es lo mismo que no habérsela mostrado. */
+  useEffect(() => {
+    if (!enPortada || yaMarcados.current) return
+    if (!hayLogrosNuevos(logros)) return
+
+    const reloj = setTimeout(async () => {
+      yaMarcados.current = true
+      const { error } = await supabase.from('logros_obtenidos')
+        .update({ visto: true })
+        .eq('cliente_id', perfil.id)   // regla 13, aunque la política de
+                                       // update ya diga lo mismo
+        .eq('visto', false)            // y este es el que usa el índice
+                                       // parcial `where not visto`
+      // Falla en silencio A PROPÓSITO: si la marca no se guarda, lo peor
+      // que pasa es que la insignia vuelva a salir mañana. Un aviso en
+      // pantalla por esto sería alarmar por algo que no le costó nada a
+      // nadie.
+      if (error) console.error('No se pudieron marcar los logros como vistos:', error)
+    }, SEGUNDOS_PARA_DARLO_POR_VISTO * 1000)
+
+    return () => clearTimeout(reloj)
+  }, [enPortada, logros, perfil.id])
 
   if (viendoCreditos) {
     return <Creditos alVolver={() => setViendoCreditos(false)} />
@@ -159,18 +231,19 @@ export default function Perfil ({ perfil, alSalir, recargarPerfil }) {
             Logros <span className="tenue">{obtenidos} de {logros.length}</span>
           </h3>
           <ul className="lista">
-            {logros.map(l => (
-              <li key={l.clave}
-                  className={'fila' + (l.obtenido ? '' : ' es-bloqueado')}>
-                <span className="fila-datos">
-                  <strong>{l.nombre}</strong>
-                  <small>{l.descripcion}</small>
-                </span>
-                <span className={'estado' + (l.obtenido ? ' es-ok' : '')}>
-                  {l.obtenido ? 'listo' : 'pendiente'}
-                </span>
-              </li>
-            ))}
+            {logros.map(l => {
+              const estado = estadoDelLogro(l)
+              return (
+                <li key={l.clave}
+                    className={'fila' + (l.obtenido ? '' : ' es-bloqueado')}>
+                  <span className="fila-datos">
+                    <strong>{l.nombre}</strong>
+                    <small>{l.descripcion}</small>
+                  </span>
+                  <span className={estado.clase}>{estado.texto}</span>
+                </li>
+              )
+            })}
           </ul>
         </>
       )}

@@ -396,6 +396,24 @@ button {
 
 .estado.es-ok { color: var(--acento); font-weight: 600; }
 
+/* La insignia de un logro recién ganado.
+
+   ES UN RELLENO Y NO SOLO UNA LETRA DE COLOR como `.es-ok`, porque
+   tiene que destacar dentro de una lista donde YA hay texto en verde:
+   si "nuevo" y "listo" se distinguen solo por la palabra, la insignia
+   no avisa de nada.
+
+   NO LLEVA EL NARANJA, y esa es la parte que hay que respetar. `--senal`
+   está reservado para la racha (decisión del 1/09): en cuanto el naranja
+   aparece en dos sitios a la vez deja de significar uno. */
+.estado.es-nuevo {
+  color: var(--sobre-acento);
+  background: var(--acento);
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
 .fila.es-bloqueado { opacity: .55; }
 .fila.es-proxima { border-style: dashed; }
 

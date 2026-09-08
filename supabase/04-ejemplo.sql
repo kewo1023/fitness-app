@@ -235,11 +235,15 @@ on conflict do nothing;
 -- decisiones separadas del cliente (entrar al reto, y hacerse visible).
 -- Ver la política de reto_participantes en el archivo 02.
 
+-- RETIRADO EL 8/09: la tabla ya no existe. Ver 11-retiro-retos.sql.
+-- Sin comentar esto, volver a correr la semilla falla.
+/*
 insert into retos (nombre, descripcion, inicio, fin, meta_sesiones) values
   ('Reto de enero',
    'Doce entrenamientos completados durante el mes. Participar es opcional.',
    date '2027-01-01', date '2027-01-31', 12)
 on conflict do nothing;
+*/
 
 
 -- =====================================================================
