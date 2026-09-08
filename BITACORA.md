@@ -3503,7 +3503,7 @@ trabajo, no construir más.**
 
 | Qué | Estimado | Qué aporta |
 |---|---|---|
-| **Probarlo todo en un celular** | 1-2 h | Es lo único que puede decir si lo construido sirve |
+| **Probarlo todo en un celular** | 2-3 h | Es lo único que puede decir si lo construido sirve. La lista, en orden, está en `PASOS-RONDA-CELULAR.md` (8/09). Subió de 1-2 h: la Fase 8 agregó las rondas del modo avión |
 | ~~Revisar si queda otra función de la base sin pantalla~~ | — | **HECHO EL 8/09.** Ninguna función quedó sin puerta; lo que salió fueron columnas y tablas. Ver la entrada del 8/09 |
 | ~~Decidir `logros_obtenidos.visto`~~ | — | **HECHO EL 8/09.** Se usa: insignia de "nuevo" en Perfil, que se apaga sola a los dos segundos. `v0.5.5` |
 | ~~Decidir `retos` y `perfiles.alias`~~ | — | **HECHO EL 8/09.** Retirados. El SQL está en `11-retiro-retos.sql`, **falta correrlo** |

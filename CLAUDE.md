@@ -568,6 +568,11 @@ src/components/BotonTema.jsx
                          El botón discreto del encabezado.
 src/styles/theme.css     SOLO variables. Claro y oscuro (por data-tema,
                          sin @media), más los tres niveles.
+PASOS-RONDA-CELULAR.md   La lista para probar la app en un teléfono, en
+                         orden. El orden no es cosmético: la ronda del
+                         modo avión deja de probar nada si se saltan
+                         pasos. Se actualiza cada vez que se construye
+                         algo que solo un celular puede verificar.
 README.md                La cara pública del repo. Cuenta el problema (un
                          entrenador que manda PDFs y no sabe quién entrenó),
                          no la lista de funciones.
