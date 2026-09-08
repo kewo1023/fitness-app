@@ -399,6 +399,22 @@ src/sections/Acceso.jsx  Entrar o crear cuenta. Solo correo y clave.
 src/sections/Activar.jsx Nombre, código opcional y consentimientos.
 src/sections/MisDatos.jsx
                          Habeas data: conocer, actualizar, suprimir.
+                         Desde el 8/09 "actualizar" es de verdad TODO:
+                         arriba está "Tu registro" —nombre, correo y
+                         contraseña—, que hasta ese día no se podían
+                         cambiar desde ninguna pantalla. El correo no
+                         vive en `perfiles` sino en la tabla de acceso de
+                         Supabase, así que va por `auth.updateUser` y no
+                         por un update. La descarga le agrega el correo
+                         en el navegador, porque `mis_datos()` no lo
+                         puede ver desde su esquema.
+src/lib/cuenta.js        Si un nombre, un correo o una contraseña se
+                         pueden mandar, si de verdad cambiaron, y qué
+                         pasó al cambiar el correo. Esa última es la que
+                         importa: Supabase a veces deja el correo nuevo
+                         ESPERANDO confirmación, y decir "listo" ahí deja
+                         a alguien fuera de su cuenta. 16 pruebas. NO
+                         toca la base.
 src/sections/            Una por pestaña: Hoy, Ejercicios, Progreso,
                          Recetas, Perfil.
 src/sections/Ejercicios.jsx

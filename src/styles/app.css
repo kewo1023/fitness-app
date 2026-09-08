@@ -279,6 +279,17 @@ button {
 
 .destacada { gap: 8px; }
 
+/* Un segundo formulario dentro de la misma tarjeta. Lo usa "Tu
+   registro": cambiar el nombre o el correo y cambiar la contraseña son
+   dos acciones distintas, con su propio botón, y pegadas sin nada en
+   medio se leen como un solo formulario largo con dos botones — o sea,
+   como si "Guardar cambios" fuera a guardar también la contraseña. */
+.formulario-aparte {
+  border-top: 1px solid var(--linea-suave);
+  padding-top: 20px;
+  margin-top: 6px;
+}
+
 .boton-principal {
   margin-top: 6px;
   background: var(--acento);
@@ -599,9 +610,20 @@ button {
   letter-spacing: -.025em;
 }
 
-.formulario { display: flex; flex-direction: column; gap: 16px; }
+/* El aire entre campos. Subió de 16 a 22 el 8/09: en la pantalla de
+   activar, cada campo lleva debajo su propia explicación de dos o tres
+   líneas —la ley obliga a explicar, no solo a preguntar— y con 16 px el
+   texto de un campo y el título del siguiente quedaban a la misma
+   distancia. Todo se leía como un solo bloque. */
+.formulario { display: flex; flex-direction: column; gap: 22px; }
 
-.campo { display: flex; flex-direction: column; gap: 6px; }
+.campo { display: flex; flex-direction: column; gap: 7px; }
+
+/* La explicación pega con SU campo, no con el siguiente. Es lo que
+   convierte una lista plana en grupos: el ojo separa por el espacio
+   más grande, así que el de arriba tiene que ser mayor que el de
+   adentro. */
+.campo .pista { margin-top: 1px; }
 
 .campo > span {
   font-size: 13.5px;
@@ -629,6 +651,38 @@ button {
   /* Sin esto, el padding se suma al 100% y el campo se sale de la caja
      por la derecha en pantallas angostas. */
   box-sizing: border-box;
+  /* Y sin esto se sale igual, por otro camino: un campo dentro de un
+     contenedor flexible no se deja encoger por debajo de su contenido
+     a menos que se le diga. Es la misma trampa de la regla 6 —el
+     `minmax(0, 1fr)` en vez de `1fr`— aplicada a un input. */
+  min-width: 0;
+}
+
+/* EL CAMPO DE FECHA, QUE SE SALÍA DE LA PANTALLA EN EL IPHONE.
+
+   Safari en iOS no pinta `input[type=date]` como un campo de texto:
+   pinta un control propio del sistema, y ese control tiene un ancho
+   mínimo suyo, calculado sobre el texto de la fecha ya formateada.
+   `width: 100%` no lo encoge —el sistema operativo gana— así que en una
+   pantalla angosta el borde derecho se sale y el valor queda centrado
+   dentro de una caja más ancha que las demás. En Android y en el
+   computador no se ve: ahí el control sí obedece.
+
+   `appearance: none` es lo que lo desactiva y deja que el campo se
+   comporte como los otros. Lo demás es volver a poner lo que ese
+   control traía puesto y ahora hay que escribir a mano. */
+.campo input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 100%;
+  /* El control del sistema centra su contenido. Los demás campos de
+     esta app escriben desde la izquierda, y una fila que empieza en
+     otro sitio se lee como si fuera otra cosa. */
+  text-align: left;
+  /* Un `date` vacío no tiene contenido que le dé altura, así que sin
+     esto queda más bajito que el campo de al lado. `1.2em` sobre los
+     16px de la regla 4 es la altura de una línea de texto. */
+  min-height: 1.2em;
 }
 
 .campo input:focus {
@@ -661,11 +715,22 @@ button {
 .permisos {
   border: 1px solid var(--linea-suave);
   border-radius: var(--radio);
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
   background: var(--superficie);
+}
+
+/* UNA RAYA ENTRE AUTORIZACIONES, y no es decoración.
+
+   La ley pide finalidades SEPARADAS: si no se pueden aceptar unas y
+   rechazar otras, no es autorización. Tres párrafos seguidos con una
+   casilla cada uno se leen como un solo texto largo con tres casillas;
+   separados, se ven como lo que son, tres decisiones distintas. */
+.permisos .permiso + .permiso {
+  border-top: 1px solid var(--linea-suave);
+  padding-top: 18px;
 }
 
 .permisos legend {

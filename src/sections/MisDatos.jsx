@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase.js'
 import {
   CONSENTIMIENTOS, VERSION_CONSENTIMIENTO, mensajeDeError
 } from '../lib/consentimientos.js'
+import {
+  revisarNombre, cambioNombre, revisarCorreo, cambioCorreo,
+  revisarClave, resultadoDeCambioDeCorreo, CLAVE_MINIMA
+} from '../lib/cuenta.js'
+import { diaEnBogota, formatearFecha } from '../data/fechas.js'
 
 /* =====================================================================
    "Mis datos" — la Ley 1581 implementada, no prometida.
@@ -33,12 +38,52 @@ import {
    Por eso el permiso de datos de salud NO se pide al activar la cuenta
    junto con lo demás: se pide aquí, en el momento en que se van a dar
    los datos. Pedirlo antes sería pedir permiso para nada.
+
+   EL 8/09 SE COMPLETÓ EL DERECHO DE ACTUALIZAR, que estaba a medias y
+   se notaba poco: los datos de salud se editaban desde el primer día,
+   pero el nombre, el correo y la contraseña —las tres cosas que la
+   persona escribió para entrar— no se podían tocar desde ninguna
+   pantalla. "Actualizar" no es un derecho sobre parte de los datos.
+
+   El correo no vive en `perfiles` sino en la tabla de acceso de
+   Supabase, así que se pide y se cambia por otro camino
+   (`supabase.auth`) y no con un `update`. Ver el comentario de
+   `guardarRegistro`.
    ===================================================================== */
 
 const VACIO = { fecha_nac: '', peso_kg: '', altura_cm: '', objetivo: '', lesiones: '' }
 
-export default function MisDatos ({ perfil, alVolver, alSalir }) {
+/* El mismo que usa `Perfil`. Se repite en vez de compartirse porque son
+   siete palabras: un archivo nuevo para esto costaría más leerlo que
+   escribirlo dos veces. Si algún día son cinco roles, se comparte. */
+const NOMBRE_DEL_ROL = {
+  admin:     'Entrenador',
+  cliente:   'Cliente',
+  visitante: 'Invitado'
+}
+
+export default function MisDatos ({ perfil, alVolver, alSalir, recargarPerfil }) {
   const [salud, setSalud] = useState(VACIO)
+
+  /* Tu registro: lo que escribiste para entrar.
+   *
+   * `correoEnUso` es el que HOY sirve para entrar, y no siempre es el
+   * que se ve en el campo: si el proyecto pide confirmación, el correo
+   * nuevo se queda esperando y el viejo sigue siendo el bueno. Por eso
+   * son dos cosas distintas y no una. */
+  const [nombre, setNombre] = useState(perfil.nombre || '')
+  const [correo, setCorreo] = useState('')
+  const [correoEnUso, setCorreoEnUso] = useState('')
+  const [msgRegistro, setMsgRegistro] = useState(null)
+  const [errRegistro, setErrRegistro] = useState(null)
+
+  /* La contraseña va detrás de un botón y no a la vista. Esta pantalla
+   * ya es larga, y dos campos más que casi nadie usa la vuelven más
+   * larga para todo el mundo. */
+  const [cambiandoClave, setCambiandoClave] = useState(false)
+  const [claveNueva, setClaveNueva] = useState('')
+  const [claveRepetida, setClaveRepetida] = useState('')
+  const [errClave, setErrClave] = useState(null)
   const [autoriza, setAutoriza] = useState(false)
   const [yaAutorizo, setYaAutorizo] = useState(false)
   const [cargando, setCargando] = useState(true)
@@ -73,6 +118,13 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
         .eq('perfil_id', perfil.id)
         .maybeSingle()
 
+      /* El correo NO está en `perfiles`: vive en la tabla de acceso de
+       * Supabase, que esta app no consulta directo. `getUser()` lo pide
+       * al servidor en vez de leer la copia guardada en el celular —
+       * que puede estar vieja, exactamente por lo mismo que el bug de
+       * los dos perfiles del 4/09. */
+      const { data: usuario } = await supabase.auth.getUser()
+
       const { data: cons } = await supabase
         .from('consentimientos')
         .select('aceptado')
@@ -82,6 +134,11 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
         .limit(1)
 
       if (!vivo) return
+
+      if (usuario && usuario.user) {
+        setCorreo(usuario.user.email || '')
+        setCorreoEnUso(usuario.user.email || '')
+      }
 
       if (data) {
         setSalud({
@@ -110,6 +167,93 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
   }, [perfil.id])
 
   const cambiar = (campo, valor) => setSalud(s => ({ ...s, [campo]: valor }))
+
+  /* DERECHO DE ACTUALIZAR, la parte que faltaba: el nombre y el correo.
+   *
+   * SON DOS ESCRITURAS EN DOS SITIOS DISTINTOS, y por eso no es un solo
+   * `update`. El nombre está en `perfiles`, una tabla normal. El correo
+   * está en la tabla de acceso de Supabase, que ninguna política de
+   * esta app gobierna: se cambia con `auth.updateUser` y el servidor
+   * decide si hace falta confirmar.
+   *
+   * Se manda solo lo que cambió. Sin esa comprobación, abrir la
+   * pantalla y tocar "Guardar" mandaría un correo de confirmación por
+   * un cambio que no existe. */
+  async function guardarRegistro (e) {
+    e.preventDefault()
+    setErrRegistro(null); setMsgRegistro(null)
+
+    const malNombre = revisarNombre(nombre)
+    if (malNombre) { setErrRegistro(malNombre); return }
+    const malCorreo = revisarCorreo(correo)
+    if (malCorreo) { setErrRegistro(malCorreo); return }
+
+    const tocaNombre = cambioNombre(nombre, perfil.nombre)
+    const tocaCorreo = cambioCorreo(correo, correoEnUso)
+    if (!tocaNombre && !tocaCorreo) {
+      setMsgRegistro('No cambiaste nada.')
+      return
+    }
+
+    setOcupado(true)
+    const hechos = []
+
+    if (tocaNombre) {
+      const { error: err } = await supabase.from('perfiles')
+        .update({ nombre: nombre.trim() })
+        .eq('id', perfil.id)     // regla 13: la política dice lo mismo,
+                                 // el filtro se escribe igual
+      if (err) { setErrRegistro(mensajeDeError(err)); setOcupado(false); return }
+      hechos.push('Tu nombre quedó actualizado.')
+      // Sin esto la app entera sigue saludando con el nombre viejo hasta
+      // la próxima vez que se abra.
+      if (recargarPerfil) recargarPerfil()
+    }
+
+    if (tocaCorreo) {
+      const { data, error: err } = await supabase.auth.updateUser({
+        email: correo.trim()
+      })
+      if (err) {
+        /* El nombre pudo haberse guardado ya. Mostrar solo el fallo
+         * sería falso y llevaría a intentarlo otra vez sin necesidad. */
+        if (hechos.length) setMsgRegistro(hechos.join(' '))
+        setErrRegistro(mensajeDeError(err))
+        setOcupado(false)
+        return
+      }
+      const r = resultadoDeCambioDeCorreo(data && data.user)
+      // El campo se deja como lo escribió la persona; lo que se
+      // actualiza es cuál sirve HOY para entrar, que puede ser el viejo.
+      if (r.correoEnUso) setCorreoEnUso(r.correoEnUso)
+      hechos.push(r.mensaje)
+    }
+
+    setMsgRegistro(hechos.join(' '))
+    setOcupado(false)
+  }
+
+  /* La contraseña. Se pide dos veces y se comprueba ANTES de mandarla:
+   * el campo va oculto, así que un dedazo no se ve, y guardado deja a
+   * la persona fuera de su propia cuenta. Ver `revisarClave`. */
+  async function guardarClave (e) {
+    e.preventDefault()
+    setErrClave(null)
+
+    const mal = revisarClave(claveNueva, claveRepetida)
+    if (mal) { setErrClave(mal); return }
+
+    setOcupado(true)
+    const { error: err } = await supabase.auth.updateUser({ password: claveNueva })
+    if (err) { setErrClave(mensajeDeError(err)); setOcupado(false); return }
+
+    // Se vacían y se cierra el bloque: dejar la contraseña escrita en
+    // pantalla después de guardarla no aporta nada y sí queda a la vista
+    // de quien pase por al lado.
+    setClaveNueva(''); setClaveRepetida(''); setCambiandoClave(false)
+    setMsgRegistro('Tu contraseña quedó cambiada.')
+    setOcupado(false)
+  }
 
   async function guardar (e) {
     e.preventDefault()
@@ -156,7 +300,18 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
     const { data, error: err } = await supabase.rpc('mis_datos')
     if (err) { setError(mensajeDeError(err)); return }
 
-    const archivo = new Blob([JSON.stringify(data, null, 2)],
+    /* EL CORREO SE AGREGA AQUÍ, y no es un adorno: sin él el archivo
+     * estaría incompleto, y un archivo incompleto no cumple el derecho
+     * de conocer.
+     *
+     * `mis_datos()` no lo trae porque no puede: el correo vive en el
+     * esquema de acceso de Supabase y la función solo mira el nuestro.
+     * Abrirle ese esquema a una función `security definer` por un dato
+     * que el navegador ya tiene en la mano sería agrandar la superficie
+     * para nada. */
+    const completo = { ...data, correo: correoEnUso || null }
+
+    const archivo = new Blob([JSON.stringify(completo, null, 2)],
                              { type: 'application/json' })
     const url = URL.createObjectURL(archivo)
     const a = document.createElement('a')
@@ -194,6 +349,110 @@ export default function MisDatos ({ perfil, alVolver, alSalir }) {
       </header>
 
       <button type="button" className="enlace" onClick={alVolver}>← Volver al perfil</button>
+
+      {/* --- 0. TU REGISTRO --------------------------------------------
+          VA DE PRIMERO, antes que la descarga, porque es la respuesta a
+          la primera pregunta que alguien se hace al abrir esta pantalla:
+          con qué correo entré. Lo demás son datos SOBRE ti; esto eres
+          tú. */}
+      <section className="tarjeta">
+        <h2 className="chico">Tu registro</h2>
+        <p className="meta">
+          Lo que escribiste para entrar. Todo se puede cambiar.
+        </p>
+
+        <form className="formulario" onSubmit={guardarRegistro}>
+          <label className="campo">
+            <span>Tu nombre</span>
+            <input type="text" value={nombre} autoComplete="name"
+                   onChange={e => setNombre(e.target.value)} />
+            <small className="pista">
+              Es el que ve tu entrenador y con el que te saluda la app.
+            </small>
+          </label>
+
+          <label className="campo">
+            <span>Tu correo</span>
+            <input type="email" value={correo}
+                   autoComplete="email" inputMode="email" autoCapitalize="none"
+                   onChange={e => setCorreo(e.target.value)} />
+            <small className="pista">
+              {/* Se dice ANTES de tocar el campo, no después de guardar.
+                  Que cambiar esto cambia por dónde entras no es un
+                  detalle: es la consecuencia entera. */}
+              Con este correo entras a la app. Si lo cambias, puede que
+              te mandemos un enlace para confirmarlo; hasta que lo abras,
+              sigues entrando con el de ahora.
+            </small>
+          </label>
+
+          {msgRegistro && <p className="aviso es-ok" role="status">{msgRegistro}</p>}
+          {errRegistro && <p className="aviso es-error" role="alert">{errRegistro}</p>}
+
+          <button type="submit" className="boton-principal" disabled={ocupado}>
+            {ocupado ? 'Un momento…' : 'Guardar cambios'}
+          </button>
+        </form>
+
+        {/* La contraseña, detrás de un botón. Es la única de las tres que
+            no se puede MOSTRAR —nadie guarda una contraseña legible, ni
+            nosotros ni Supabase—, así que no es un campo que se corrige:
+            es una acción que se hace. */}
+        {!cambiandoClave && (
+          <button type="button" className="enlace"
+                  onClick={() => { setCambiandoClave(true); setErrClave(null) }}>
+            Cambiar mi contraseña
+          </button>
+        )}
+
+        {cambiandoClave && (
+          <form className="formulario formulario-aparte" onSubmit={guardarClave}>
+            <label className="campo">
+              <span>Contraseña nueva</span>
+              <input type="password" value={claveNueva}
+                     autoComplete="new-password"
+                     onChange={e => setClaveNueva(e.target.value)} />
+              <small className="pista">Mínimo {CLAVE_MINIMA} caracteres.</small>
+            </label>
+
+            <label className="campo">
+              <span>Escríbela otra vez</span>
+              <input type="password" value={claveRepetida}
+                     autoComplete="new-password"
+                     onChange={e => setClaveRepetida(e.target.value)} />
+              <small className="pista">
+                {/* La razón, dicha en la pantalla y no solo en el código:
+                    el campo va oculto y un dedazo no se ve. */}
+                Va dos veces porque no se puede leer lo que escribes. Si
+                se guardara con una letra de más, quedarías fuera de tu
+                cuenta.
+              </small>
+            </label>
+
+            {errClave && <p className="aviso es-error" role="alert">{errClave}</p>}
+
+            <button type="submit" className="boton-principal" disabled={ocupado}>
+              {ocupado ? 'Un momento…' : 'Cambiar contraseña'}
+            </button>
+            <button type="button" className="enlace"
+                    onClick={() => {
+                      setCambiandoClave(false)
+                      setClaveNueva(''); setClaveRepetida(''); setErrClave(null)
+                    }}>
+              Dejarlo como está
+            </button>
+          </form>
+        )}
+
+        {/* Los dos datos que NO se editan, y se dice por qué en vez de
+            esconderlos. El rol lo da el código del entrenador, no la
+            persona; la fecha es un hecho. */}
+        <p className="pista">
+          Entraste como <strong>{NOMBRE_DEL_ROL[perfil.rol] || 'Cliente'}</strong>
+          {perfil.creado_en &&
+            <> · en la app desde el {formatearFecha(diaEnBogota(perfil.creado_en))}</>}
+        </p>
+      </section>
 
       {/* --- 1. CONOCER ------------------------------------------------ */}
       <section className="tarjeta">

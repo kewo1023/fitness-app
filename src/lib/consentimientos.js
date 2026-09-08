@@ -88,6 +88,13 @@ export function mensajeDeError (error) {
   if (m.includes('user already registered') ||
       m.includes('already been registered'))   return 'Ya hay una cuenta con ese correo. Entra en vez de crear una.'
   if (m.includes('password should be at least')) return 'La contraseña es muy corta.'
+  // Los dos de abajo solo aparecen desde "Mis datos", al cambiar el
+  // correo o la contraseña (8/09). Sin traducirlos, la pantalla enseña
+  // el inglés crudo de Supabase, que es justo lo que la regla 3 prohíbe.
+  if (m.includes('should be different from the old password'))
+    return 'La contraseña nueva tiene que ser distinta de la que ya tenías.'
+  if (m.includes('for security purposes'))
+    return 'Acabas de hacer este cambio. Espera un minuto antes de volver a intentarlo.'
   if (m.includes('unable to validate email'))  return 'Ese correo no parece estar bien escrito.'
   if (m.includes('rate limit') ||
       m.includes('too many requests'))         return 'Demasiados intentos seguidos. Espera un momento.'

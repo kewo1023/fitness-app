@@ -166,7 +166,8 @@ export default function Perfil ({ perfil, alSalir, recargarPerfil }) {
   if (viendoDatos) {
     return <MisDatos perfil={perfil}
                      alVolver={() => setViendoDatos(false)}
-                     alSalir={alSalir} />
+                     alSalir={alSalir}
+                     recargarPerfil={recargarPerfil} />
   }
 
   if (viendoPanel) {

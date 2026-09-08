@@ -3030,6 +3030,128 @@ es deuda vieja: es función nueva.
 
 ---
 
+## 8 de septiembre de 2026 — la pantalla que se salía, y el derecho de actualizar a medias
+
+Dos cosas que aparecieron al usar la app en el celular, otra vez. Es el
+tercer día seguido en que lo que encuentra los problemas de verdad no es
+una prueba: es abrir la app en un teléfono.
+
+### El campo de fecha se salía de la pantalla, y solo en el iPhone
+
+En `Activar`, el campo de fecha de nacimiento pasaba del borde derecho y
+mostraba su valor centrado, distinto a todos los demás campos.
+
+**No era un `width` mal puesto**: el CSS ya decía `width: 100%` y
+`box-sizing: border-box`. Safari en iOS no pinta `input[type=date]` como
+un campo de texto — pinta un control del sistema, y ese control tiene un
+ancho mínimo propio calculado sobre la fecha ya formateada. `width` no
+lo encoge, porque el que manda es el sistema operativo.
+
+Por eso no se veía en Android ni en el computador, que es donde se había
+mirado: ahí el control sí obedece. **Es la tercera vez que un problema
+de esta app se ve en un solo sistema y parece que no existe**, después
+del manifest (Android sí, iPhone no) y de la barra de abajo (iPhone sí,
+Android no).
+
+El arreglo es `appearance: none`, que apaga el control del sistema, más
+volver a escribir a mano lo que ese control traía puesto: alineación a
+la izquierda y una altura mínima para cuando está vacío. Y de paso
+`min-width: 0` en todos los campos, que es la misma trampa de la regla 6
+—`minmax(0, 1fr)` en vez de `1fr`— aplicada a un input.
+
+**Lo que no se pudo verificar aquí:** que en el iPhone quedó bien. El
+navegador de esta máquina no reproduce el control de iOS, así que lo que
+sí se comprobó es lo estructural — cero desbordamiento horizontal, y el
+campo de fecha exactamente del mismo ancho que el de al lado. Falta
+verlo en el teléfono.
+
+### "Todo muy apilado", que era cierto y tenía una causa
+
+Los campos iban a 16 px de separación y cada uno lleva debajo su propia
+explicación de dos o tres líneas — la ley obliga a explicar, no solo a
+preguntar. Con 16 px, el texto de un campo quedaba a la misma distancia
+de su campo que del título del siguiente, así que el ojo no tenía por
+dónde separar y todo se leía como un bloque.
+
+Subió a 22 px entre campos, y la explicación se pegó a SU campo. **La
+regla es que el espacio de afuera tiene que ser mayor que el de
+adentro**, o no hay grupos.
+
+Y una raya entre las tres autorizaciones, que **no es decoración**: la
+ley pide finalidades separadas, y tres párrafos seguidos con una casilla
+cada uno se leen como un solo texto largo con tres casillas. Separadas
+se ven como lo que son, tres decisiones distintas.
+
+### El derecho de actualizar estaba a medias, y llevaba así desde la Fase 2
+
+`MisDatos` se llama "conocer, actualizar, suprimir" desde que se
+escribió. Los datos de salud se editaban desde el primer día. **El
+nombre, el correo y la contraseña no se podían cambiar desde ninguna
+pantalla de la app.**
+
+Es el mismo patrón de la regla 17 con otra cara: no falla nada, cada
+pieza funciona, y solo se descubre cuando alguien quiere hacerlo. La
+diferencia es que aquí lo que quedaba a medias era un derecho que la
+pantalla dice cumplir.
+
+Ahora hay una sección **"Tu registro"**, de primeras en la pantalla —
+antes que la descarga, porque responde la primera pregunta que alguien
+se hace al abrirla: con qué correo entré.
+
+### Tres cosas que costaron una decisión
+
+**1. El correo no vive donde los demás datos.** Está en la tabla de
+acceso de Supabase, no en `perfiles`, así que se pide con
+`auth.getUser()` y se cambia con `auth.updateUser()`, no con un
+`update`. Y se pide al servidor en vez de leer la copia guardada en el
+celular, por lo mismo del bug de los dos perfiles del 4/09: **un dato
+leído una vez es una copia, no el dato.**
+
+**2. `new_email` es el caso caro, y por eso es una función con
+pruebas.** Supabase tiene dos comportamientos y desde el navegador se
+ven casi iguales: o cambia el correo en el acto, o lo deja ESPERANDO en
+`new_email` y manda un enlace. Decir "listo" en el segundo caso hace que
+alguien cierre sesión creyendo que su correo cambió y no pueda volver a
+entrar — el correo que sirve sigue siendo el que acaba de dar por viejo.
+`resultadoDeCambioDeCorreo` es la que distingue los dos, y su prueba es
+literalmente ese caso.
+
+**3. La contraseña se pide dos veces, y la razón va escrita en la
+pantalla.** El campo va oculto: un dedazo no se ve, y guardado deja a la
+persona fuera de su propia cuenta. En el formulario de entrar un dedazo
+cuesta reintentar; aquí cuesta la cuenta. Va detrás de un botón y no a la
+vista, porque esta pantalla ya era larga y dos campos más que casi nadie
+usa la alargan para todo el mundo.
+
+### El archivo de descarga estaba incompleto y nadie lo había notado
+
+`mis_datos()` devuelve el perfil, la salud, las autorizaciones, los
+planes, las sesiones, las series y los logros. **No el correo** — y la
+app sí guarda el correo. Un archivo incompleto no cumple el derecho de
+conocer.
+
+No se arregló en SQL a propósito: el correo vive en el esquema de acceso
+y la función solo mira el nuestro. Abrirle ese esquema a una función
+`security definer` por un dato que el navegador ya tiene en la mano
+sería agrandar la superficie para nada. Se agrega al armar el archivo.
+
+### Lo que sigue sin poderse actualizar, y está bien
+
+**Las autorizaciones.** No se editan porque la tabla no acepta cambios
+ni borrados, solo inserciones — cada "sí" y cada "no" queda escrito con
+su fecha y su versión, que es lo que las hace servir de prueba. Cambiar
+de opinión inserta una fila nueva; es lo que ya hace la pantalla de
+Avisos. Editar la vieja borraría el rastro, que es justo lo contrario de
+lo que pide la ley.
+
+Y el **rol** y la **fecha de ingreso**, que se muestran pero no se
+tocan: el rol lo da el código del entrenador, no la persona, y la fecha
+es un hecho. Se dice en la pantalla en vez de esconderlos.
+
+**280 pruebas, `v0.5.6`.** Las 16 nuevas están en `cuenta.js`.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
