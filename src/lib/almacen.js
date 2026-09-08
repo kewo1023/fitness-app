@@ -135,3 +135,51 @@ export function olvidarTodo () {
     peticion.onblocked = () => resolver(true)
   })
 }
+
+/* ---------------------------------------------------------------------
+   LA COLA — lo que se hizo sin señal y todavía no está en la base
+   ---------------------------------------------------------------------
+   Qué va en cada entrada y en qué orden se suben vive en `cola.js`, que
+   sí se puede probar. Esto solo escribe y lee.
+
+   El almacén usa `keyPath: 'clave'`, así que `put` PISA la entrada que
+   tenga la misma clave. No es un detalle: es lo que hace que corregir
+   una serie ya anotada deje una sola cosa por subir en vez de dos. */
+
+/** Mete o reemplaza una entrada. Devuelve si se pudo.
+ *
+ *  QUIEN LLAMA TIENE QUE MIRAR ESTO. Es la única función del archivo
+ *  cuyo fallo no se puede tragar: si no se pudo encolar, el
+ *  entrenamiento de alguien no está en ningún sitio, y decirle que
+ *  quedó guardado sería mentirle. */
+export async function encolar (entrada) {
+  const db = await abrir()
+  if (!db) return false
+  const r = await enTransaccion(db, COLA, 'readwrite', s => s.put(entrada))
+  db.close()
+  return r !== null
+}
+
+/** Todo lo pendiente, sin ordenar. El orden lo pone `ordenarCola`. */
+export async function leerCola () {
+  const db = await abrir()
+  if (!db) return []
+  const r = await enTransaccion(db, COLA, 'readonly', s => s.getAll())
+  db.close()
+  return r || []
+}
+
+/** Saca una entrada, ya subida.
+ *
+ *  Se llama DESPUÉS de que la base confirme, nunca antes. Al revés, un
+ *  corte en medio perdería el dato para siempre; así, lo peor que pasa
+ *  es que se vuelva a intentar algo que ya estaba — y las tres
+ *  operaciones aguantan repetirse (las series por su `upsert`, terminar
+ *  por el índice único de 06-sesiones.sql). */
+export async function sacarDeLaCola (clave) {
+  const db = await abrir()
+  if (!db) return false
+  const r = await enTransaccion(db, COLA, 'readwrite', s => s.delete(clave))
+  db.close()
+  return r !== null
+}

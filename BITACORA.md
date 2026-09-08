@@ -3245,6 +3245,131 @@ celular, y ahí es donde de verdad se demuestra.
 
 ---
 
+## 8 de septiembre de 2026 — la Fase 8, paso 2: entrenar sin señal
+
+La otra mitad. Empezar, anotar las series y terminar con el celular sin
+una raya, y que todo aparezca solo cuando vuelva.
+
+### Por qué esto cuesta 3 horas y no 20: no hay conflictos
+
+Nadie más escribe las sesiones de un cliente. Ni el entrenador, ni otro
+dispositivo salvo el suyo. La cola solo INSERTA, así que no hay que
+decidir quién gana: nunca hay dos versiones de la misma fila. Eso es lo
+que convierte esto en un problema de orden y no en uno de resolución de
+conflictos.
+
+### El problema de verdad: el id que todavía no existe
+
+`sesiones.id` es `bigint generated always as identity` — lo pone
+Postgres al insertar. Y `series_registradas.sesion_id` lo necesita.
+
+O sea que sin señal **no se puede anotar una serie "de la sesión 84",
+porque el 84 no existe todavía y no se puede inventar.** Una sesión
+creada sin conexión lleva una **clave local** —un texto con prefijo
+`local:`, no un número— y las series apuntan a esa clave. Al subir, se
+inserta la sesión primero, se apunta qué número le tocó, y las series se
+mandan ya con el de verdad.
+
+El prefijo no es decoración: hace imposible confundir la clave con un id
+mirando el valor, que es el error que acabaría mandando el texto
+`local:8f3a` a una columna `bigint`.
+
+### La decisión que más fácil se hace mal: qué error significa "no hay señal"
+
+Equivocarse tiene dos formas y las dos son malas:
+
+- **Encolar lo que NO es un fallo de red esconde un problema de verdad.**
+  Un error de permisos guardado en la cola se reintenta para siempre, en
+  silencio, y la persona cree que su entrenamiento está a salvo cuando
+  no lo va a estar nunca.
+- **No encolar un fallo de red de verdad pierde el entrenamiento**, que
+  es justo lo que esto viene a evitar.
+
+Así que la lista va por lo que SÍ es red, y es corta. Cualquier otra cosa
+se muestra como error, que es lo que hace que se descubra. Chrome,
+Firefox y Safari lo dicen con tres frases distintas —`Failed to fetch`,
+`NetworkError`, `Load failed`— y si alguna se queda fuera, ese navegador
+pierde el entrenamiento. Hay una prueba por cada una.
+
+### Tres reglas del sincronizador que no se pueden cambiar
+
+1. **De una en una y en orden.** Nada de `Promise.all`: las series
+   necesitan el número que devuelve el insert anterior, así que en
+   paralelo llegarían antes que la fila a la que apuntan.
+2. **Se borra DESPUÉS de que la base confirme**, nunca antes. Un corte
+   justo en medio deja la entrada puesta y se reintenta; al revés,
+   perdería el entrenamiento. Que se pueda repetir es a propósito: las
+   series van con `upsert` y terminar lo protege el índice único de
+   `06-sesiones.sql`.
+3. **Al primer fallo de red se para.** Sin esto, quedarse sin señal a
+   mitad de la cola haría cincuenta intentos fallidos seguidos.
+
+### El caso que casi se queda fuera, y es el normal
+
+Entrenas sin señal. **Cierras la app entre un ejercicio y otro** —que es
+lo que hace todo el mundo. La vuelves a abrir, todavía sin señal.
+
+El paquete del disco se guardó la última vez que hubo cobertura, así que
+no sabe nada de lo que pasó después: la pantalla diría que no has
+empezado. Y no es solo que se vea mal — darle otra vez a "empezar"
+encolaría una **segunda sesión** con otra clave local, y al subir
+quedarían dos entrenamientos del mismo día con las series repartidas
+entre los dos. El índice único frena el segundo al completarlo, pero
+para entonces el daño ya está hecho.
+
+Por eso el estado de hoy es **lo guardado MÁS lo que haya en la cola**,
+en ese orden (`estadoDeSesion`). Lo mismo pasa dentro del entrenamiento:
+las series encoladas cuentan como anotadas, o al volver a entrar
+saldrían en blanco y la persona las anotaría dos veces.
+
+### La hora que se guarda es la del momento, no la de la subida
+
+Si se mandara la de cuando por fin hay señal, **el entrenamiento del
+martes por la noche aparecería el miércoles** — y con él se movería la
+racha de esa semana. La columna tiene `default now()` para el caso con
+cobertura; sin ella se manda a mano.
+
+Por lo mismo, una sesión cerrada sin señal ya cuenta para la racha en la
+pantalla. Que el número subiera al subirse a la base y no al hacerlo
+sería premiar la cobertura, no el esfuerzo.
+
+### El XP no se inventa
+
+Lo suma un trigger dentro de la base al marcar la sesión, así que sin
+señal no hay número que decir. La app dice lo único cierto: *"guardado
+en este teléfono. Se sube solo, y el XP entra, en cuanto haya señal."*
+
+Es la misma regla de siempre en este proyecto —toda cantidad lleva su
+origen o no se escribe— aplicada a un caso donde el origen todavía no
+puede contestar.
+
+### Un fallo del disco que NO se traga
+
+`almacen.js` falla en silencio a propósito en todo… menos en `encolar`.
+Si ni siquiera se pudo guardar en el celular, el entrenamiento no está
+en ningún sitio, y dejar entrar a la pantalla de registrar series sería
+prometer que se guarda lo que se anote. Ahí sí se dice, y se dice qué
+hacer: anotarlo aparte.
+
+### Verificado y no verificado
+
+La cola se probó contra un IndexedDB real, no solo con Vitest: encola en
+orden, **corregir una serie ya anotada pisa la entrada en vez de
+duplicarla**, una serie de una sesión con número no se mezcla con las
+locales, y cerrar sesión la vacía.
+
+**Lo que no se pudo probar es la subida contra la base**, que hace falta
+una cuenta y un teléfono con y sin señal. Es lo que queda para la ronda
+del celular, y ahí el orden importa: entrenar en modo avión, cerrar la
+app a mitad, volver a abrirla todavía en avión, terminar, y recién
+entonces encender los datos.
+
+**313 pruebas, `v0.5.8`.** La Fase 8 queda con su caché offline hecho;
+lo que falta de esa fase es la política de tratamiento publicada y
+`PASOS-FASE-8.md`.
+
+---
+
 ## Estado (2 de septiembre de 2026)
 
 **Fases 1 y 2 cerradas. Fase 3 a la mitad.** La app está publicada, con
@@ -3385,7 +3510,7 @@ trabajo, no construir más.**
 | ~~Cerrar `07-constructores.sql`~~ | — | **HECHO Y CORRIDO EL 8/09.** Los cinco archivos con funciones ya tienen su bloque de permisos |
 | La configuración inicial (franja al entrar) | ~3 h | El código ya está preparado |
 | Fase 6 — Recetas y hábitos | 8 h | La única fase de la 1 a la 8 que falta entera |
-| Fase 8 — Instalación y offline | por estimar | Subió: en iPhone no hay avisos sin instalar |
+| ~~Fase 8 — el caché offline~~ | — | **HECHO EL 8/09**, los dos pasos. Falta de esa fase la política de tratamiento publicada y `PASOS-FASE-8.md` |
 | Un punto de aviso en la pestaña de Perfil | ~1 h | La otra mitad de la insignia: hoy solo se ve si abres Perfil. Toca `App.jsx` |
 | `.enlace-fila` a 44 px | ~1 h | Accesibilidad, toca todas las pantallas |
 

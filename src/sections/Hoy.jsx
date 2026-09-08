@@ -8,7 +8,12 @@ import { etiqueta } from '../lib/ejercicios.js'
 import { nivelDesdeXp } from '../lib/gamificacion.js'
 import Entrenamiento from './Entrenamiento.jsx'
 import { armarPaquete, paqueteUtil, textoDeEdad } from '../lib/paquete.js'
-import { guardarPaquete, leerPaquete } from '../lib/almacen.js'
+import { guardarPaquete, leerPaquete, encolar, leerCola } from '../lib/almacen.js'
+import {
+  nuevaClaveLocal, esClaveLocal, esFalloDeRed, entradaEmpezar,
+  entradaTerminar, resumenCola, estadoDeSesion
+} from '../lib/cola.js'
+import { sincronizar } from '../lib/sincronizar.js'
 
 /* OJO: el XP que paga una sesión NO se escribe aquí.
  *
@@ -91,6 +96,12 @@ export default function Hoy ({ perfil, recargarPerfil }) {
    * plan": decirle a alguien que su entrenador no le asignó nada cuando
    * lo que pasa es que no hay señal es mentira, y de las que desaniman. */
   const [sinRed, setSinRed] = useState(false)
+  /* Qué falta por subir, ya en palabras. null = nada pendiente. */
+  const [pendientes, setPendientes] = useState(null)
+  /* Sube uno para volver a cargarlo todo. Lo usa el aviso de que volvió
+   * la señal: sin esto habría que repetir aquí las seis consultas del
+   * efecto de abajo. */
+  const [recarga, setRecarga] = useState(0)
   /* Si está DENTRO del entrenamiento o mirándolo desde fuera.
    *
    * Son dos pantallas y no una porque responden dos preguntas
@@ -105,6 +116,28 @@ export default function Hoy ({ perfil, recargarPerfil }) {
     let vivo = true
     ;(async () => {
       const hoy = hoyBogota()
+
+      /* PRIMERO SE SUBE LO PENDIENTE, y después se lee.
+       *
+       * El orden importa: al revés, alguien que entrenó anoche sin señal
+       * vería su pantalla sin ese entrenamiento —la base todavía no lo
+       * tiene— y la racha le saldría corta durante unos segundos, hasta
+       * la siguiente carga. Es un número que aparece mal y se arregla
+       * solo, que es la peor forma de perder la confianza en una cifra.
+       *
+       * Sin nada en la cola esto es una lectura del disco y ya. */
+      const subida = await sincronizar(perfil.id)
+      if (!vivo) return
+      if (subida.subidas > 0) {
+        setAvisoXp({
+          tipo: 'ok',
+          texto: 'Ya subimos lo que hiciste sin señal. Tu XP está al día.'
+        })
+        // El XP lo sumó el trigger al subir la sesión: hay que releerlo.
+        if (recargarPerfil) recargarPerfil()
+      }
+      setPendientes(resumenCola(await leerCola()))
+      if (!vivo) return
 
       /* 1. El plan activo DE ESTA PERSONA. El `.eq('cliente_id')` es
        *    obligatorio: ver el comentario de la regla 13 arriba.
@@ -139,11 +172,31 @@ export default function Hoy ({ perfil, recargarPerfil }) {
           const c = disco.contenido
           setPlan(c.plan)
           setDias(c.dias || [])
-          setFechasHechas(c.fechasHechas || [])
-          setSesion(c.sesion || null)
           setRutina(c.rutina || null)
           setEjercicios(c.ejercicios || [])
           setGuardado(disco)
+
+          /* EL PAQUETE SE GUARDÓ LA ÚLTIMA VEZ QUE HUBO SEÑAL, así que
+           * no sabe nada de lo que se entrenó después. La cola sí.
+           *
+           * Sin esto: entrenas sin señal, cierras la app entre un
+           * ejercicio y otro —que es lo que hace todo el mundo—, la
+           * vuelves a abrir y dice que no has empezado. Y darle otra vez
+           * a "empezar" encolaría una SEGUNDA sesión del mismo día. */
+          const cola = await leerCola()
+          if (!vivo) return
+          const puntoGuardado = puntoDelPlan(c.plan, hoy)
+          const diaGuardado = diaDelPlan(c.dias || [], puntoGuardado)
+          const estado = estadoDeSesion(cola, diaGuardado?.id, c.sesion || null)
+          setSesion(estado)
+
+          /* La racha también: un entrenamiento cerrado sin señal ya
+           * cuenta. Que el número suba al subirse a la base y no al
+           * hacerlo sería premiar la cobertura, no el esfuerzo. */
+          const hechas = c.fechasHechas || []
+          setFechasHechas(
+            estado?.completada && !hechas.includes(hoy) ? [...hechas, hoy] : hechas
+          )
         } else {
           setSinRed(true)
         }
@@ -279,7 +332,20 @@ export default function Hoy ({ perfil, recargarPerfil }) {
       setCargando(false)
     })()
     return () => { vivo = false }
-  }, [perfil.id])
+  }, [perfil.id, recarga])
+
+  /* CUANDO VUELVE LA SEÑAL, se recarga todo.
+   *
+   * `online` no es de fiar del todo —el sistema lo dispara al agarrar
+   * un wifi que todavía no tiene salida a internet— pero eso no hace
+   * daño: si al recargar sigue sin haber red, se cae otra vez en el
+   * paquete del disco y la pantalla no se mueve. Lo caro sería no
+   * enterarse nunca. */
+  useEffect(() => {
+    function volvio () { setRecarga(n => n + 1) }
+    window.addEventListener('online', volvio)
+    return () => window.removeEventListener('online', volvio)
+  }, [])
 
   /* ---------------------------------------------------------------
      Empezar y terminar
@@ -313,7 +379,53 @@ export default function Hoy ({ perfil, recargarPerfil }) {
 
     if (error) {
       console.error('No se pudo empezar la sesión:', error)
-      setAvisoXp({ tipo: 'error', texto: 'No se pudo empezar. Revisa la conexión.' })
+
+      /* SIN SEÑAL SE EMPIEZA IGUAL, con una clave local.
+       *
+       * `sesiones.id` lo pone Postgres, así que todavía no hay número
+       * al que colgarle las series. La clave local hace ese papel hasta
+       * que haya red; ver el comentario largo de cola.js.
+       *
+       * Solo si el error ES de red. Uno de permisos encolado se
+       * reintentaría para siempre en silencio y la persona creería que
+       * su entrenamiento está a salvo. */
+      if (!esFalloDeRed(error)) {
+        setAvisoXp({ tipo: 'error', texto: 'No se pudo empezar. Intenta de nuevo.' })
+        return
+      }
+
+      const clave = nuevaClaveLocal()
+      const local = {
+        // `id` y no otro nombre: `Entrenamiento` la usa tal cual, y el
+        // prefijo `local:` es lo que hace imposible confundirla con un
+        // número de la base.
+        id: clave,
+        completada: false,
+        iniciada_en: new Date().toISOString()
+      }
+
+      const guardo = await encolar(entradaEmpezar(clave, {
+        plan_dia_id: delDia.id,
+        rutina_id: delDia.rutina_id,
+        iniciada_en: local.iniciada_en
+      }))
+
+      /* EL ÚNICO FALLO DEL DISCO QUE NO SE PUEDE TRAGAR. Si ni siquiera
+       * se pudo encolar —modo privado, memoria llena— el entrenamiento
+       * no está en ningún sitio, y dejar entrar a la pantalla de
+       * registrar series sería prometer que se guarda lo que se anote. */
+      if (!guardo) {
+        setAvisoXp({
+          tipo: 'error',
+          texto: 'Sin conexión y este teléfono no nos deja guardar nada. ' +
+                 'Anota tus series aparte y vuelve cuando haya señal.'
+        })
+        return
+      }
+
+      setSesion(local)
+      setPendientes(resumenCola(await leerCola()))
+      setEntrenando(true)
       return
     }
     setSesion(data)
@@ -328,6 +440,47 @@ export default function Hoy ({ perfil, recargarPerfil }) {
     setOcupado(true)
     setAvisoXp(null)
 
+    const terminadaEn = new Date().toISOString()
+
+    /* Cierra el entrenamiento en el disco. Lo usan los dos caminos sin
+     * señal: la sesión que nació sin red, y la que empezó con red y la
+     * perdió a mitad.
+     *
+     * LA HORA ES LA DE AHORA Y NO LA DE CUANDO SE SUBA. Si se mandara
+     * la de la subida, el entrenamiento del martes por la noche
+     * aparecería el miércoles y con él se movería la racha de esa
+     * semana. */
+    async function cerrarEnElDisco () {
+      const guardo = await encolar(
+        entradaTerminar(sesion.id, { terminada_en: terminadaEn })
+      )
+      setOcupado(false)
+      if (!guardo) {
+        setAvisoXp({
+          tipo: 'error',
+          texto: 'No pudimos guardarlo en este teléfono. Vuelve a darle ' +
+                 'cuando tengas señal.'
+        })
+        return
+      }
+      setSesion(s => ({ ...s, completada: true }))
+      setFechasHechas(f => [...f, hoyBogota()])
+      setEntrenando(false)
+      /* EL XP NO SE PUEDE SABER SIN SEÑAL, y no se inventa. Lo suma un
+       * trigger dentro de la base al marcar la sesión, así que aquí no
+       * hay número que decir — solo el compromiso de que va a entrar. */
+      setAvisoXp({
+        tipo: 'ok',
+        texto: 'Entrenamiento guardado en este teléfono. Se sube solo, y el ' +
+               'XP entra, en cuanto haya señal.'
+      })
+      setPendientes(resumenCola(await leerCola()))
+    }
+
+    // Una sesión que nació sin red no existe en la base: no hay nada que
+    // actualizar y preguntarlo solo gastaría una espera.
+    if (esClaveLocal(sesion.id)) return cerrarEnElDisco()
+
     const antes = nivelDesdeXp(perfil.xp)
 
     const { error } = await supabase
@@ -338,8 +491,10 @@ export default function Hoy ({ perfil, recargarPerfil }) {
                                         // cliente_id = auth.uid(), pero
                                         // el filtro se escribe igual
     if (error) {
-      setOcupado(false)
       console.error('No se pudo terminar la sesión:', error)
+      // Empezó con señal y la perdió a mitad del entrenamiento. Pasa.
+      if (esFalloDeRed(error)) return cerrarEnElDisco()
+      setOcupado(false)
       /* 23505 es el índice único de 06-sesiones.sql: este día ya estaba
        * completado. No es un fallo del usuario ni algo que deba ver como
        * error rojo — casi siempre es un doble toque o dos pestañas. */
@@ -470,8 +625,19 @@ export default function Hoy ({ perfil, recargarPerfil }) {
       {guardado && (
         <p className="aviso es-tenue" role="status">
           <strong>Sin conexión.</strong> Esto es tu rutina{' '}
-          {textoDeEdad(guardado)}. Puedes verla y seguirla; para anotar
-          las series hace falta señal.
+          {textoDeEdad(guardado)}. Puedes entrenarla y anotar tus series:
+          se guarda aquí y se sube solo cuando vuelva la señal.
+        </p>
+      )}
+
+      {/* LO QUE FALTA POR SUBIR. Se dice siempre que haya algo, con
+          señal o sin ella: quien entrenó sin conexión tiene derecho a
+          saber que su entrenamiento todavía no salió del teléfono, y a
+          no descubrirlo el día que cambie de celular. */}
+      {pendientes && (
+        <p className="aviso es-tenue" role="status">
+          {pendientes} Se sube solo en cuanto haya señal; no tienes que
+          hacer nada.
         </p>
       )}
 
@@ -566,20 +732,7 @@ export default function Hoy ({ perfil, recargarPerfil }) {
                 lee peor: aquí el estado "ya lo hiciste" no es un botón,
                 porque no hay nada más que hacer y ofrecer una acción
                 que no existe invita a tocarla. */}
-            {/* SIN SEÑAL NO SE OFRECE EMPEZAR, y se dice por qué.
-                Empezar escribe una fila en la base, así que el botón
-                fallaría con "revisa la conexión" DESPUÉS de haberlo
-                tocado. Un botón que se ve disponible y no lo está se
-                siente como que la app está rota; uno que explica antes,
-                no. (La cola para entrenar sin señal es el paso 2 de
-                esta fase.) */}
-            {guardado ? (
-              <p className="pista">
-                Para empezar y anotar tus series hace falta señal. La
-                rutina de aquí abajo es la de hoy: puedes seguirla y
-                anotarla cuando vuelvas a tener.
-              </p>
-            ) : sesion?.completada ? (
+            {sesion?.completada ? (
               <p className="estado es-ok">Hecho por hoy ✓</p>
             ) : sesion ? (
               /* Ya empezó y no terminó. El botón lleva DE VUELTA al

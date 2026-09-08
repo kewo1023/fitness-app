@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Pantalla from '../components/Pantalla.jsx'
 import { supabase } from '../lib/supabase.js'
+import { encolar, leerCola } from '../lib/almacen.js'
+import { esClaveLocal, esFalloDeRed, entradaSerie, SERIE } from '../lib/cola.js'
 import { etiqueta } from '../lib/ejercicios.js'
 import {
   objetivoReps, valoresPrellenados, validarSerie, progresoSesion, textoObjetivo
@@ -66,6 +68,37 @@ export default function Entrenamiento ({
   useEffect(() => {
     let vivo = true
     ;(async () => {
+      /* LO QUE ESTÁ EN LA COLA CUENTA COMO ANOTADO.
+       *
+       * Sin esto, salir del entrenamiento y volver a entrar sin señal
+       * mostraría las series en blanco: la base no las tiene todavía y
+       * el disco no se estaba mirando. La persona las volvería a anotar
+       * creyendo que se perdieron.
+       *
+       * Va PRIMERO y lo de la base va encima: si una serie está en los
+       * dos sitios, la de la base es la que ya se subió. */
+      const enCola = {}
+      for (const e of await leerCola()) {
+        if (e.tipo !== SERIE) continue
+        const suya = e.sesionLocal === sesion.id || e.sesionId === sesion.id
+        if (!suya) continue
+        enCola[`${e.datos.ejercicio_id}:${e.datos.serie}`] = {
+          ejercicio_id: e.datos.ejercicio_id,
+          serie: e.datos.serie,
+          reps: e.datos.reps,
+          peso_kg: e.datos.peso_kg
+        }
+      }
+      if (!vivo) return
+
+      /* Una sesión que nació sin señal no existe en la base: preguntar
+       * por sus series sería mandar un texto a una columna bigint. */
+      if (esClaveLocal(sesion.id)) {
+        setHechas(enCola)
+        setCargando(false)
+        return
+      }
+
       const [reg, ult] = await Promise.all([
         supabase.from('series_registradas')
           .select('ejercicio_id, serie, reps, peso_kg')
@@ -85,7 +118,7 @@ export default function Entrenamiento ({
       if (reg.error) console.error('No se pudieron leer las series:', reg.error)
       if (ult.error) console.error('No se pudo leer el histórico:', ult.error)
 
-      const mapa = {}
+      const mapa = { ...enCola }
       for (const f of reg.data || []) mapa[`${f.ejercicio_id}:${f.serie}`] = f
       setHechas(mapa)
 
@@ -141,6 +174,32 @@ export default function Entrenamiento ({
     if (!valido) { setErrores(fallos); return }
 
     setGuardando(true)
+
+    /* Guarda la serie en el disco, para subirla cuando haya señal.
+     * Devuelve si se pudo. Lo usan los dos caminos sin red: la sesión
+     * que nació sin conexión y la que la perdió a mitad. */
+    async function alDisco () {
+      return encolar(entradaSerie(sesion.id, {
+        ejercicio_id: editando.ejercicioId,
+        serie: editando.serie,
+        reps: valores.reps,
+        peso_kg: valores.peso_kg
+      }))
+    }
+
+    /* Una sesión que nació sin señal no tiene número en la base: su
+     * serie va derecha al disco, sin gastar una espera preguntando. */
+    if (esClaveLocal(sesion.id)) {
+      const guardo = await alDisco()
+      setGuardando(false)
+      if (!guardo) {
+        setErrores(['No pudimos guardarla en este teléfono. Anótala aparte.'])
+        return
+      }
+      apuntar({ ...valores, serie: editando.serie })
+      return
+    }
+
     /* `upsert` y no `insert` por el único de la tabla
      * `(sesion_id, ejercicio_id, serie)`: volver a tocar una serie ya
      * anotada tiene que corregirla, no fallar con un error de duplicado
@@ -160,12 +219,32 @@ export default function Entrenamiento ({
 
     if (error) {
       console.error('No se pudo guardar la serie:', error)
+
+      /* SE PERDIÓ LA SEÑAL A MITAD DEL ENTRENAMIENTO. Es el caso más
+       * común de los dos: el gimnasio tiene cobertura en la entrada y
+       * no en el sótano de las pesas.
+       *
+       * Solo si el error ES de red: uno de permisos encolado se
+       * reintentaría para siempre en silencio, y quien lo anotó creería
+       * que su serie está a salvo. */
+      if (esFalloDeRed(error) && await alDisco()) {
+        apuntar({ ...valores, serie: editando.serie })
+        return
+      }
       setErrores(['No se pudo guardar. Revisa la conexión.'])
       return
     }
 
+    apuntar(data || { ...valores, serie: editando.serie })
+  }
+
+  /* Deja la serie por anotada y abre la siguiente. Sale de `guardar`
+   * porque los tres caminos —base, disco con sesión local, disco tras
+   * perder la señal— terminan exactamente igual: para quien está
+   * entrenando no hay ninguna diferencia, y no debería haberla. */
+  function apuntar (fila) {
     const clave = `${editando.ejercicioId}:${editando.serie}`
-    setHechas(h => ({ ...h, [clave]: data || { ...valores, serie: editando.serie } }))
+    setHechas(h => ({ ...h, [clave]: fila }))
 
     /* SALTA SOLA A LA SIGUIENTE SERIE del mismo ejercicio. Es el
      * comportamiento que hace que anotar cuatro series sean cuatro

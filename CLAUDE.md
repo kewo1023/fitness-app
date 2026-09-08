@@ -360,6 +360,18 @@ src/lib/paquete.js       Qué se guarda en el celular para entrenar sin
                          que sostiene todo es DE QUIÉN es lo guardado:
                          dos personas comparten un celular más seguido
                          de lo que parece. 11 pruebas. NO toca la base.
+src/lib/cola.js          Lo que se hizo sin señal y todavía no está en
+                         la base. El truco entero está aquí: `sesiones.id`
+                         lo pone Postgres, así que una sesión sin
+                         conexión lleva una CLAVE LOCAL y las series
+                         apuntan a ella hasta que haya red. También
+                         decide qué error significa "no hay señal" —
+                         encolar uno que no lo es lo reintentaría para
+                         siempre en silencio. 22 pruebas. NO toca la base.
+src/lib/sincronizar.js   Sube la cola. De una en una y en orden (las
+                         series necesitan el número que devuelve el
+                         insert anterior), se borra DESPUÉS de que la
+                         base confirme, y al primer fallo de red se para.
 src/lib/almacen.js       El disco (IndexedDB). Fontanería y nada más:
                          no decide, y falla en silencio a propósito —
                          guardar es una comodidad, no el camino
